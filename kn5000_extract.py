@@ -1,3 +1,9 @@
+# (c) 2021 Felipe Correa da Silva Sanches <juca@members.fsf.org>
+# Licensed under the terms of the GNU General Public License v3 or later
+#
+# This program loads a compressed firmware update file and
+# outputs its raw, uncompressed contents.
+
 compressed = open("HKMSPRG.SLD.v10", "rb").read()
 raw = open("HKMSPRG.SLD.v10.raw", "wb")
 
