@@ -38,8 +38,13 @@ while read_pointer < len(compressed):
     if is_raw:
       output(fetch_byte())
     else:
-      compression_word = fetch_byte()
-      compression_word |= fetch_byte() << 8
+      try:
+        compression_word = fetch_byte()
+        compression_word |= fetch_byte() << 8
+      except:
+        import sys
+        sys.exit(f"DEBUG: Final context: compression_map_byte={compression_map_byte} counter={counter} read_pointer={read_pointer} len(compressed)={len(compressed)}")
+        
       chunk_length = 3 + ((compression_word & 0x0F00) >> 8)
       chunk_address = ((compression_word & 0xF000) >> 4) | (compression_word & 0xFF)
 #      print(f'chunk_length: {hex(chunk_length)}\tchunk_address: {hex(chunk_address)}')
