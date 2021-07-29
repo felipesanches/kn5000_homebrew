@@ -7,7 +7,7 @@
 compressed = open("HKMSPRG.SLD.v10", "rb").read()
 raw = open("HKMSPRG.SLD.v10.raw", "wb")
 
-data_buffer = [0] * 4096
+data_buffer = [0x00] * 4096
 read_pointer = 0x0B # skip header bytes: "SLIDE4K", 00 20 00 00
 write_pointer = 0x00
 
