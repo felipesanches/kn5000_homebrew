@@ -12,4 +12,4 @@ compressed = open("HKMSPRG.SLD.v10.compressed", "wb")
 compressed.write(b"SLIDE4K\x00\x20\x00\x00")
 
 # and the compressed data
-compressed.write(lzss.compress(data=raw, initial_buffer_value=b'\x00'))
+compressed.write(lzss.compress(data=raw, initial_buffer_values=0x00000020))

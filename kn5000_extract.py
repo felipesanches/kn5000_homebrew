@@ -18,5 +18,24 @@ assert header == expected_header
 compressed_data = compressed_file.read()
 
 # decompress the data and save it
-raw_file.write(lzss.decompress(data=compressed_data, initial_buffer_value=b'\x00'))
+raw_file.write(lzss.decompress(data=compressed_data, initial_buffer_values=0x00000020))
+
+
+
+compressed_file = open("TECHNICS.PRP", "rb")
+raw_file = open("TECHNICS.PRP.raw", "wb")
+
+compressed_data = compressed_file.read()
+
+# decompress the data and save it
+raw_file.write(lzss.decompress(data=compressed_data, initial_buffer_values=0x00000000))
+
+
+compressed_file = open("DUMMY.1", "rb")
+raw_file = open("DUMMY.1.raw", "wb")
+
+compressed_data = compressed_file.read()
+
+# decompress the data and save it
+raw_file.write(lzss.decompress(data=compressed_data, initial_buffer_values=0x00000000))
 

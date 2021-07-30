@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="312"
+   height="45"
+   viewBox="0 0 82.550003 11.90625"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2-dev (72a0d5585d, 2021-07-02)"
+   sodipodi:docname="HappyHacking.svg"
+   inkscape:export-filename="/home/fsanches/nonfree/kn5000/extrator_fsanches/HappyHacking.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="px"
+     showgrid="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     units="px"
+     inkscape:zoom="1.6673763"
+     inkscape:cx="115.15097"
+     inkscape:cy="79.166295"
+     inkscape:window-width="1024"
+     inkscape:window-height="704"
+     inkscape:window-x="0"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2">
+    <linearGradient
+       inkscape:collect="always"
+       id="linearGradient56393">
+      <stop
+         style="stop-color:#408852;stop-opacity:1"
+         offset="0"
+         id="stop56389" />
+      <stop
+         style="stop-color:#408852;stop-opacity:1;"
+         offset="0.06533118"
+         id="stop71088" />
+      <stop
+         style="stop-color:#615002;stop-opacity:1"
+         offset="0.13843974"
+         id="stop96546" />
+      <stop
+         style="stop-color:#408650;stop-opacity:1;"
+         offset="0.19242042"
+         id="stop95428" />
+      <stop
+         style="stop-color:#438149;stop-opacity:1;"
+         offset="0.27978569"
+         id="stop95178" />
+      <stop
+         style="stop-color:#615002;stop-opacity:1"
+         offset="0.33616197"
+         id="stop71086" />
+      <stop
+         style="stop-color:#408852;stop-opacity:1;"
+         offset="0.47409409"
+         id="stop70960" />
+      <stop
+         style="stop-color:#408852;stop-opacity:1;"
+         offset="0.55727595"
+         id="stop97168" />
+      <stop
+         style="stop-color:#605104;stop-opacity:1"
+         offset="0.59661239"
+         id="stop71958" />
+      <stop
+         style="stop-color:#42834b;stop-opacity:1;"
+         offset="0.63272876"
+         id="stop97418" />
+      <stop
+         style="stop-color:#615002;stop-opacity:1"
+         offset="0.74425262"
+         id="stop73326" />
+      <stop
+         style="stop-color:#408852;stop-opacity:1;"
+         offset="0.8413074"
+         id="stop72084" />
+      <stop
+         style="stop-color:#408852;stop-opacity:1;"
+         offset="0.90618628"
+         id="stop112602" />
+      <stop
+         style="stop-color:#615003;stop-opacity:1"
+         offset="0.9380725"
+         id="stop112600" />
+      <stop
+         style="stop-color:#408852;stop-opacity:1;"
+         offset="0.98814207"
+         id="stop112102" />
+      <stop
+         style="stop-color:#408953;stop-opacity:1"
+         offset="1"
+         id="stop56391" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       id="linearGradient42576">
+      <stop
+         style="stop-color:#408953;stop-opacity:1"
+         offset="0"
+         id="stop42572" />
+      <stop
+         style="stop-color:#615002;stop-opacity:1"
+         offset="1"
+         id="stop42574" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient42576"
+       id="linearGradient42578"
+       x1="90.013054"
+       y1="117.05621"
+       x2="119.36909"
+       y2="117.06326"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient56393"
+       id="linearGradient56395"
+       x1="38.131393"
+       y1="114.91924"
+       x2="117.71667"
+       y2="93.528542"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Greyscale"
+       id="filter137221"
+       x="0"
+       y="0"
+       width="1"
+       height="1">
+      <feColorMatrix
+         values="-1.3802 2.16134 0.102955 -0.0607412 0 -1.3802 2.16134 0.102955 -0.0607412 0 -1.3802 2.16134 0.102955 -0.0607412 0 0 0 0 1 0 "
+         id="feColorMatrix137219" />
+    </filter>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-37.019733,-97.463898)">
+    <rect
+       style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:5.29166;stroke-linejoin:round;stroke-opacity:0.990702"
+       id="rect17318"
+       width="82.550003"
+       height="11.90625"
+       x="37.019722"
+       y="97.463905" />
+    <text
+       xml:space="preserve"
+       style="font-weight:500;font-size:11.7924px;line-height:125%;font-family:Inconsolata;-inkscape-font-specification:'Inconsolata, Medium';font-variant-ligatures:discretionary-ligatures historical-ligatures;font-variant-numeric:slashed-zero;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;fill:url(#linearGradient56395);stroke:none;stroke-width:0.79375001;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;fill-opacity:1;stroke-miterlimit:4;stroke-dasharray:none;filter:url(#filter137221)"
+       x="37.141354"
+       y="107.96519"
+       id="text2360"><tspan
+         sodipodi:role="line"
+         id="tspan2358"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Garoa Hacker Clube';-inkscape-font-specification:'Garoa Hacker Clube';fill:url(#linearGradient56395);stroke:none;stroke-width:0.79375001;fill-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+         x="37.141354"
+         y="107.96519">Happy Hacking!</tspan></text>
+    <rect
+       style="fill:url(#linearGradient42578);fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.79375;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.990702"
+       id="rect42510"
+       width="30.587584"
+       height="7.2420435"
+       x="89.479553"
+       y="113.58505" />
+  </g>
+</svg>
