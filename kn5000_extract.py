@@ -3,6 +3,8 @@
 #
 # This program loads a compressed firmware update file and
 # outputs its raw, uncompressed contents.
+#
+# https://archive.org/details/technics-kn5000-system-update-disks
 
 import lzss
 for version in [7, 8, 9, 10]:
