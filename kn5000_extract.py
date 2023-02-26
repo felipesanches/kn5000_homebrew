@@ -5,9 +5,9 @@
 # outputs its raw, uncompressed contents.
 
 import lzss
-
-compressed_file = open("HKMSPRG.SLD.v10", "rb")
-raw_file = open("HKMSPRG.SLD.v10.raw", "wb")
+version = 10
+compressed_file = open(f"HKMSPRG.SLD.v{version}.compressed", "rb")
+raw_file = open(f"HKMSPRG.SLD.v{version}.raw", "wb")
 
 # skip the header:
 expected_header = b"SLIDE4K\x00\x20\x00\x00"
@@ -18,24 +18,5 @@ assert header == expected_header
 compressed_data = compressed_file.read()
 
 # decompress the data and save it
-raw_file.write(lzss.decompress(data=compressed_data, initial_buffer_values=0x00000020))
-
-
-
-compressed_file = open("TECHNICS.PRP", "rb")
-raw_file = open("TECHNICS.PRP.raw", "wb")
-
-compressed_data = compressed_file.read()
-
-# decompress the data and save it
-raw_file.write(lzss.decompress(data=compressed_data, initial_buffer_values=0x00000000))
-
-
-compressed_file = open("DUMMY.1", "rb")
-raw_file = open("DUMMY.1.raw", "wb")
-
-compressed_data = compressed_file.read()
-
-# decompress the data and save it
-raw_file.write(lzss.decompress(data=compressed_data, initial_buffer_values=0x00000000))
+raw_file.write(lzss.decompress(data=compressed_data)) #, initial_buffer_values=0x00000000))
 
