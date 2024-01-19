@@ -53,7 +53,7 @@ class BinxelEdit():
                 colors.add(self.raw_data[addr])
                 addr += 1
         colors = list(colors)
-        print (f'There are {len(colors)} colors: {map(hex, colors)}')
+        print (f'There are {len(colors)} colors: {list(map(hex, colors))}')
 
         addr = byte
         for y in range(height):
