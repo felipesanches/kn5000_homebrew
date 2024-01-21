@@ -20,35 +20,98 @@ POINTERS:
 
 ENTRY:
 	EI 06 ; DISABLE INTERRUPTS
+	LD XWA, 0
+
+MAIN_LOOP:
+	LD XHL, BITMAP_2
+	CALL DRAW_BITMAP
+
+	LD WA, 7
 	CALL SETUP_PALETTE
-	LD XBC, SOME_BITMAP
-	LD XWA, 001a0000h + 20*320	; vga memory, skipping the first 20 lines because the image has 320x200 resolution and the screen has 320x240
-	LD XDE, 320 * 200 / 2		; bitmap data length in 16-bit words (320x200 pixels)
-	CALL Copy_DE_words_from_XBC_to_XWA
+	CALL PAUSE
 
-INFINITE_LOOP:
-	JP INFINITE_LOOP
+	LD WA, 8
+	CALL SETUP_PALETTE
+	CALL PAUSE
 
-Copy_DE_words_from_XBC_to_XWA: 
-	LD XIY, XBC
-	LD XIX, XWA
-	LD BC, DE
+	LD WA, 9
+	CALL SETUP_PALETTE
+	CALL PAUSE
+
+	LD WA, 10
+	CALL SETUP_PALETTE
+	CALL PAUSE
+	
+	LD XHL, BITMAP_1
+	CALL DRAW_BITMAP
+
+	LD WA, 11
+	CALL SETUP_PALETTE
+	CALL PAUSE
+
+	LD WA, 12
+	CALL SETUP_PALETTE
+	CALL PAUSE
+
+	LD WA, 13
+	CALL SETUP_PALETTE
+	CALL PAUSE
+
+	LD WA, 14
+	CALL SETUP_PALETTE
+	CALL PAUSE
+
+	JP MAIN_LOOP
+
+PAUSE:
+	LD BC, 0
+PAUSE_LOOP1:
+	LD DE, 020h
+PAUSE_LOOP2:
+	DJNZ DE, PAUSE_LOOP2
+	DJNZ BC, PAUSE_LOOP1
+	RET
+
+DRAW_BITMAP:
+	LD XDE, 001a0000h + 20*320	; vga memory, skipping the first 20 lines because the image has 320x200 resolution and the screen has 320x240
+	LD XBC, 320 * 200 / 2		; bitmap data length in 16-bit words (320x200 pixels)
 	LDIRW
 	RET
 
 SETUP_PALETTE:
-	LD (01703c8h), 00h		; VGA 3c8 port (select color palette index)
-	LD XIY, SOME_PALETTE 
-	LD XIX, 01703c9h		; VGA 3c9 port (for setting the color palette values: r, g and b)
-	LD XBC, 3*16 / 2		; data length: 16 colors, 3 components, in number of 16-bit words
-	LDIRW
+	LD BC,0
+	LD XDE, 01703c8h		; VGA 3c8 port (select color palette index
+	LD (XDE), C
+
+	LD BC, 3*16							; data length: 16 colors, 3 components, in number of bytes
+	LD XDE, 01703c9h					; VGA 3c9 port (for setting the color palette values: r, g and b)
+	LD XHL, INTRO_PALETTES
+	SLA 4, XWA
+	ADD XHL, XWA
+	ADD XHL, XWA
+	ADD XHL, XWA
+
+	; arbitrarily choosing one of the palettes here, for now (the 7th one)
+PALETTE_LOOP:
+	LD C, (XHL)
+	INC XHL
+	LD (XDE), C
+	DJNZ BC, PALETTE_LOOP
 	RET
 
-SOME_PALETTE:
-	db "some_palette.bin";	include "some_palette.bin"
+INTRO_BYTECODE:
+	binclude "resources/resource-0x18.bin"
 
-SOME_BITMAP:
-	db "some_bitmap.bin"; include "some_bitmap.bin"
+INTRO_PALETTES:
+	binclude "intro_palettes.bin"
+
+INTRO_VIDEO_1:
+	binclude "resources/resource-0x19.bin"
+
+BITMAP_1:
+	binclude "another_world_logo.bin"
+BITMAP_2:
+	binclude "other_bitmap.bin"
 	
 	org 02fffffh
 	db 0ffh

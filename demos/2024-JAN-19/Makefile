@@ -7,7 +7,7 @@ MAME=/home/fsanches/mame/technics # This is my custom, partial build of MAME wit
 
 all: another.rom
 
-another.p: another.asm
+another.p: another.asm assets
 	$(ASL) another.asm
 
 another.rom: another.p
@@ -23,6 +23,13 @@ run: another.rom
 
 debug: another.rom
 	$(MAME) -rp $(MAME_ROMS) kn5000 -window -debug -extension hdae5000
+
+assets: resources/resource-0x17.bin resources/resource-0x53.bin
+	touch intro_palettes.bin
+	touch another_world_logo.bin
+	touch other_bitmap.bin
+	python resources_to_image_and_palette.py resources/resource-0x53.bin another_world_logo.bin resources/resource-0x17.bin intro_palettes.bin
+	python resources_to_image_and_palette.py resources/resource-0x49.bin other_bitmap.bin resources/resource-0x17.bin intro_palettes.bin
 
 clean:
 	rm -f another.rom
