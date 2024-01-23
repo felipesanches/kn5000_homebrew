@@ -152,8 +152,8 @@ children_loop:
 	LD A, (XIX)
 	INC XIX
 	LD HL, (XSP)
-	MUL XWA, DE			; PO.X *= ZOOM
-	SRAW 6, WA			; PO.X /= default_zoom (40h)
+	MUL XWA, DE			; PO.Y *= ZOOM
+	SRAW 6, WA			; PO.Y /= default_zoom (40h)
 	ADD HL, WA
 	LD (XSP), HL
 
@@ -167,25 +167,32 @@ children_loop:
 	AND E, 7Fh
 	INC 2, XIX				; 	m_data_offset++; //and waste a byte...
 OFFSET_BIT15_NOT_SET:
-	pop DE
 
 	PUSH XIX			;	 uint16_t backup = m_data_offset;
 	LD XIX, 0
 	LD IX, (XSP + 8) ;offset
 	SLA 1, IX		 ; m_data_offset = (offset & 0x7FFF) * 2;
 
-	push DE
+	LD HL, DE
+	; here L is the computer new color
+	; and BC is the children loop counter
+
+	; BC needs to become color | zoom params and
+	; DE needs to become x param
+	; to the readAndDrawPolygon routine
+	
+	LD DE, (XSP + 4)	; restore zoom
+
 	push BC
-	LD B, D		; color
+	LD B, L		; color
 	LD C, E		; zoom
-	LD DE, (XSP + 4)		; PO.x
-	LD HL, (XSP + 2)		; PO.y
+	LD DE, (XSP + 0ah)		; PO.x
+	LD HL, (XSP + 08h)		; PO.y
 	; (color, zoom, po)
 	CALL readAndDrawPolygon
-	pop bc
-	POP DE		; restore zoom
-
+	POP BC
 	POP XIX				; m_data_offset = backup;
+	POP DE		; restore zoom
 
 	INC 6, XSP ; local vars offset, po.x, po.y
 	DJNZ BC, children_loop
