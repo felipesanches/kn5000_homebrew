@@ -103,54 +103,91 @@ fillPolygon:
 
 readAndDrawPolygonHierarchy:
 
+	LD D, 0
+	LD E, C ; zoom
 	;	pt.x -= m_polygonData[m_data_offset++] * zoom / DEFAULT_ZOOM;
-	;	pt.y -= m_polygonData[m_data_offset++] * zoom / DEFAULT_ZOOM;
 	LD WA, 0
 	LD A, (XIX)
 	INC XIX
 	LD HL, (XSP + 6)
-	MUL XHL, WA			; PT.X *= ZOOM
-	SRAW 6, HL			; PT.X /= default_zoom (40h)
+	MUL XWA, DE			; PT.X *= ZOOM
+	SRAW 6, WA			; PT.X /= default_zoom (40h)
+	SUB HL, WA
 	LD (XSP + 6), HL
-	
+
+	;	pt.y -= m_polygonData[m_data_offset++] * zoom / DEFAULT_ZOOM;
 	LD WA, 0
 	LD A, (XIX)
 	INC XIX
 	LD HL, (XSP + 4)
-	MUL XHL, WA				; PT.Y *= ZOOM
-	SRAW 6, HL				; PT.Y /= default_zoom (40h)
+	MUL XWA, DE			; PT.Y *= ZOOM
+	SRAW 6, WA			; PT.Y /= default_zoom (40h)
+	SUB HL, WA
 	LD (XSP + 4), HL
 
 	ld B, 0
-	LD C, (XIX)
+	LD C, (XIX)		; num children
 	INC XIX
-	
+
 children_loop:
-	PUSH HL
-	; HL = offset
-	LD HL, (XIX)
-	POP HL
+	LD WA, (XIX); offset 
+	INC 2, XIX
+	EX W, A
+	PUSH WA
+	PUSHW (XSP + 8); po.x = pt.x
+	PUSHW (XSP + 8); po.y = pt.y
 
-	; VMPoint po(pt);
 	; po.x += m_polygonData[m_data_offset++] * zoom / DEFAULT_ZOOM;
+	LD WA, 0
+	LD A, (XIX)
+	INC XIX
+	LD HL, (XSP + 2)
+	MUL XWA, DE			; PO.X *= ZOOM
+	SRAW 6, WA			; PO.X /= default_zoom (40h)
+	ADD HL, WA
+	LD (XSP + 2), HL
+	
 	; po.y += m_polygonData[m_data_offset++] * zoom / DEFAULT_ZOOM;
+	LD WA, 0
+	LD A, (XIX)
+	INC XIX
+	LD HL, (XSP)
+	MUL XWA, DE			; PO.X *= ZOOM
+	SRAW 6, WA			; PO.X /= default_zoom (40h)
+	ADD HL, WA
+	LD (XSP), HL
 
-	; uint16_t color = 0xFF;
-	; if (offset & 0x8000)
-	; {
-	; 	color = m_polygonData[m_data_offset++] & 0x7F;
-	; 	m_data_offset++; //and waste a byte...
-	; }
+	PUSH DE			; save zoom
+	LD DE, 0FFh				; uint16_t color = 0xFF;
+	LD HL, (XSP + 6) ;offset
+	AND HL, 8000h
+	JP Z, OFFSET_BIT15_NOT_SET
+	LD DE, 0
+	LD E,(XIX)				; 	color = m_polygonData[m_data_offset++] & 0x7F;
+	AND E, 7Fh
+	INC 2, XIX				; 	m_data_offset++; //and waste a byte...
+OFFSET_BIT15_NOT_SET:
+	pop DE
 
-	; uint16_t backup = m_data_offset;
+	PUSH XIX			;	 uint16_t backup = m_data_offset;
+	LD XIX, 0
+	LD IX, (XSP + 8) ;offset
+	SLA 1, IX		 ; m_data_offset = (offset & 0x7FFF) * 2;
 
-	; m_data_offset = (offset & 0x7FFF) * 2;
-
+	push DE
+	push BC
+	LD B, D		; color
+	LD C, E		; zoom
+	LD DE, (XSP + 4)		; PO.x
+	LD HL, (XSP + 2)		; PO.y
 	; (color, zoom, po)
 	CALL readAndDrawPolygon
+	pop bc
+	POP DE		; restore zoom
 
-	; m_data_offset = backup;
-	
+	POP XIX				; m_data_offset = backup;
+
+	INC 6, XSP ; local vars offset, po.x, po.y
 	DJNZ BC, children_loop
 	RET
 
