@@ -14,9 +14,7 @@ another.rom: another.p
 	$(P2BIN) another.p another.rom
 
 install:
-	#echo "Please make a backup of your original hd-ae5000_v2_01i.ic4 ROM, then edit the Makefile's make install rule"
-	# uncomment this:
-	# ln -s `pwd`/another.rom $(MAME_ROMS)/kn5000/hd-ae5000_v2_01i.ic4
+	ln -s `pwd`/another.rom $(MAME_ROMS)/kn5000/hd-ae5000_v2_01i.ic4
 	
 run: another.rom
 	$(MAME) -rp $(MAME_ROMS) kn5000 -window -extension hdae5000
