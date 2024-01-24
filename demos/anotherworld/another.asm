@@ -126,8 +126,9 @@ readAndDrawPolygonHierarchy:
 	LD (XSP + 4), HL
 
 	ld B, 0
-	LD C, (XIX)		; num children
+	LD C, (XIX)		; num_children - 1
 	INC XIX
+	INC BC			; BC = num_children
 
 children_loop:
 	LD WA, (XIX); offset 
@@ -170,9 +171,10 @@ OFFSET_BIT15_NOT_SET:
 
 	PUSH XIX			;	 uint16_t backup = m_data_offset;
 	LD XIX, 0
-	LD IX, (XSP + 8) ;offset
+	LD IX, (XSP + 0Ah) ;offset
 	SLA 1, IX		 ; m_data_offset = (offset & 0x7FFF) * 2;
-
+	ADD XIX, INTRO_VIDEO_1
+	
 	LD HL, DE
 	; here L is the computer new color
 	; and BC is the children loop counter
