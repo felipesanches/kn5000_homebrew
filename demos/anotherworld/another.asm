@@ -4,8 +4,21 @@
 	cpu	96c141	; Actual CPU is 94c241f
 	page	0
 	maxmode	on
-	
-	org 0280000h
+
+	ORG 0200000h
+
+POLYGON_NUM_POINTS:
+	DB ?
+POLYGON_BBOX_W:
+	DW ?
+POLYGON_BBOX_H:
+	DW ?
+POLYGON_POINTS:
+	DW	50 DUP (?, ?, ?)
+
+
+
+	ORG 0280000h
 
 EXTENSION_HEADER:
 	db 'XAPR'
@@ -69,10 +82,13 @@ readAndDrawPolygon:
 
 VALUE_IS_GTE_C0:
 	POP XIX
-	;(&m_polygonData[m_data_offset], zoom, m_polygonData, 0);
+	
+	;(&m_polygonData[m_data_offset], zoom);
 	call readVertices
+
 	; (color, pt)
 	CALL fillPolygon
+
 	JP end_of_readAndDrawPolygon
 
 VALUE_IS_LT_C0: ; for now, here we simply assume value is == 2 without checking.
@@ -94,7 +110,55 @@ end_of_readAndDrawPolygon:
 	RET
 
 readVertices:
-	; implement-me!
+	PUSH XIX
+
+	LD WA, 0
+	LD A, (XIX)
+	INC XIX
+	LD DE, 0
+	LD E, C
+	MUL XWA, DE			; *= ZOOM
+	SRAW 6, WA			; /= default_zoom (40h)
+	LD (POLYGON_BBOX_W), WA
+
+	LD WA, 0
+	LD A, (XIX)
+	INC XIX
+	LD DE, 0
+	LD E, C
+	MUL XWA, DE			; *= ZOOM
+	SRAW 6, WA			; /= default_zoom (40h)
+	LD (POLYGON_BBOX_H), WA
+
+	LD B, (XIX)
+	INC XIX
+	LD (POLYGON_NUM_POINTS), B
+
+	LD XIY, POLYGON_POINTS
+	LD DE, 0
+	LD E, C
+
+READ_THE_COORDINATES:
+
+	LD WA, 0
+	LD A, (XIX)
+	INC XIX
+	MUL XWA, DE			; *= ZOOM
+	SRAW 6, WA			; /= default_zoom (40h)
+	LD (XIY), WA
+	INC 2, XIY
+
+	LD WA, 0
+	LD A, (XIX)
+	INC XIX
+	MUL XWA, DE			; *= ZOOM
+	SRAW 6, WA			; /= default_zoom (40h)
+	LD (XIY), WA
+	INC 2, XIY
+
+	DJNZ B, READ_THE_COORDINATES	
+
+	POP XIX	
 	RET
 
 fillPolygon:
