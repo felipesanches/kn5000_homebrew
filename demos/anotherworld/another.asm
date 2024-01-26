@@ -30,6 +30,7 @@ X1:			DW ?
 X2:			DW ?
 ; 	uint16_t h;
 POLYGON_H:	DW ?
+DX:			DW ?
 
 	ORG 0280000h
 
@@ -406,12 +407,50 @@ end_of_fillPolygon:
 
 
 calcStep:
-	; TODO: Implement-me!
+	; Inputs:
+	; XHL = ptr to STEP_1 or STEP_2
+	; XIX = p1
+	; XIY = p2
+
+	PUSHW 4000h		; uint16_t v = 0x4000;
+
+	LD XWA, (XIY)
+	LD (DX), XWA		; dx = p2.x
+
+	LD WA, (XIX)
+	SUB (DX), WA		; dx -= p1.x;
+
+	INC 2, XIX
+	INC 2, XIY
+	
+	LDW WA, (XIY)
+	LDW (POLYGON_H), WA		; dy = p2.y
+
+	LDW WA, (XIX)
+	SUBW (POLYGON_H), WA		; dy -= p1.y
+
+	CPW (POLYGON_H), 0
+	JP LE, POLYGON_H_IS_LE_ZERO  ; if (dy>0)
+	
+	LDW WA, (XSP + 2)
+	DIV WA, (POLYGON_H)
+	LDW (XSP + 2), WA			; v = 0x4000/(POLYGON_H)
+
+POLYGON_H_IS_LE_ZERO:
+	
+	LD XWA, 0
+	LDW WA, (DX)
+	
+	LD DE, (XSP + 2)
+	MUL XWA, DE
+	SLA 2, XWA
+	LDW (XHL), WA		; return dx * v * 4
+
+	INC 2, XSP
 	RET
 
 
 readAndDrawPolygonHierarchy:
-
 	LD D, 0
 	LD E, C ; zoom
 	;	pt.x -= m_polygonData[m_data_offset++] * zoom / DEFAULT_ZOOM;
