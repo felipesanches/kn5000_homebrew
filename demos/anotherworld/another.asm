@@ -7,16 +7,29 @@
 
 	ORG 0200000h
 
-POLYGON_NUM_POINTS:
-	DB ?
-POLYGON_BBOX_W:
-	DW ?
-POLYGON_BBOX_H:
-	DW ?
-POLYGON_POINTS:
-	DW	50 DUP (?, ?, ?)
+POLYGON_NUM_POINTS:	DB ?
+POLYGON_BBOX_W:		DW ?
+POLYGON_BBOX_H:		DW ?
+POLYGON_POINTS:		DW	50 DUP (?, ?, ?)
+POLYGON_XMIN:	DW ?
+POLYGON_XMAX:	DW ?
+POLYGON_YMIN:	DW ?
+POLYGON_YMAX:	DW ?
+HLINEY:		DW ?
+CPT1_LOW:	DW ?
+CPT1_HIGH:	DW ?
+CPT2_LOW:	DW ?
+CPT2_HIGH:	DW ?
+STEP1_LOW:	DW ?
+STEP1_HIGH:	DW ?
+STEP2_LOW:	DW ?
+STEP2_HIGH:	DW ?
 
-
+; int16_t x1, x2;
+X1:			DW ?
+X2:			DW ?
+; 	uint16_t h;
+POLYGON_H:	DW ?
 
 	ORG 0280000h
 
@@ -30,6 +43,31 @@ POINTERS:
 	db 0Eh, 00h, 00h, 00h; EMPTY_ROUTINE 
 	db 0Eh, 00h, 00h, 00h; EMPTY_ROUTINE 
 	db 0Eh, 00h, 00h, 00h; EMPTY_ROUTINE 
+
+drawLineN:
+	; TODO: Implement-me!
+	RET
+
+drawLineP:
+	; TODO: Implement-me!
+	RET
+
+drawLineBlend:
+	; TODO: Implement-me!
+	RET
+
+drawPoint:
+	PUSH XIX
+	LD WA, 0
+	LD WA, HL
+	MUL XWA, 320
+	; FIXME: do we need to zero the upper 16 bits of XDE here?
+	ADD XWA, XDE
+	LD XIX, 01a0000h
+	ADD XIX, XWA
+	LD (XIX), BC
+	POP XIX
+	RET
 
 ENTRY:
 	EI 06 ; DISABLE INTERRUPTS
@@ -111,6 +149,9 @@ end_of_readAndDrawPolygon:
 
 readVertices:
 	PUSH XIX
+	PUSH DE
+	PUSH HL
+	PUSH BC
 
 	LD WA, 0
 	LD A, (XIX)
@@ -158,12 +199,216 @@ READ_THE_COORDINATES:
 
 	DJNZ B, READ_THE_COORDINATES	
 
+	POP BC
+	POP HL
+	POP DE
 	POP XIX	
 	RET
 
 fillPolygon:
-	; implement-me!
+	; DE: x
+	; HL: y
+	; B: color (Black = FFh)
+
+	PUSH BC
+	LD C, B
+	LD B, 0
+
+	;if (m_polygon.bbox_w == 0 && m_polygon.bbox_h == 1 && m_polygon.numPoints == 4)
+	CP (POLYGON_BBOX_W), 0
+	JP NZ, NOT_A_POINT
+	CP (POLYGON_BBOX_H), 1
+	JP NZ, NOT_A_POINT
+	CP (POLYGON_NUM_POINTS), 4
+	JP NZ, NOT_A_POINT
+	
+	;(color, pt.x, pt.y);
+	CALL drawPoint
+	JP end_of_fillPolygon
+	
+	NOT_A_POINT:
+
+	PUSH IX
+	; int16_t xmin = pt.x - m_polygon.bbox_w / 2;
+	LD IX, (POLYGON_BBOX_W)
+	SRA 1, IX
+	LD (POLYGON_XMIN), DE
+	SUB (POLYGON_XMIN), IX
+
+	; int16_t xmax = pt.x + m_polygon.bbox_w / 2;
+	LD (POLYGON_XMAX), DE
+	ADD (POLYGON_XMAX), IX
+
+	; int16_t ymin = pt.y - m_polygon.bbox_h / 2;
+	LD IX, (POLYGON_BBOX_H)
+	SRA 1, IX
+	LD (POLYGON_XMIN), HL
+	SUB (POLYGON_XMIN), IX
+
+	; int16_t ymax = pt.y + m_polygon.bbox_h / 2;	
+	LD (POLYGON_XMAX), HL
+	ADD (POLYGON_XMAX), IX
+	POP IX
+
+
+	;if (xmin >= 320 || xmax < 0 || ymin >= 200 || ymax < 0)
+	;	return;
+	CPW (POLYGON_XMIN), 320
+	JP UGE, end_of_fillPolygon
+	CPW (POLYGON_XMAX), 0
+	JP LT, end_of_fillPolygon
+	CPW (POLYGON_YMIN), 200
+	JP UGE, end_of_fillPolygon
+	CPW (POLYGON_XMAX), 0
+	JP LT, end_of_fillPolygon
+
+
+	LD WA, (POLYGON_YMIN)
+	LD (HLINEY), WA
+
+	LD XIX, 0						; i = 0;
+	LD XIY, (POLYGON_NUM_POINTS)	; j = m_polygon.numPoints - 1;
+	DEC 4, XIY
+
+	; x2 = m_polygon.points[i].x + xmin;
+	LD WA, (XIX)
+	ADD WA, (POLYGON_XMIN)
+	LD (X2), WA
+
+	; x1 = m_polygon.points[j].x + xmin;
+	LD WA, (XIY)
+	ADD WA, (POLYGON_XMIN)
+	LD (X1), WA
+
+	INC 4, XIX		; 	i++;
+	DEC 4, XIY		; 	j--;
+
+
+	CP C, 10h
+	JP Z, BLEND
+	JP UGT, LINE_P
+
+	LD XHL, drawLineN	; 	drawFct = &another_world_vm_state::drawLineN;
+	JP AFTER_SETTING_DRAW_CALLBACK
+
+	LINE_P:
+	LD XHL, drawLineP	; 	drawFct = &another_world_vm_state::drawLineP;
+	JP AFTER_SETTING_DRAW_CALLBACK
+
+	BLEND:
+	LD XHL, drawLineBlend
+
+AFTER_SETTING_DRAW_CALLBACK:
+
+
+	; uint32_t cpt1 = ((uint32_t) x1) << 16;
+	LD XWA, (CPT1_LOW)
+	LDW (CPT1_LOW), 0
+	LD (CPT1_HIGH), XWA
+
+	; uint32_t cpt2 = ((uint32_t) x2) << 16;
+	LD XWA, (CPT2_LOW)
+	LDW (CPT2_LOW), 0
+	LD (CPT2_HIGH), XWA
+
+
+POLYGON_RASTER_LOOP:
+	DEC 2, (POLYGON_NUM_POINTS)
+
+	CP (POLYGON_NUM_POINTS), 0
+	JP Z, end_of_fillPolygon		; 	if (m_polygon.numPoints == 0) break;
+
+	; 	int32_t step1 = calcStep(m_polygon.points[j + 1], m_polygon.points[j], h);
+	; 	int32_t step2 = calcStep(m_polygon.points[i - 1], m_polygon.points[i], h);
+	CALL calcStep
+	CALL calcStep
+
+	INC 4, XIX		; 	i++;
+	DEC 4, XIY		; 	j--;
+
+	LDW (CPT1_LOW), 07FFFh		; 	cpt1 = (cpt1 & 0xFFFF0000) | 0x7FFF;
+	LDW (CPT2_LOW), 08000h		; 	cpt2 = (cpt2 & 0xFFFF0000) | 0x8000;
+
+	CPW (POLYGON_H), 0
+	JP Z, POLYGON_H_IS_ZERO
+	
+FOR_H_LOOP:			; for (; h != 0; --h)
+	CPW (HLINEY), 0
+	JP LT, AFTER_DRAWFUNC_CALL
+	; 			{
+	LD WA, (CPT1_HIGH)		; x1 = cpt1 >> 16;
+	LD (X1), WA
+
+	LD WA, (CPT2_HIGH)		; x2 = cpt2 >> 16;
+	LD (X2), WA
+
+
+	; if (x1 < 320 && x2 >= 0)
+	CPW (X1), 320
+	JP GE, AFTER_DRAWFUNC_CALL
+	CPW (X2), 0
+	JP LT, AFTER_DRAWFUNC_CALL
+
+	;	if (x1 < 0) x1 = 0;
+	CPW (X1), 0
+	JP GE, X1_NOT_NEGATIVE	
+	LDW (X1), 0
+	X1_NOT_NEGATIVE:
+
+	;   if (x2 > 319) x2 = 319;
+	CPW (X2), 319
+	JP ULE, X2_LESS_THAN_SCREEN_W
+	LDW (X2), 319
+	X2_LESS_THAN_SCREEN_W:
+
+	;(x1, x2, color);
+	CALL (XHL) ; drawfunc
+
+	AFTER_DRAWFUNC_CALL:
+	
+	LD WA, (STEP1_LOW)
+	ADD (CPT1_LOW), WA
+	LD WA, (STEP1_HIGH)
+	ADCW (CPT1_HIGH), WA	; 	cpt1 += step1;
+	
+	LD WA, (STEP2_LOW)
+	ADD (CPT2_LOW), WA
+	LD WA, (STEP2_HIGH)
+	ADCW (CPT2_HIGH), WA	; 	cpt2 += step2;
+
+	INCW (HLINEY)
+	CPW (HLINEY), 199
+	JP LE, POLYGON_RASTER_LOOP	; if (m_hliney > 199) return;
+
+	DECW (POLYGON_H)
+	JP NZ, FOR_H_LOOP
+
+	JP end_of_fillPolygon
+
+	JP POLYGON_RASTER_LOOP
+
+	POLYGON_H_IS_ZERO:
+	LD WA, (STEP1_LOW)
+	ADD (CPT1_LOW), WA
+	LD WA, (STEP1_HIGH)
+	ADCW (CPT1_HIGH), WA	; 	cpt1 += step1;
+	
+	LD WA, (STEP2_LOW)
+	ADD (CPT2_LOW), WA
+	LD WA, (STEP2_HIGH)
+	ADCW (CPT2_HIGH), WA	; 	cpt2 += step2;
+
+	JP POLYGON_RASTER_LOOP
+
+end_of_fillPolygon:
+	POP BC
 	RET
+
+
+calcStep:
+	; TODO: Implement-me!
+	RET
+
 
 readAndDrawPolygonHierarchy:
 
