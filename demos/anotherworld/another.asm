@@ -319,10 +319,32 @@ POLYGON_RASTER_LOOP:
 	CP (POLYGON_NUM_POINTS), 0
 	JP Z, end_of_fillPolygon		; 	if (m_polygon.numPoints == 0) break;
 
+
 	; 	int32_t step1 = calcStep(m_polygon.points[j + 1], m_polygon.points[j], h);
+	PUSH XIX
+	PUSH XIY
+	
+	; pt1 = j+1 / pt2 = j
+	LD XIX, XIY
+	INC 4, XIX
+	LD XHL, STEP1_LOW
+	CALL calcStep
+
+	POP XIY
+	POP XIX
+
 	; 	int32_t step2 = calcStep(m_polygon.points[i - 1], m_polygon.points[i], h);
+	PUSH XIX
+	PUSH XIY
+
+	; pt1 = i-1 / pt2 = i
+	LD XIY, XIX
+	DEC 4, XIX
+	LD XHL, STEP2_LOW
 	CALL calcStep
-	CALL calcStep
+
+	POP XIY
+	POP XIX
 
 	INC 4, XIX		; 	i++;
 	DEC 4, XIY		; 	j--;
