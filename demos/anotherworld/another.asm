@@ -28,9 +28,14 @@ STEP2_HIGH:	DW ?
 ; int16_t x1, x2;
 X1:			DW ?
 X2:			DW ?
+
 ; 	uint16_t h;
 POLYGON_H:	DW ?
 DX:			DW ?
+
+;	int16_t xmax, xmin
+LINE_XMIN:	DW ?
+LINE_XMAX:	DW ?
 
 	ORG 0280000h
 
@@ -45,16 +50,59 @@ POINTERS:
 	db 0Eh, 00h, 00h, 00h; EMPTY_ROUTINE 
 	db 0Eh, 00h, 00h, 00h; EMPTY_ROUTINE 
 
+CALC_LINE_XMAX_AND_XMIN:
+	; int16_t xmax = MAX(x1, x2);
+	LD WA, (X1)
+	CP WA, (X2)
+	JP GT, XMAX_OK
+	LD WA, (X2)
+XMAX_OK:
+	LD (LINE_XMAX), WA
+	
+	; int16_t xmin = MIN(x1, x2);
+	LD WA, (X1)
+	CP WA, (X2)
+	JP LT, XMIN_OK
+	LD WA, (X2)
+XMIN_OK:
+	LD (LINE_XMIN), WA
+	RET
+
 drawLineN:
-	; TODO: Implement-me!
+	; Inputs:
+	; C = color
+	CALL CALC_LINE_XMAX_AND_XMIN
+
+	; for (int16_t x=xmin; x<=xmax; x++)
+	; 	m_curPagePtr1->pix(m_hliney, x) = color;
 	RET
 
 drawLineP:
 	; TODO: Implement-me!
+
+	; Inputs:
+	; C = color
+	CALL CALC_LINE_XMAX_AND_XMIN
+
+	; for (int16_t x=xmin; x<=xmax; x++)
+	; {
+	; 	color = m_page_bitmaps[0].pix(m_hliney, x);
+	; 	m_curPagePtr1->pix(m_hliney, x) = color;
+	; }
 	RET
 
 drawLineBlend:
 	; TODO: Implement-me!
+
+	; Inputs:
+	; C = color
+	CALL CALC_LINE_XMAX_AND_XMIN
+
+	; for (int16_t x=xmin; x<=xmax; x++)
+	; {
+	;	color = m_curPagePtr1->pix(m_hliney, x);
+	;	m_curPagePtr1->pix(m_hliney, x) = (color & 0x7) | 0x8;
+	; }
 	RET
 
 drawPoint:
