@@ -1,6 +1,21 @@
-; This program must replace the hd-ae5000_v2_01i.ic4 ROM
-; of the extension board connected to the Technics SX-KN5000 musical keyboard
-
+; (c) 2024 Felipe Correa da Silva Sanches <juca@members.fsf.org>
+; Licensed under GPL version 2 or later.
+;
+; This is a port of the Another World VM (initially supporting only non-interactive
+; playback of the game intro) to run from an extension board on a
+; Technics SX-KN5000 musical keyboard.
+;
+; This program must replace the hd-ae5000_v2_01i.ic4 ROM of the extension board.
+;
+; This implementation is derived from my port of the Another World VM
+; as a high-level emulation on MAME
+;
+; And that port was derived from Fabien Sanglard's AW-VM available at:
+; https://github.com/fabiensanglard/Another-World-Bytecode-Interpreter
+;
+; The assembler I am using is compiled from source-code downloaded from
+; http://john.ccac.rwth-aachen.de:8000/as/index.html
+;
 	cpu	96c141	; Actual CPU is 94c241f
 	page	0
 	maxmode	on
