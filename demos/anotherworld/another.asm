@@ -16,6 +16,10 @@
 ; The assembler I am using is compiled from source-code downloaded from
 ; http://john.ccac.rwth-aachen.de:8000/as/index.html
 ;
+; Game assets must be extracted from an original copy of the game
+; using the scripts provided at:
+; https://github.com/felipesanches/AnotherWorld_VMTools
+;
 	cpu	96c141	; Actual CPU is 94c241f
 	page	0
 	maxmode	on
