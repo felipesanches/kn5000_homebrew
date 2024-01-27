@@ -36,6 +36,7 @@ DX:			DW ?
 ;	int16_t xmax, xmin
 LINE_XMIN:	DW ?
 LINE_XMAX:	DW ?
+CUR_PAGE_PTR1: DQ ?
 
 	ORG 0280000h
 
@@ -71,10 +72,29 @@ XMIN_OK:
 drawLineN:
 	; Inputs:
 	; C = color
+	PUSH XIX
+	PUSH XHL
+	
 	CALL CALC_LINE_XMAX_AND_XMIN
 
 	; for (int16_t x=xmin; x<=xmax; x++)
 	; 	m_curPagePtr1->pix(m_hliney, x) = color;
+	LD XIX, (CUR_PAGE_PTR1)
+	LD XHL, 0
+	LD HL, (HLINEY)
+	ADD XIX, XHL
+	LD HL, (POLYGON_XMIN)
+	ADD XIX, XHL
+	LD HL, (POLYGON_XMAX)
+	SUB HL, (POLYGON_XMIN)
+	LD B, 0
+drawLineN_loop:
+	LD (XIX), BC
+	INC XIX
+	DJNZ HL, drawLineN_loop
+	
+	POP XHL
+	POP XIX
 	RET
 
 drawLineP:
@@ -120,6 +140,9 @@ drawPoint:
 
 ENTRY:
 	EI 06 ; DISABLE INTERRUPTS
+
+	LD XIX, 01a0000h
+	LD (CUR_PAGE_PTR1), XIX
 	LD XWA, 0
 
 MAIN_LOOP:
