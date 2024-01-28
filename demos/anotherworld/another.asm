@@ -27,13 +27,13 @@
 	ORG 0200000h
 
 POLYGON_NUM_POINTS:	DB ?
-POLYGON_BBOX_W:		DW ?
-POLYGON_BBOX_H:		DW ?
+POLYGON_BBOX_W:		DW ?					; uint16_t
+POLYGON_BBOX_H:		DW ?					; uint16_t
 POLYGON_POINTS:		DW	50 DUP (?, ?, ?)
-POLYGON_XMIN:	DW ?
-POLYGON_XMAX:	DW ?
-POLYGON_YMIN:	DW ?
-POLYGON_YMAX:	DW ?
+POLYGON_XMIN:	DW ?						; int16_t
+POLYGON_XMAX:	DW ?						; int16_t
+POLYGON_YMIN:	DW ?						; int16_t
+POLYGON_YMAX:	DW ?						; int16_t
 HLINEY:		DW ?
 CPT1_LOW:	DW ?
 CPT1_HIGH:	DW ?
@@ -226,9 +226,9 @@ VALUE_IS_LT_C0: ; for now, here we simply assume value is == 2 without checking.
 	PUSH DE ; x
 	PUSH HL ; y
 	CALL readAndDrawPolygonHierarchy
-	POP BC
-	POP DE
 	POP HL
+	POP DE
+	POP BC
 
 	POP XIX
 
@@ -333,12 +333,12 @@ fillPolygon:
 	; int16_t ymin = pt.y - m_polygon.bbox_h / 2;
 	LD IX, (POLYGON_BBOX_H)
 	SRA 1, IX
-	LD (POLYGON_XMIN), HL
-	SUB (POLYGON_XMIN), IX
+	LD (POLYGON_YMIN), HL
+	SUB (POLYGON_YMIN), IX
 
 	; int16_t ymax = pt.y + m_polygon.bbox_h / 2;	
-	LD (POLYGON_XMAX), HL
-	ADD (POLYGON_XMAX), IX
+	LD (POLYGON_YMAX), HL
+	ADD (POLYGON_YMAX), IX
 	POP IX
 
 

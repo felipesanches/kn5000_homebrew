@@ -8,7 +8,7 @@ MAME=/home/fsanches/mame/technics # This is my custom, partial build of MAME wit
 all: another.rom
 
 another.p: another.asm assets
-	$(ASL) another.asm
+	$(ASL) another.asm -l
 
 another.rom: another.p
 	$(P2BIN) another.p another.rom
