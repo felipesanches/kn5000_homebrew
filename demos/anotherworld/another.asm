@@ -345,11 +345,11 @@ fillPolygon:
 	;if (xmin >= 320 || xmax < 0 || ymin >= 200 || ymax < 0)
 	;	return;
 	CPW (POLYGON_XMIN), 320
-	JP UGE, end_of_fillPolygon
+	JP GE, end_of_fillPolygon
 	CPW (POLYGON_XMAX), 0
 	JP LT, end_of_fillPolygon
 	CPW (POLYGON_YMIN), 200
-	JP UGE, end_of_fillPolygon
+	JP GE, end_of_fillPolygon
 	CPW (POLYGON_XMAX), 0
 	JP LT, end_of_fillPolygon
 
