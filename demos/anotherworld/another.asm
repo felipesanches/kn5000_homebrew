@@ -34,7 +34,7 @@ POLYGON_XMIN:	DW ?						; int16_t
 POLYGON_XMAX:	DW ?						; int16_t
 POLYGON_YMIN:	DW ?						; int16_t
 POLYGON_YMAX:	DW ?						; int16_t
-HLINEY:		DW ?
+HLINEY:		DW ?							; int16_t
 CPT1_LOW:	DW ?
 CPT1_HIGH:	DW ?
 CPT2_LOW:	DW ?
@@ -350,16 +350,20 @@ fillPolygon:
 	JP LT, end_of_fillPolygon
 	CPW (POLYGON_YMIN), 200
 	JP GE, end_of_fillPolygon
-	CPW (POLYGON_XMAX), 0
+	CPW (POLYGON_YMAX), 0
 	JP LT, end_of_fillPolygon
 
 
 	LD WA, (POLYGON_YMIN)
 	LD (HLINEY), WA
 
-	LD XIX, 0						; i = 0;
-	LD XIY, (POLYGON_NUM_POINTS)	; j = m_polygon.numPoints - 1;
-	DEC 4, XIY
+	LD XIX, POLYGON_POINTS				; i = 0;
+	LD XIY, POLYGON_POINTS
+	LD XWA, 0
+	LD A, (POLYGON_NUM_POINTS)
+	DEC A
+	SLA 2, XWA
+	ADD XIY, XWA						; j = m_polygon.numPoints - 1;
 
 	; x2 = m_polygon.points[i].x + xmin;
 	LD WA, (XIX)
