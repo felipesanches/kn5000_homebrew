@@ -35,10 +35,15 @@ POLYGON_XMAX:	DW ?						; int16_t
 POLYGON_YMIN:	DW ?						; int16_t
 POLYGON_YMAX:	DW ?						; int16_t
 HLINEY:		DW ?							; int16_t
+
+CPT1:	; uint32_t
 CPT1_LOW:	DW ?
 CPT1_HIGH:	DW ?
+
+CPT2:	; uint32_t
 CPT2_LOW:	DW ?
 CPT2_HIGH:	DW ?
+
 STEP1_LOW:	DW ?
 STEP1_HIGH:	DW ?
 STEP2_LOW:	DW ?
@@ -397,14 +402,14 @@ AFTER_SETTING_DRAW_CALLBACK:
 
 
 	; uint32_t cpt1 = ((uint32_t) x1) << 16;
-	LD XWA, (CPT1_LOW)
+	LD WA, (X1)
+	LD (CPT1_HIGH), WA
 	LDW (CPT1_LOW), 0
-	LD (CPT1_HIGH), XWA
 
 	; uint32_t cpt2 = ((uint32_t) x2) << 16;
-	LD XWA, (CPT2_LOW)
+	LD WA, (X2)
+	LD (CPT2_HIGH), WA
 	LDW (CPT2_LOW), 0
-	LD (CPT2_HIGH), XWA
 
 
 POLYGON_RASTER_LOOP:
