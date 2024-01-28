@@ -423,6 +423,7 @@ POLYGON_RASTER_LOOP:
 
 
 	; 	int32_t step1 = calcStep(m_polygon.points[j + 1], m_polygon.points[j], h);
+	PUSH XHL ; SAVE DRAW_FUNC_PTR
 	PUSH XIX
 	PUSH XIY
 	
@@ -447,6 +448,7 @@ POLYGON_RASTER_LOOP:
 
 	POP XIY
 	POP XIX
+	POP XHL ; RESTORE DRAW_FUNC_PTR
 
 	INC 4, XIX		; 	i++;
 	DEC 4, XIY		; 	j--;
@@ -478,18 +480,18 @@ FOR_H_LOOP:			; for (; h != 0; --h)
 	CPW (X1), 0
 	JP GE, X1_NOT_NEGATIVE	
 	LDW (X1), 0
-	X1_NOT_NEGATIVE:
+X1_NOT_NEGATIVE:
 
 	;   if (x2 > 319) x2 = 319;
 	CPW (X2), 319
 	JP ULE, X2_LESS_THAN_SCREEN_W
 	LDW (X2), 319
-	X2_LESS_THAN_SCREEN_W:
+X2_LESS_THAN_SCREEN_W:
 
 	;(x1, x2, color);
 	CALL (XHL) ; drawfunc
 
-	AFTER_DRAWFUNC_CALL:
+AFTER_DRAWFUNC_CALL:
 	
 	LD WA, (STEP1_LOW)
 	ADD (CPT1_LOW), WA
@@ -512,16 +514,16 @@ FOR_H_LOOP:			; for (; h != 0; --h)
 
 	JP POLYGON_RASTER_LOOP
 
-	POLYGON_H_IS_ZERO:
+POLYGON_H_IS_ZERO:
 	LD WA, (STEP1_LOW)
 	ADD (CPT1_LOW), WA
 	LD WA, (STEP1_HIGH)
-	ADCW (CPT1_HIGH), WA	; 	cpt1 += step1;
+	ADC (CPT1_HIGH), WA	; 	cpt1 += step1;
 	
 	LD WA, (STEP2_LOW)
 	ADD (CPT2_LOW), WA
 	LD WA, (STEP2_HIGH)
-	ADCW (CPT2_HIGH), WA	; 	cpt2 += step2;
+	ADC (CPT2_HIGH), WA	; 	cpt2 += step2;
 
 	JP POLYGON_RASTER_LOOP
 
@@ -556,16 +558,16 @@ calcStep:
 	CPW (POLYGON_H), 0
 	JP LE, POLYGON_H_IS_LE_ZERO  ; if (dy>0)
 	
-	LD WA, (XSP + 2)
+	LD WA, (XSP)
 	DIV WA, (POLYGON_H)
-	LD (XSP + 2), WA			; v = 0x4000/(POLYGON_H)
+	LD (XSP), WA			; v = 0x4000/(POLYGON_H)
 
 POLYGON_H_IS_LE_ZERO:
 	
 	LD XWA, 0
 	LD WA, (DX)
 	
-	LD DE, (XSP + 2)
+	LD DE, (XSP)		; v
 	MUL XWA, DE
 	SLA 2, XWA
 	LD (XHL), WA		; return dx * v * 4
