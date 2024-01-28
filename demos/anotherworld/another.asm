@@ -36,16 +36,19 @@ POLYGON_YMIN:	DW ?						; int16_t
 POLYGON_YMAX:	DW ?						; int16_t
 HLINEY:		DW ?							; int16_t
 
-CPT1:	; uint32_t
+CPT1:				; uint32_t
 CPT1_LOW:	DW ?
 CPT1_HIGH:	DW ?
 
-CPT2:	; uint32_t
+CPT2:				; uint32_t
 CPT2_LOW:	DW ?
 CPT2_HIGH:	DW ?
 
+STEP1:				; int32_t
 STEP1_LOW:	DW ?
 STEP1_HIGH:	DW ?
+
+STEP2:				; int32_t
 STEP2_LOW:	DW ?
 STEP2_HIGH:	DW ?
 
@@ -55,7 +58,7 @@ X2:			DW ?
 
 ; 	uint16_t h;
 POLYGON_H:	DW ?
-DX:			DW ?
+DX:			DW ?	; int16_t
 
 ;	int16_t xmax, xmin
 LINE_XMIN:	DW ?
@@ -400,17 +403,17 @@ fillPolygon:
 
 AFTER_SETTING_DRAW_CALLBACK:
 
-
 	; uint32_t cpt1 = ((uint32_t) x1) << 16;
 	LD WA, (X1)
-	LD (CPT1_HIGH), WA
-	LDW (CPT1_LOW), 0
+	EXTS XWA
+	SLA 16, XWA
+	LD (CPT1), XWA
 
 	; uint32_t cpt2 = ((uint32_t) x2) << 16;
 	LD WA, (X2)
-	LD (CPT2_HIGH), WA
-	LDW (CPT2_LOW), 0
-
+	EXTS XWA
+	SLA 16, XWA
+	LD (CPT2), XWA
 
 POLYGON_RASTER_LOOP:
 	DEC 2, (POLYGON_NUM_POINTS)
@@ -426,7 +429,7 @@ POLYGON_RASTER_LOOP:
 	; pt1 = j+1 / pt2 = j
 	LD XIX, XIY
 	INC 4, XIX
-	LD XHL, STEP1_LOW
+	LD XHL, STEP1
 	CALL calcStep
 
 	POP XIY
@@ -439,7 +442,7 @@ POLYGON_RASTER_LOOP:
 	; pt1 = i-1 / pt2 = i
 	LD XIY, XIX
 	DEC 4, XIX
-	LD XHL, STEP2_LOW
+	LD XHL, STEP2
 	CALL calcStep
 
 	POP XIY
@@ -457,7 +460,7 @@ POLYGON_RASTER_LOOP:
 FOR_H_LOOP:			; for (; h != 0; --h)
 	CPW (HLINEY), 0
 	JP LT, AFTER_DRAWFUNC_CALL
-	; 			{
+
 	LD WA, (CPT1_HIGH)		; x1 = cpt1 >> 16;
 	LD (X1), WA
 
@@ -535,8 +538,8 @@ calcStep:
 
 	PUSHW 4000h		; uint16_t v = 0x4000;
 
-	LD XWA, (XIY)
-	LD (DX), XWA		; dx = p2.x
+	LD WA, (XIY)
+	LD (DX), WA		; dx = p2.x
 
 	LD WA, (XIX)
 	SUB (DX), WA		; dx -= p1.x;
@@ -544,28 +547,28 @@ calcStep:
 	INC 2, XIX
 	INC 2, XIY
 	
-	LDW WA, (XIY)
-	LDW (POLYGON_H), WA		; dy = p2.y
+	LD WA, (XIY)
+	LD (POLYGON_H), WA		; dy = p2.y
 
-	LDW WA, (XIX)
-	SUBW (POLYGON_H), WA		; dy -= p1.y
+	LD WA, (XIX)
+	SUB (POLYGON_H), WA		; dy -= p1.y
 
 	CPW (POLYGON_H), 0
 	JP LE, POLYGON_H_IS_LE_ZERO  ; if (dy>0)
 	
-	LDW WA, (XSP + 2)
+	LD WA, (XSP + 2)
 	DIV WA, (POLYGON_H)
-	LDW (XSP + 2), WA			; v = 0x4000/(POLYGON_H)
+	LD (XSP + 2), WA			; v = 0x4000/(POLYGON_H)
 
 POLYGON_H_IS_LE_ZERO:
 	
 	LD XWA, 0
-	LDW WA, (DX)
+	LD WA, (DX)
 	
 	LD DE, (XSP + 2)
 	MUL XWA, DE
 	SLA 2, XWA
-	LDW (XHL), WA		; return dx * v * 4
+	LD (XHL), WA		; return dx * v * 4
 
 	INC 2, XSP
 	RET
@@ -580,7 +583,7 @@ readAndDrawPolygonHierarchy:
 	INC XIX
 	LD HL, (XSP + 6)
 	MUL XWA, DE			; PT.X *= ZOOM
-	SRAW 6, WA			; PT.X /= default_zoom (40h)
+	SRA 6, WA			; PT.X /= default_zoom (40h)
 	SUB HL, WA
 	LD (XSP + 6), HL
 
@@ -590,7 +593,7 @@ readAndDrawPolygonHierarchy:
 	INC XIX
 	LD HL, (XSP + 4)
 	MUL XWA, DE			; PT.Y *= ZOOM
-	SRAW 6, WA			; PT.Y /= default_zoom (40h)
+	SRA 6, WA			; PT.Y /= default_zoom (40h)
 	SUB HL, WA
 	LD (XSP + 4), HL
 
@@ -613,7 +616,7 @@ children_loop:
 	INC XIX
 	LD HL, (XSP + 2)
 	MUL XWA, DE			; PO.X *= ZOOM
-	SRAW 6, WA			; PO.X /= default_zoom (40h)
+	SRA 6, WA			; PO.X /= default_zoom (40h)
 	ADD HL, WA
 	LD (XSP + 2), HL
 	
@@ -623,7 +626,7 @@ children_loop:
 	INC XIX
 	LD HL, (XSP)
 	MUL XWA, DE			; PO.Y *= ZOOM
-	SRAW 6, WA			; PO.Y /= default_zoom (40h)
+	SRA 6, WA			; PO.Y /= default_zoom (40h)
 	ADD HL, WA
 	LD (XSP), HL
 
@@ -654,7 +657,7 @@ OFFSET_BIT15_NOT_SET:
 	
 	LD DE, (XSP + 4)	; restore zoom
 
-	push BC
+	PUSH BC
 	LD B, L		; color
 	LD C, E		; zoom
 	LD DE, (XSP + 0ah)		; PO.x
