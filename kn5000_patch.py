@@ -12,9 +12,11 @@
 #        file and then be imported here. Similar refactoring must be done
 #        to the encoding code.
 
-patch_images = False
-patch_trojan = False
+patch_images = True
+patch_trojan = True
+patch_run_code_from_RCM = True
 dump_address = 0x00e00000 # to try dumping the first 0xa80 bytes of the Program ROM
+versions = ["10"] # ["5", "6", "7", "8", "9", "10"]
 
 import lzss
 from binxeledit import (BinxelEdit,
@@ -27,7 +29,7 @@ def kn5000_golden_palette(r, g, b, a, colors, transparent=None):
         return 0x21 + int(0xE * (r + g + b) / (255*3.0))
 
 
-for version in ["5", "6", "7", "8", "9", "10"]:
+for version in versions:
     compressed_file = open(f"HKMSPRG.SLD.v{version}", "rb")
 
     # skip the header:
@@ -74,14 +76,33 @@ for version in ["5", "6", "7", "8", "9", "10"]:
 
 # ------------------------------------------------------------------------------------
     # This is still experimental:
-    ptr = 0x0016F330
-    if patch_trojan and version == "10":
+    if version == "10":
         raw_data = list(raw_data)
-        raw_data[ptr + 0] = (dump_address >> 0) & 0xff
-        raw_data[ptr + 1] = (dump_address >> 8) & 0xff
-        raw_data[ptr + 2] = (dump_address >> 16) & 0xff
-        raw_data[ptr + 3] = (dump_address >> 24) & 0xff
+
+        if patch_trojan:
+            ptr = 0x0016F330
+            raw_data[ptr + 0] = (dump_address >> 0) & 0xff
+            raw_data[ptr + 1] = (dump_address >> 8) & 0xff
+            raw_data[ptr + 2] = (dump_address >> 16) & 0xff
+            raw_data[ptr + 3] = (dump_address >> 24) & 0xff
+
+        if patch_run_code_from_RCM:
+            # At address F18AA7 we insert some code in the routine that loads
+            # an RCM file. Then we call the very first address in the file
+            # where we're supposed to place executable TLCS-900 code.
+            # Finally after returning, we jump to the place where the kn5000
+            # things the RCM file was malformed.
+            ptr = 0x0018aa7
+            injected_code = [
+                0xE8, 0x8B,             # LD XHL, XWA
+                0xB3,                   # CALL T XHL
+                0x1B, 0xF5, 0x8B, 0xF1, # JP LABEL_F18BF5
+            ]
+            for i, value in enumerate(injected_code):
+                raw_data[ptr + i] = value
+
         raw_data = bytes(raw_data)
+
 # ------------------------------------------------------------------------------------
 
     if patch_images and version == "10":
@@ -102,13 +123,14 @@ for version in ["5", "6", "7", "8", "9", "10"]:
         raw_data = bytes(edit.raw_data)
 
     if patch_trojan and version == "10":
+        ptr = 0x0016F330
         assert list(raw_data)[ptr + 0] == ((dump_address >> 0) & 0xff)
         assert list(raw_data)[ptr + 1] == ((dump_address >> 8) & 0xff)
         assert list(raw_data)[ptr + 2] == ((dump_address >> 16) & 0xff)
         assert list(raw_data)[ptr + 3] == ((dump_address >> 24) & 0xff)
 
     open(f"kn5000_v{version}_program.rom", "wb").write(raw_data)
-    open(f"kn5000_subprogram_v{subversion}.com", "wb").write(raw_data2)
+    open(f"kn5000_subprogram_v{subversion}.rom", "wb").write(raw_data2)
 
     # write the header and the re-compressed data to a new file:
     data = lzss.compress(data=raw_data, initial_buffer_values=0x00000000)
