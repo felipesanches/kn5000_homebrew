@@ -21,7 +21,7 @@ run: another.rom
 	$(MAME) -rp $(MAME_ROMS) kn5000 -artpath $(ARTWORK) -window -ui_active -extension hdae5000
 
 debug: another.rom
-	$(MAME) -rp $(MAME_ROMS) kn5000 -artpath $(ARTWORK) -window -debug -extension hdae5000
+	$(MAME) -rp $(MAME_ROMS) kn5000 -artpath $(ARTWORK) -window -ui_active -debug -extension hdae5000
 
 assets: resources/resource-0x17.bin resources/resource-0x53.bin
 	touch intro_palettes.bin
