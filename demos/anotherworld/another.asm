@@ -883,19 +883,30 @@ SETUP_PALETTE:
 	LD XDE, 01703c8h		; VGA 3c8 port (select color palette index
 	LD (XDE), C
 
-	LD BC, 3*16							; data length: 16 colors, 3 components, in number of bytes
+	LD BC, 2*16							; data length: 16 colors, 4 bits per component
 	LD XDE, 01703c9h					; VGA 3c9 port (for setting the color palette values: r, g and b)
 	LD XHL, INTRO_PALETTES
-	SLA 4, XWA
-	ADD XHL, XWA
-	ADD XHL, XWA
+	SLA 5, XWA
 	ADD XHL, XWA
 
-	; arbitrarily choosing one of the palettes here, for now (the 7th one)
 PALETTE_LOOP:
+	; red
 	LD A, (XHL)
-	INC XHL
+	ANDB A, 0Fh
 	LD (XDE), A
+	INC XHL
+
+	; green
+	LD A, (XHL)
+	ANDB A, 0Fh
+	LD (XDE), A
+
+	; blue
+	LD A, (XHL)
+	SRA 4, A
+	LD (XDE), A
+	INC XHL
+
 	DJNZ BC, PALETTE_LOOP
 	RET
 
@@ -903,7 +914,7 @@ INTRO_BYTECODE:
 	binclude "resources/resource-0x18.bin"
 
 INTRO_PALETTES:
-	binclude "intro_palettes.bin"
+	binclude "resources/resource-0x17.bin"  ; intro
 
 INTRO_VIDEO_1:
 	binclude "resources/resource-0x19.bin"

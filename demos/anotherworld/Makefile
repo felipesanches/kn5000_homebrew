@@ -23,12 +23,11 @@ run: another.rom
 debug: another.rom
 	$(MAME) -rp $(MAME_ROMS) kn5000 -artpath $(ARTWORK) -window -ui_active -debug -extension hdae5000
 
-assets: resources/resource-0x17.bin resources/resource-0x53.bin
-	touch intro_palettes.bin
+assets: resources/resource-0x49.bin resources/resource-0x53.bin
 	touch another_world_logo.bin
 	touch other_bitmap.bin
-	python resources_to_image_and_palette.py resources/resource-0x53.bin another_world_logo.bin resources/resource-0x17.bin intro_palettes.bin
-	python resources_to_image_and_palette.py resources/resource-0x49.bin other_bitmap.bin resources/resource-0x17.bin intro_palettes.bin
+	python resources_to_images.py resources/resource-0x53.bin another_world_logo.bin
+	python resources_to_images.py resources/resource-0x49.bin other_bitmap.bin
 
 clean:
 	rm -f another.rom
