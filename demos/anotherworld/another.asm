@@ -121,7 +121,9 @@ DX:			DW ?	; int16_t
 ;	int16_t xmax, xmin
 LINE_XMIN:	DW ?
 LINE_XMAX:	DW ?
-CUR_PAGE_PTR1: DQ ?
+CUR_PAGE_PTR1: DD ?
+
+STRING_X0: DW ?
 
 	ORG 0280000h
 
@@ -231,6 +233,7 @@ ENTRY:
 	LD XIX, 01a0000h
 	LD (CUR_PAGE_PTR1), XIX
 
+
 video MACRO type,data,x,y
 	LD XIX, INTRO_VIDEO_type
 	ADD XIX, data
@@ -238,6 +241,15 @@ video MACRO type,data,x,y
 	LD HL, y
 	LD BC, 0FF40h
 	CALL readAndDrawPolygon
+	ENDM
+
+
+text MACRO stringid, x, y, color
+	LD WA, stringid
+	LD DE, x
+	LD HL, y
+	LD B, color
+	CALL DRAW_STRING
 	ENDM
 
 
@@ -260,6 +272,9 @@ MAIN_LOOP:
 	video 1, CINEMATIC_143, 160, 108
 	video 1, CINEMATIC_CARKEY_BACKGROUND, 82, 82
 	video 1, CINEMATIC_CARKEY, 160, 100
+
+	text 0192h, 22, 16, 5	; "IDENTIFICATION"
+	text 0191h, 3, 168, 0Bh ; "I see you have driven here in your\nFerrari."
 
 	CALL LONG_PAUSE
 
@@ -909,6 +924,107 @@ PALETTE_LOOP:
 
 	DJNZ BC, PALETTE_LOOP
 	RET
+
+
+DRAW_STRING:
+; WA: stringId
+; DE: x
+; HL: y
+; B: color
+
+	DEC DE
+	SLA 3, DE 	;	x = 8 * (x-1);
+	LDW (STRING_X0), DE	;	uint16_t x0 = x;
+	LD XIX, STRING_INDEX
+	EXTS XWA
+	ADD XIX, XWA
+	ADD XIX, XWA
+	LD IX, (XIX)
+	EXTS XIX
+	ADD XIX, STRING_DATA
+	LD C, (XIX)
+	INC XIX
+
+DRAW_STRING_LOOP:
+	CP C, 0
+	RET Z		;	for (; *c != '\0'; c++)
+
+	CP C, 10	;		if (*c == '\n')
+	JP NE, NOT_A_LINE_BREAK
+
+LINE_BREAK:
+	INC 8, HL			; y+=8;
+	LD DE, (STRING_X0)	; x=x0;
+	LD C, (XIX)
+	INC XIX
+	JP DRAW_STRING_LOOP
+
+NOT_A_LINE_BREAK:
+	CALL DRAW_CHAR
+	INC 8, DE		; x+=8
+	LD C, (XIX)
+	INC XIX
+	JP DRAW_STRING_LOOP
+
+
+DRAW_CHAR:
+	; DE: x
+	; HL: y
+	; B: color
+	; C: character
+
+	LD WA, 0
+	LD A, C
+	SUB A, 020h
+	EXTS XWA
+	SLA 3, XWA
+	LD XIY, BITMAP_FONT
+	ADD XIY, XWA
+
+	PUSH XIX
+	PUSH XHL
+	PUSH BC
+
+	EXTS XDE
+	EXTS XHL
+
+	LD XIX, (CUR_PAGE_PTR1)
+	ADD XHL, 20
+	MUL XHL, 320
+	ADD XIX, XHL
+	ADD XIX, XDE
+
+	LD WA, 8
+DRAW_CHAR_J_LOOP:
+	LD C, (XIY)
+	INC XIY			; uint8_t row = font[(character - ' ') * 8 + j];
+
+	LD QWA, 8
+DRAW_CHAR_I_LOOP:
+	SLA 1, C
+	JP NC, DONT_PLOT_THIS_PIXEL
+	LD (XIX), B
+DONT_PLOT_THIS_PIXEL:
+	INC XIX
+	DJNZ QWA, DRAW_CHAR_I_LOOP
+
+	DEC 8, XIX
+	ADD XIX, 320
+	DJNZ WA, DRAW_CHAR_J_LOOP
+
+	POP BC
+	POP XHL
+	POP XIX
+	RET
+
+BITMAP_FONT:
+	binclude "hardcoded_data/anotherworld_chargen.rom"
+
+STRING_INDEX:
+	binclude "hardcoded_data/str_index.rom"
+
+STRING_DATA:
+	binclude "hardcoded_data/str_data.rom"
 
 INTRO_BYTECODE:
 	binclude "resources/resource-0x18.bin"
