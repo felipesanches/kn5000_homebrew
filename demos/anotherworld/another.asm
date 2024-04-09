@@ -31,16 +31,22 @@ VM_VARIABLES:	DW	256 DUP (?)
 THREADS_DATA:	DW	64*2 DUP (?)  ; For each of the 64 threads:
 PC_OFFSET			EQU 0  ; 16 bits
 REQUESTED_PC_OFFSET	EQU 2  ; 16 bits
+INACTIVE_THREAD		EQU 0FFFFh
+DELETE_THIS_THREAD	EQU 0FFFEh
+NO_REQUEST 			EQU 0FFFFh
 
 VM_IS_CHANNEL_ACTIVE:	DB	64*2 DUP (?)   ; For each of the 64 threads:
-CUR_STATE		EQU 0  ; boolean stored as a byte
+CURRENT_STATE	EQU 0  ; boolean stored as a byte
 REQUESTED_STATE	EQU 1  ; boolean stored as a byte
+
+FROZEN	EQU 0
+UNFROZEN EQU 1
+NO_STATE_REQUEST EQU 0FFh
 
 CURRENT_THREAD: DB ?
 PC:				DW ?
-VM_STACK_POINTER: DW ?
+VM_STACK_POINTER: DD ?
 VM_STACK: DW 256 DUP (?)
-
 
 POLYGON_NUM_POINTS:	DB ?
 POLYGON_BBOX_W:		DW ?					; uint16_t
@@ -214,18 +220,18 @@ BREAK:
 	; while we still do not emulate
 	; the VM thread execution
 
-	LD WA, 0FEh		; end-of-frame
+	LD A, 0FEh		; end-of-frame
 	CALL UPDATE_DISPLAY
 	CALL PAUSE
 	RET
 
 
 UPDATE_DISPLAY:
-	; WA: PageID
-	CP WA, 0FEh
+	; A: PageID
+	CP A, 0FEh
 	JP EQ, _UPDATE_DISPLAY
 
-	CP WA, 0FFh
+	CP A, 0FFh
 	JP EQ, _UPDATE_DISPLAY_PAGEID_FF
 
 _UPDATE_DISPLAY_PAGEID_NOT_FE_OR_FF:
@@ -247,18 +253,52 @@ _UPDATE_DISPLAY:
 	RET
 
 
-ENTRY:
-	EI 06 ; DISABLE INTERRUPTS
-
 VIDEO_START:
 	LD XIX, PAGE_BITMAP_2
 	LD (CUR_PAGE_PTR_1), XIX
 	LD (CUR_PAGE_PTR_2), XIX
 	LD XIX, PAGE_BITMAP_1
 	LD (CUR_PAGE_PTR_3), XIX
+	RET
+
+GAME_RESET:
+	CALL VIDEO_START
 	LDB (CURRENT_THREAD), 0
+	LDW (PC), 0
 	LD XIX, VM_STACK
 	LD (VM_STACK_POINTER), XIX
+	
+	; All threads are initially disabled and unfrozen
+	LD IX, 0
+_setup_threads__loop:
+
+	PUSH IX
+	SLA 2, IX
+	EXTZ XIX
+	ADD XIX, THREADS_DATA
+	LDW (XIX + PC_OFFSET), INACTIVE_THREAD
+	LDW (XIX + REQUESTED_PC_OFFSET), NO_REQUEST
+	POP IX
+
+	PUSH IX
+	SLA 1, IX
+	EXTZ XIX
+	ADD XIX, VM_IS_CHANNEL_ACTIVE
+	LD (XIX + CURRENT_STATE), UNFROZEN 
+	LD (XIX + REQUESTED_STATE), NO_STATE_REQUEST
+	POP IX
+
+	INC IX
+	CP IX, 64
+	JP NE, _setup_threads__loop
+	
+	; TODO: write_vm_variable(VM_VARIABLE_RANDOM_SEED, time(0) );
+	
+	RET
+
+ENTRY:
+	EI 06 ; DISABLE INTERRUPTS
+	CALL GAME_RESET
 
 MAIN_LOOP:
 
@@ -941,28 +981,118 @@ PAGE_BITMAP_1 EQU 250000h
 PAGE_BITMAP_2 EQU 260000h
 PAGE_BITMAP_3 EQU 270000h
 
-
-SELECT_VIDEO_PAGE:
-	; A: pageId
-	CALL GET_PAGE_PTR
-	LD (CUR_PAGE_PTR_1), XWA
+INPUT_UPDATE_PLAYER:
+	; Implement-me!
 	RET
 
+
+CHECK_THREAD_REQUESTS:
+
+; TODO: Check if a part switch has been requested.
+;	if (m_requestedNextPart != 0)
+;	{
+;		initForPart(m_requestedNextPart);
+;		m_requestedNextPart = 0;
+;	}
+
+	LD A, 0
+
+_check_thread_reqs__loop:
+	INC A
+	CP A, 64
+	JP EQ, _end_of__check_thread_reqs
+
+	PUSH WA
+	SLA 1, WA
+	EXTZ XWA
+	ADD XWA, VM_IS_CHANNEL_ACTIVE
+	LD DE, (XWA + REQUESTED_STATE)
+	LD (XWA + CURRENT_STATE), DE
+	POP WA
+
+	PUSH WA
+	SLA 2, WA
+	EXTZ XWA
+	ADD XWA, THREADS_DATA
+	LD DE, (XWA + REQUESTED_PC_OFFSET)
+	POP WA
+	CP DE, NO_REQUEST
+	JP EQ, _check_thread_reqs__loop
+
+	PUSH XWA
+	SLA 2, WA
+	EXTZ XWA
+	ADD XWA, THREADS_DATA
+	LD DE, (XWA + REQUESTED_PC_OFFSET)
+	CP DE, DELETE_THIS_THREAD
+	JP NE, _dont_delete_this_thread
+	LD DE, INACTIVE_THREAD
+_dont_delete_this_thread:
+	LDW (XWA + PC_OFFSET), DE
+	LDW (XWA + REQUESTED_PC_OFFSET), NO_REQUEST
+	POP WA
+	JP EQ, _check_thread_reqs__loop
+
+_end_of__check_thread_reqs:
+	RET
+
+
+NEXT_THREAD:
+	CALL INPUT_UPDATE_PLAYER
+
+	LD WA, 0
+	LD A, (CURRENT_THREAD)
+
+_next_thread__do_loop:
+	INC A
+	CP A, 64
+	JP NE, _not_end_of_frame
+	; == END OF FRAME ==
+	LDB (CURRENT_THREAD), 0
+	CALL CHECK_THREAD_REQUESTS
+	LD A, 0FEh
+	CALL UPDATE_DISPLAY
+	LD A, 0
+_not_end_of_frame:
+
+;	while(current->state == FROZEN || current->PC == INACTIVE_THREAD);
+	PUSH WA
+	SLA 1, WA
+	EXTZ XWA
+	ADD XWA, VM_IS_CHANNEL_ACTIVE
+	LD E, (XWA + CURRENT_STATE)
+	POP WA
+	CP E, FROZEN
+	JP NE, _exit_do_loop
+
+	PUSH WA
+	SLA 2, WA
+	EXTZ XWA
+	ADD XWA, THREADS_DATA
+	LD DE, (XWA + PC_OFFSET)
+	POP WA
+	CP DE, INACTIVE_THREAD
+	JP NE, _exit_do_loop
+	JP _next_thread__do_loop
+
+_exit_do_loop:
+	LD (CURRENT_THREAD), A
+	SLA 2, WA
+	EXTZ XWA
+	ADD XWA, THREADS_DATA
+	LD DE, (PC)
+	EXTZ XDE
+	SUB XDE, XIX
+	LD (XWA + PC_OFFSET), DE 	;	PC = current->PC;
+	RET
 
 
 EXECUTE_INSTRUCTION:
 	PUSH XIX
 	PUSH XIY
 
-;	LD WA, 0
-;	LD A, (CURRENT_THREAD)
-;	SLA WA, 2
-;	EXTS XWA
-;	ADD XWA, THREADS_DATA
-;	; Thread* current = &m_threads[m_currentThread];
-
 	LD IX, (PC)
-	EXTS XIX
+	EXTZ XIX
 	ADD XIX, INTRO_BYTECODE			; FIXME
 
 FETCH_OPCODE:
@@ -971,6 +1101,9 @@ FETCH_OPCODE:
 
 	BIT 7, A	; if (opcode & 0x80)
 	JP Z, OPCODE_BIT_7_NOT_SET
+
+	; ====  VIDEO instruction (0x80) ====
+_OPCODE_0x80:
 ;
 ;		uint16_t offset = ((opcode << 8) | fetch_byte()) * 2;
 ;
@@ -994,6 +1127,9 @@ FETCH_OPCODE:
 OPCODE_BIT_7_NOT_SET:
 	BIT 6, A	; if (opcode & 0x40)
 	JP Z, OPCODE_BIT_6_NOT_SET
+
+	; ====  VIDEO instruction (0x40) ====
+_OPCODE_0x40:
 ;
 ;		int16_t x, y;
 ;		uint16_t offset = fetch_word() * 2;
@@ -1050,9 +1186,10 @@ OPCODE_BIT_7_NOT_SET:
 
 OPCODE_BIT_6_NOT_SET:
 
+
+	; ====  MOV CONST instruction  ====
 	CP A, 0
 	JP NE, INSTRUCTION_IS_NOT_MOVCONST
-	; ====  MOV CONST instruction  ====
 	LD WA, 0
 	LD A, (XIX)		; uint8_t variableId = fetch_byte();
 	INC XIX
@@ -1060,15 +1197,16 @@ OPCODE_BIT_6_NOT_SET:
 	INC 2, XIX
 	LD XIY, VM_VARIABLES
 	SLA 1, WA
-	EXTS XWA
+	EXTZ XWA
 	ADD XIY, XWA
 	LD (XIY), DE	; write_vm_variable(variableId, value);
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_MOVCONST:
 
+
+	; ====  MOV instruction  ====
 	CP A, 1
 	JP NE, INSTRUCTION_IS_NOT_MOV
-	; ====  MOV instruction  ====
 	LD WA, 0
 	LD A, (XIX)		; uint8_t dstVariableId = fetch_byte();
 	INC XIX
@@ -1078,7 +1216,7 @@ INSTRUCTION_IS_NOT_MOVCONST:
 	INC XIX
 	LD XIY, VM_VARIABLES
 	SLA 1, WA
-	EXTS XWA
+	EXTZ XWA
 	ADD XIY, XWA
 	LD DE, (XIY)	; value = read_vm_variable(srcVariableId);
 	POP WA
@@ -1086,9 +1224,10 @@ INSTRUCTION_IS_NOT_MOVCONST:
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_MOV:
 
+
+	; ====  ADD instruction  ====
 	CP A, 2
 	JP NE, INSTRUCTION_IS_NOT_ADD
-	; ====  ADD instruction  ====
 	LD WA, 0
 	LD A, (XIX)		; uint8_t dstVariableId = fetch_byte();
 	INC XIX
@@ -1098,7 +1237,7 @@ INSTRUCTION_IS_NOT_MOV:
 	INC XIX
 	LD XIY, VM_VARIABLES
 	SLA 1, WA
-	EXTS XWA
+	EXTZ XWA
 	ADD XIY, XWA
 	LD DE, (XIY)	; value = read_vm_variable(srcVariableId);
 	POP WA
@@ -1106,15 +1245,16 @@ INSTRUCTION_IS_NOT_MOV:
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_ADD:
 
+
+	; ====  ADD CONST instruction  ====
 	CP A, 3
 	JP NE, INSTRUCTION_IS_NOT_ADD_CONST
-	; ====  ADD CONST instruction  ====
 	LD WA, 0
 	LD A, (XIX)		; uint8_t variableId = fetch_byte();
 	INC XIX
 	LD XIY, VM_VARIABLES
 	SLA 1, WA
-	EXTS XWA
+	EXTZ XWA
 	ADD XIY, XWA
 	LD WA, (XIX)	; int16_t value = fetch_byte();
 	INC 2, XIX
@@ -1122,181 +1262,281 @@ INSTRUCTION_IS_NOT_ADD:
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_ADD_CONST:
 
+
+	; ====  CALL subroutine instruction  ====
 	CP A, 4
 	JP NE, INSTRUCTION_IS_NOT_CALL
-	; ====  CALL subroutine instruction  ====
 	LD WA, (XIX)		; uint16_t address;
 	EX W, A
 	INC 2, XIX
 	LD XIY, (VM_STACK_POINTER)
 	LD DE, (PC)
-	inc 2, DE
+	INC 3, DE
 	LD (XIY), DE		; push current program counter to VM stack
 	INC 2, XIY
 	LD (VM_STACK_POINTER), XIY
 	LD (PC), WA
-	POP XIY
-	POP XIX
-	RET
+	JP _after_PC_update
 INSTRUCTION_IS_NOT_CALL:
 
+
+	; ====  RET instruction  ====
 	CP A, 5
 	JP NE, INSTRUCTION_IS_NOT_RET
-	; ====  RET instruction  ====
-	; Implement-me!
-	JP _end_of_EXECUTE_INSTRUCTION
+	LD XIY, (VM_STACK_POINTER)
+	DEC 2, XIY
+	LD WA, (XIY)		; pop return address from VM stack
+	LD (VM_STACK_POINTER), XIY
+	LD (PC), WA
+	JP _after_PC_update
 INSTRUCTION_IS_NOT_RET:
 
+
+	; ====  PAUSE_THREAD instruction  ====
 	CP A, 6
 	JP NE, INSTRUCTION_IS_NOT_PAUSE_THREAD
-	; ====  PAUSE_THREAD instruction  ====
-	; Implement-me!
+	LD WA, 0
+	LD A, (CURRENT_THREAD)
+	SLA 2, WA
+	EXTZ XWA
+	ADD XWA, THREADS_DATA
+	LD DE, (XWA + REQUESTED_PC_OFFSET)
+	CP DE, NO_REQUEST
+	JP NE, _pausethread_after_setting_request
+	; When there's no other program counter request set
+	; for this thread, we set the address of the
+	; next instruction to resume execution
+	; in the next VM frame.
+	LD XDE, XIX
+	SUB XDE, INTRO_BYTECODE		; FIXME
+	LD (XWA + REQUESTED_PC_OFFSET), DE
+_pausethread_after_setting_request:
+	CALL NEXT_THREAD
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_PAUSE_THREAD:
 
+
+	; ====  JUMP instruction  ====
 	CP A, 7
 	JP NE, INSTRUCTION_IS_NOT_JUMP
-	; ====  JUMP instruction  ====
-	; Implement-me!
-	JP _end_of_EXECUTE_INSTRUCTION
+	LD WA, (XIX)	; word jump_address;
+	LD (PC), WA
+	JP _after_PC_update
 INSTRUCTION_IS_NOT_JUMP:
 
+
+	; ====  SET_VECT instruction  ====
 	CP A, 8
 	JP NE, INSTRUCTION_IS_NOT_SET_VECT
-	; ====  SET_VECT instruction  ====
-	; Implement-me!
+	LD B, 0
+	LD C, (XIX)	; byte thread_id
+	INC XIX
+	AND C, 3Fh	; (6 bits = max 64 threads);
+	LD WA, (XIX)	; word request;
+	EX W, A
+	INC 2, XIX
+	LD XIY, THREADS_DATA
+	SLA 2, BC
+	EXTZ XBC
+	ADD XIY, XBC
+	LD (XIY + REQUESTED_PC_OFFSET), WA
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_SET_VECT:
 
+
+	; ====  DJNZ instruction  ====
 	CP A, 9
 	JP NE, INSTRUCTION_IS_NOT_DJNZ
-	; ====  DJNZ instruction  ====
-	; Implement-me!
-	JP _end_of_EXECUTE_INSTRUCTION
+	ld WA, 0
+	LD A, (XIX)	; byte variableId
+	INC XIX
+	LDW BC, (XIX)	; word address
+	INC 2, XIX
+	LD XIY, VM_VARIABLES
+	SLA 1, WA
+	EXTZ XWA
+	ADD XIY, XWA
+	LD DE, (XIY)
+	DEC DE
+	LD (XIY), DE	; write_vm_variable(variableId, value);
+	CP DE, 0
+	JP Z, _end_of_EXECUTE_INSTRUCTION
+	LD (PC), BC
+	JP _after_PC_update
+
 INSTRUCTION_IS_NOT_DJNZ:
 
+
+	; ====  COND_JUMP instruction  ====
 	CP A, 0Ah
 	JP NE, INSTRUCTION_IS_NOT_COND_JUMP
-	; ====  COND_JUMP instruction  ====
 	; Implement-me!
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_COND_JUMP:
 
+
+	; ====  SET_PALETTE instruction  ====
 	CP A, 0Bh
 	JP NE, INSTRUCTION_IS_NOT_SET_PALETTE
-	; ====  SET_PALETTE instruction  ====
 	; Implement-me!
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_SET_PALETTE:
 
+
+	; ====  RESET_THREAD instruction  ====
 	CP A, 0Ch
 	JP NE, INSTRUCTION_IS_NOT_RESET_THREAD
-	; ====  RESET_THREAD instruction  ====
 	; Implement-me!
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_RESET_THREAD:
 
+
+	; ====  SELECT_VIDEO_PAGE instruction  ====
 	CP A, 0Dh
 	JP NE, INSTRUCTION_IS_NOT_SELECT_VIDEO_PAGE
-	; ====  SELECT_VIDEO_PAGE instruction  ====
-	; Implement-me!
+	LD A, (XIX)		; byte frameBufferId
+	INC XIX
+	CALL GET_PAGE_PTR
+	LD (CUR_PAGE_PTR_1), XWA
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_SELECT_VIDEO_PAGE:
 
+
+	; ====  FILL_VIDEO_PAGE instruction  ====
 	CP A, 0Eh
 	JP NE, INSTRUCTION_IS_NOT_FILL_VIDEO_PAGE
-	; ====  FILL_VIDEO_PAGE instruction  ====
-	; Implement-me!
+	LD A, (XIX)		; uint8_t pageId = fetch_byte();
+	INC XIX
+	LD B, (XIX)		; uint8_t color = fetch_byte();
+	INC XIX
+	CALL GET_PAGE_PTR
+	LD XDE, XWA
+	ADD XDE, 20*320
+	LD A, B
+	SLA 8, WA
+	LD A, B
+	LD BC, 320 * 200 / 2
+_fill_videopage_loop:
+	LD (XDE), WA
+	INC 2, XDE
+	DJNZ BC, _fill_videopage_loop
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_FILL_VIDEO_PAGE:
 
+
+	; ====  COPY_VIDEO_PAGE instruction  ====
 	CP A, 0Fh
 	JP NE, INSTRUCTION_IS_NOT_COPY_VIDEO_PAGE
-	; ====  COPY_VIDEO_PAGE instruction  ====
 	; Implement-me!
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_COPY_VIDEO_PAGE:
 
+
+	; ====  BLIT_FRAMEBUFFER instruction  ====
 	CP A, 10h
 	JP NE, INSTRUCTION_IS_NOT_BLIT_FRAMEBUFFER
-	; ====  BLIT_FRAMEBUFFER instruction  ====
-	; Implement-me!
+	LD A, (XIX)		; byte pageId
+	INC XIX
+	CALL UPDATE_DISPLAY
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_BLIT_FRAMEBUFFER:
 
+
+	; ====  KILL_THREAD instruction  ====
 	CP A, 11h
 	JP NE, INSTRUCTION_IS_NOT_KILL_THREAD
-	; ====  KILL_THREAD instruction  ====
-	; Implement-me!
+	LD WA, 0
+	LD A, (CURRENT_THREAD)
+	SLA 2, WA
+	EXTZ XWA
+	ADD XWA, THREADS_DATA
+	LDW (XWA + PC_OFFSET), INACTIVE_THREAD
+	CALL NEXT_THREAD
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_KILL_THREAD:
 
+
+	; ====  DRAW_STRING instruction  ====
 	CP A, 12h
 	JP NE, INSTRUCTION_IS_NOT_DRAW_STRING
-	; ====  DRAW_STRING instruction  ====
 	; Implement-me!
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_DRAW_STRING:
 
+
+	; ====  SUB instruction  ====
 	CP A, 13h
 	JP NE, INSTRUCTION_IS_NOT_SUB
-	; ====  SUB instruction  ====
 	; Implement-me!
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_SUB:
 
+
+	; ====  AND instruction  ====
 	CP A, 14h
 	JP NE, INSTRUCTION_IS_NOT_AND
-	; ====  AND instruction  ====
 	; Implement-me!
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_AND:
 
+
+	; ====  OR instruction  ====
 	CP A, 15h
 	JP NE, INSTRUCTION_IS_NOT_OR
-	; ====  OR instruction  ====
 	; Implement-me!
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_OR:
 
+
+	; ====  SHL instruction  ====
 	CP A, 16h
 	JP NE, INSTRUCTION_IS_NOT_SHL
-	; ====  SHL instruction  ====
 	; Implement-me!
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_SHL:
 
+
+	; ====  SHR instruction  ====
 	CP A, 17h
 	JP NE, INSTRUCTION_IS_NOT_SHR
-	; ====  SHR instruction  ====
 	; Implement-me!
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_SHR:
 
+
+	; ====  PLAY_SOUND instruction  ====
 	CP A, 18h
 	JP NE, INSTRUCTION_IS_NOT_PLAY_SOUND
-	; ====  PLAY_SOUND instruction  ====
 	; Implement-me!
+	; Note: We currently do not understand the Technics KN5000 sound hardware.
+	INC 5, XIX		; word resourceId; byte freq; byte vol; byte channel;	
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_PLAY_SOUND:
 
+
+	; ====  LOAD instruction  ====
 	CP A, 19h
 	JP NE, INSTRUCTION_IS_NOT_LOAD
-	; ====  LOAD instruction  ====
 	; Implement-me!
+	INC 2, XIX		; word resourceId;
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_LOAD:
 
+
+	; ====  PLAY_MUSIC instruction  ====
 	CP A, 1Ah
 	JP NE, INSTRUCTION_IS_NOT_PLAY_MUSIC
-	; ====  PLAY_MUSIC instruction  ====
 	; Implement-me!
+	; Note: We currently do not understand the Technics KN5000 sound hardware.
+	INC 5, XIX		; word resNum; word delay; byte pos;
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_PLAY_MUSIC:
+
 		
 _end_of_EXECUTE_INSTRUCTION:
 	SUB XIX, INTRO_BYTECODE
 	LD (PC), IX
+_after_PC_update:
 	POP XIY
 	POP XIX
 	RET
