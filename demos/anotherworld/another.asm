@@ -578,7 +578,6 @@ POLYGON_RASTER_LOOP:
 	LD XIX, (CUR_PAGE_PTR_1)
 	LD XHL, 0
 	LD HL, (HLINEY)
-	ADD HL, 20
 	MUL XHL, 320
 	ADD XIX, XHL
 	LD (CUR_LINE), XIX
@@ -821,6 +820,7 @@ LOAD_SCREEN:
 	RET
 
 SETUP_PALETTE:
+	; XWA: paletteID
 	LD BC,0
 	LD XDE, 01703c8h		; VGA 3c8 port (select color palette index
 	LD (XDE), C
@@ -916,7 +916,6 @@ DRAW_CHAR:
 	EXTS XHL
 
 	LD XIX, (CUR_PAGE_PTR_1)
-	ADD XHL, 20
 	MUL XHL, 320
 	ADD XIX, XHL
 	ADD XIX, XDE
@@ -1104,23 +1103,38 @@ FETCH_OPCODE:
 
 	; ====  VIDEO instruction (0x80) ====
 _OPCODE_0x80:
-;
 ;		uint16_t offset = ((opcode << 8) | fetch_byte()) * 2;
-;
-;		m_useVideo2 = false;
-;		int16_t x = fetch_byte();
-;		int16_t y = fetch_byte();
-;		int16_t h = y - 199;
-;		if (h > 0)
+	LD W, A
+	LD A, (XIX)
+	INC XIX
+	SLA 1, WA
+	EXTZ XWA
+	LD XIX, INTRO_VIDEO_1
+	ADD XIX, XWA
+
+	LD E, (XIX)
+	INC XIX
+	EXTZ DE		; x-coord
+	
+	LD B, (XIX)
+	INC XIX
+	EXTZ BC
+	LD HL, BC	; y-coord
+
+;		if (y > 199)
 ;		{
+;			x += (y - 199);
 ;			y = 199;
-;			x += h;
 ;		}
-;
-;		// This switches the polygon database to "cinematic" and probably
-;		// draws a black polygon over all the screen.
-;		((another_world_vm_state*) owner())->setDataBuffer(CINEMATIC, offset);
-;		((another_world_vm_state*) owner())->readAndDrawPolygon(COLOR_BLACK, DEFAULT_ZOOM, VMPoint(x,y));
+	CP HL, 199
+	JP UGE, _do_nothing
+	ADD DE, HL
+	SUB DE, 199
+	ADD HL, 199
+_do_nothing:
+
+	LD BC, 0FF40h
+	CALL readAndDrawPolygon
 
 	JP _end_of_EXECUTE_INSTRUCTION
 
@@ -1320,6 +1334,7 @@ INSTRUCTION_IS_NOT_PAUSE_THREAD:
 	CP A, 7
 	JP NE, INSTRUCTION_IS_NOT_JUMP
 	LD WA, (XIX)	; word jump_address;
+	EX W, A
 	LD (PC), WA
 	JP _after_PC_update
 INSTRUCTION_IS_NOT_JUMP:
@@ -1371,6 +1386,11 @@ INSTRUCTION_IS_NOT_DJNZ:
 	CP A, 0Ah
 	JP NE, INSTRUCTION_IS_NOT_COND_JUMP
 	; Implement-me!
+	INC 5, XIX ;
+	;	uint8_t subopcode = fetch_byte();
+	;	uint8_t v = fetch_byte();
+	;	int16_t b = read_vm_variable(v);
+	;	uint8_t c = fetch_byte();
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_COND_JUMP:
 
@@ -1378,7 +1398,10 @@ INSTRUCTION_IS_NOT_COND_JUMP:
 	; ====  SET_PALETTE instruction  ====
 	CP A, 0Bh
 	JP NE, INSTRUCTION_IS_NOT_SET_PALETTE
-	; Implement-me!
+	LD WA, (XIX)	; word paletteId
+	SRA 8, WA
+	EXTZ XWA
+	CALL SETUP_PALETTE
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_SET_PALETTE:
 
@@ -1411,7 +1434,6 @@ INSTRUCTION_IS_NOT_SELECT_VIDEO_PAGE:
 	INC XIX
 	CALL GET_PAGE_PTR
 	LD XDE, XWA
-	ADD XDE, 20*320
 	LD A, B
 	SLA 8, WA
 	LD A, B
@@ -1427,7 +1449,22 @@ INSTRUCTION_IS_NOT_FILL_VIDEO_PAGE:
 	; ====  COPY_VIDEO_PAGE instruction  ====
 	CP A, 0Fh
 	JP NE, INSTRUCTION_IS_NOT_COPY_VIDEO_PAGE
-	; Implement-me!
+	;  FIXME: This is an incomplete implementation!
+	LD A, (XIX)		; byte srcPageId
+	INC XIX
+	CALL GET_PAGE_PTR
+	LD XDE, XWA
+	LD A, (XIX)		; byte DstPageId
+	INC XIX
+	CALL GET_PAGE_PTR
+	LD XHL, XWA
+	LD BC, 320 * 200 / 4
+_copy_videopage_loop:
+	LD XWA, (XDE)
+	LD (XHL), XWA
+	INC 4, XDE
+	INC 4, XHL
+	DJNZ BC, _copy_videopage_loop
 	JP _end_of_EXECUTE_INSTRUCTION
 INSTRUCTION_IS_NOT_COPY_VIDEO_PAGE:
 
