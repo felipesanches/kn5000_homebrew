@@ -40,7 +40,7 @@ CURRENT_STATE	EQU 0  ; boolean stored as a byte
 REQUESTED_STATE	EQU 1  ; boolean stored as a byte
 
 FROZEN	EQU 0
-UNFROZEN EQU 1
+NOT_FROZEN EQU 1
 NO_STATE_REQUEST EQU 0FFh
 
 CURRENT_THREAD: DB ?
@@ -284,7 +284,7 @@ _setup_threads__loop:
 	SLA 1, IX
 	EXTZ XIX
 	ADD XIX, VM_IS_CHANNEL_ACTIVE
-	LD (XIX + CURRENT_STATE), UNFROZEN 
+	LD (XIX + CURRENT_STATE), NOT_FROZEN 
 	LD (XIX + REQUESTED_STATE), NO_STATE_REQUEST
 	POP IX
 
@@ -995,18 +995,18 @@ CHECK_THREAD_REQUESTS:
 ;	}
 
 	LD A, 0
-
 _check_thread_reqs__loop:
-	INC A
-	CP A, 64
-	JP EQ, _end_of__check_thread_reqs
 
+	; thread->state = thread->requested_state;
 	PUSH WA
 	SLA 1, WA
 	EXTZ XWA
 	ADD XWA, VM_IS_CHANNEL_ACTIVE
-	LD DE, (XWA + REQUESTED_STATE)
-	LD (XWA + CURRENT_STATE), DE
+	LD E, (XWA + REQUESTED_STATE)
+	CP E, NO_STATE_REQUEST
+	JP EQ, _no_state_request
+	LD (XWA + CURRENT_STATE), E
+_no_state_request:
 	POP WA
 
 	PUSH WA
@@ -1016,26 +1016,30 @@ _check_thread_reqs__loop:
 	LD DE, (XWA + REQUESTED_PC_OFFSET)
 	POP WA
 	CP DE, NO_REQUEST
-	JP EQ, _check_thread_reqs__loop
+	JP EQ, _check_thread_reqs__next_loop
 
-	PUSH XWA
+	PUSH WA
 	SLA 2, WA
 	EXTZ XWA
 	ADD XWA, THREADS_DATA
-	LD DE, (XWA + REQUESTED_PC_OFFSET)
+	LD BC, (XWA + REQUESTED_PC_OFFSET)
 	CP DE, DELETE_THIS_THREAD
 	JP NE, _dont_delete_this_thread
-	LD DE, INACTIVE_THREAD
+	LD BC, INACTIVE_THREAD
 _dont_delete_this_thread:
-	LDW (XWA + PC_OFFSET), DE
+	LDW (XWA + PC_OFFSET), BC
 	LDW (XWA + REQUESTED_PC_OFFSET), NO_REQUEST
 	POP WA
-	JP EQ, _check_thread_reqs__loop
+
+_check_thread_reqs__next_loop:
+	INC A
+	CP A, 64
+	JP NE, _check_thread_reqs__loop
 
 _end_of__check_thread_reqs:
 	RET
 
-
+.
 NEXT_THREAD:
 	CALL INPUT_UPDATE_PLAYER
 
@@ -1062,7 +1066,7 @@ _not_end_of_frame:
 	LD E, (XWA + CURRENT_STATE)
 	POP WA
 	CP E, FROZEN
-	JP NE, _exit_do_loop
+	JP EQ, _next_thread__do_loop
 
 	PUSH WA
 	SLA 2, WA
@@ -1071,18 +1075,15 @@ _not_end_of_frame:
 	LD DE, (XWA + PC_OFFSET)
 	POP WA
 	CP DE, INACTIVE_THREAD
-	JP NE, _exit_do_loop
-	JP _next_thread__do_loop
+	JP EQ, _next_thread__do_loop
 
 _exit_do_loop:
 	LD (CURRENT_THREAD), A
 	SLA 2, WA
 	EXTZ XWA
 	ADD XWA, THREADS_DATA
-	LD DE, (PC)
-	EXTZ XDE
-	SUB XDE, XIX
-	LD (XWA + PC_OFFSET), DE 	;	PC = current->PC;
+	LD DE, (XWA + PC_OFFSET) 	;	PC = current->PC;
+	LD (PC), DE
 	RET
 
 
