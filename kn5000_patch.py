@@ -89,28 +89,26 @@ for version in versions:
 
         if insert_code_snippet_at_boot:
             # Code must have entry_point at the first byte,
-            # alocated at address E6477E
+            # alocated at address E6477D
             # It cannot be larger than 93kbytes
-            # and it will run during boot immediately before subcpu initialization:
+            # and it will run during boot a bit after subcpu initialization:
             #
             code_to_insert = list(open("demos/monitor/monitor.rom", "rb").read())
 
-            patches[0xEF05F8] = [
-                0x06, 0x06,         # EI 0x06 = disable interrupts
-                0x00, # NOP
+            patches[0xEF0609] = [
                 0x1D, 0x72, 0x47, 0xE6,   # CALL PREAMBLE
 	        ]
             PREAMBLE = [
+                0x1D, 0x46, 0xDB, 0xFD,   # CALL LABEL_FDDB46
+                0x06, 0x06,               # EI 0x06 = disable interrupts
                 0x1D, 0x7E, 0x47, 0xE6,   # call code_to_insert
-                0xF0, 0x28, 0xB8,         # set 0, (PA)
-                0x1D, 0x9E, 0x32, 0xEF,   # CALL LABEL_EF329E
                 0x0E,                     # ret
             ]
             patches[0xE64772] = PREAMBLE
-            assert len(PREAMBLE) == (0xE6477E - 0xE64772)
-            patches[0xE6477E] = code_to_insert
+            assert len(PREAMBLE) == (0xE6477D - 0xE64772)
+            patches[0xE6477D] = code_to_insert
 
-            assert 0xE6477E + len(code_to_insert) <= 0xE64772 + 3*296*108
+            assert 0xE6477D + len(code_to_insert) <= 0xE64772 + 3*296*108
 
 
         if patch_store_magic_on_flash:
