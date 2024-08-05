@@ -12,14 +12,18 @@
 #        file and then be imported here. Similar refactoring must be done
 #        to the encoding code.
 
-patch_run_at_boot = False
-patch_images = True
+insert_code_snippet_at_boot = True
+patch_store_magic_on_flash = False
+patch_nop_unknown_LDC_instructions = False
+patch_images = True  # Technics logo replaced by "Happy Hacking KN5000"
 patch_memory_dump_screen = True
+patch_run_at_boot = False
 patch_run_code_from_RCM = False
 patch_run_code_from_MIDI = False
 patch_dump_rom_via_ROM_orig = False
 dump_address = 0x800000 # to try dumping the first 0x1100 bytes
 versions = ["10"] # ["5", "6", "7", "8", "9", "10"]
+
 
 import lzss
 from binxeledit import (BinxelEdit,
@@ -82,6 +86,59 @@ for version in versions:
     if version == "10":
         raw_data = list(raw_data)
         patches = {}
+
+        if insert_code_snippet_at_boot:
+            # Code must have entry_point at the first byte,
+            # alocated at address E6477E
+            # It cannot be larger than 93kbytes
+            # and it will run during boot immediately before subcpu initialization:
+            #
+            code_to_insert = list(open("demos/monitor/monitor.rom", "rb").read())
+
+            patches[0xEF05F8] = [
+                0x06, 0x06,         # EI 0x06 = disable interrupts
+                0x00, # NOP
+                0x1D, 0x72, 0x47, 0xE6,   # CALL PREAMBLE
+	        ]
+            PREAMBLE = [
+                0x1D, 0x7E, 0x47, 0xE6,   # call code_to_insert
+                0xF0, 0x28, 0xB8,         # set 0, (PA)
+                0x1D, 0x9E, 0x32, 0xEF,   # CALL LABEL_EF329E
+                0x0E,                     # ret
+            ]
+            patches[0xE64772] = PREAMBLE
+            assert len(PREAMBLE) == (0xE6477E - 0xE64772)
+            patches[0xE6477E] = code_to_insert
+
+            assert 0xE6477E + len(code_to_insert) <= 0xE64772 + 3*296*108
+
+
+        if patch_store_magic_on_flash:
+            patches[0xEF197C] = [
+                0x42, 0x00, 0x00, 0x3B, 0x00,   # ld XDE, 0x003B0000
+                0xF5, 0xE9, 0x02, 0x34, 0x12,   # ld (XDE+), 0x1234
+                0x00,  # nop
+            ]
+
+
+        if patch_nop_unknown_LDC_instructions:
+            patches[0xEF1984] = [  # Replace ldc unknown (encoding is 0x7C), WA   | D8 2E 7C
+                0x00, 0x00, 0x00   # NOP NOP NOP
+            ]
+            patches[0xEF1AAD] = [  # Replace ldc unknown (encoding is 0x7C), WA   | D8 2E 7C
+                0x00, 0x00, 0x00   # NOP NOP NOP
+            ]
+            patches[0xEF1B89] = [  # Replace ldc unknown (encoding is 0x7C), WA   | D8 2E 7C
+                0x00, 0x00, 0x00   # NOP NOP NOP
+            ]
+
+# ldc DMAS0, WA     | E8 2E 00
+# ldc DMAD2, WA     | E8 2E 28
+# ldc DMAM0, A      | C9 2E 42
+# ldc DMAM2, A      | C9 2E 4A
+# ldcf 7, (0x0406)  | F1 06 04 9F (at EF0797)
+
+
 
         if patch_run_at_boot:
             patches[0xEF0541] = [  # Replace initial "Please Wait !!" message:
