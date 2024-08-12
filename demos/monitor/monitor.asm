@@ -20,11 +20,18 @@ text MACRO stringptr, x, y, color
 	CALL DRAW_STRING
 	ENDM
 
+hex_number MACRO value, x, y, color
+	LD XIX, value
+	LD DE, x
+	LD HL, y
+	LD B, color
+	CALL PRINT_HEX
+	ENDM
 
 	ORG 01E8000h
 
 STRING_X0: DW ?
-
+HEX_NUM_STRING: DB 11 DUP (?)
 
 	ORG 0EE200Ch
 
@@ -53,6 +60,9 @@ MAIN:
 	text FELIPE_STR, 1, 3, 3
 
 	text YEAH_STR, 1, 5, 7
+
+	hex_number 1B7F23CAh, 1, 6, 1
+	hex_number 0cafe12h, 1, 7, 3
 
 	CALL LONG_PAUSE
 	CALL LONG_PAUSE
@@ -83,6 +93,42 @@ PAUSE_LOOP2:
 	DJNZ BC, PAUSE_LOOP1
 	RET
 
+
+PRINT_HEX:
+; XIX: number
+; DE: x
+; HL: y
+; B: color
+
+	LD XIY, HEX_NUM_STRING
+	LD (XIY+), '0'
+	LD (XIY+), 'x'
+	LD C, 8
+print_hex_digit_loop:
+	RLC 4, XIX
+	LD WA, IX
+	AND A, 0fh
+	CP A, 10
+	JR UGE, HEX_LETTERS
+HEX_NUMBERS:
+	ADD A, '0'
+	LD (XIY), A
+	INC XIY
+	JP NEXT_NIBBLE
+	
+HEX_LETTERS:
+	SUB A, 10
+	ADD A, 'A'
+	LD (XIY), A
+	INC XIY
+
+NEXT_NIBBLE:
+	DJNZ C, print_hex_digit_loop
+
+	XOR A, A
+	LD (XIY), A
+	text HEX_NUM_STRING, DE, HL, B
+	RET
 
 DRAW_STRING:
 ; XIX: string
