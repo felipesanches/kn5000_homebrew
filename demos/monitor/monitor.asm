@@ -26,7 +26,7 @@ text MACRO stringptr, x, y, color
 STRING_X0: DW ?
 
 
-	ORG 0E6477Eh
+	ORG 0EE200Ch
 
 ENTRY:
 	PUSH XWA

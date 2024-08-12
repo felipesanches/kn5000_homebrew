@@ -12,6 +12,8 @@
 #        file and then be imported here. Similar refactoring must be done
 #        to the encoding code.
 
+DANGEROUS_DO_NOT_RUN_THIS_ON_REAL_KN5000 = True
+
 insert_code_snippet_at_boot = True
 patch_store_magic_on_flash = False
 patch_nop_unknown_LDC_instructions = False
@@ -88,27 +90,42 @@ for version in versions:
         patches = {}
 
         if insert_code_snippet_at_boot:
+            if DANGEROUS_DO_NOT_RUN_THIS_ON_REAL_KN5000:
+                patches[0xEF0526] = [
+                    0x1B, 0x00, 0x20, 0xEE,   # JP PREAMBLE
+                    0x1B, 0x2a, 0x05, 0xEF,   # inf. loop
+                ]
+
             # Code must have entry_point at the first byte,
-            # alocated at address E6477E
+            # alocated at address E64782
             # It cannot be larger than 93kbytes
-            # and it will run during boot a bit after subcpu initialization:
+            # and it will run at this point:
+            # (when the used visits the MIDI conenctions submenu)
             #
+            # F74BAB:
+            #	LD XBC, 0x00e64772
+	        #   LD DE, 0x0128
+	        #   JR T LABEL_F74C0A
+ 
+            
+            
             code_to_insert = list(open("demos/monitor/monitor.rom", "rb").read())
 
-            patches[0xEF0609] = [
-                0x1B, 0x72, 0x47, 0xE6,   # JP PREAMBLE
+            patches[0xEF064D] = [
+                0x1B, 0x00, 0x20, 0xEE,   # JP PREAMBLE
 	        ]
             PREAMBLE = [
-                0x06, 0x06,               # EI 0x06 = disable interrupts
-                0x1D, 0x7E, 0x47, 0xE6,   # call code_to_insert
-                0x06, 0x00,               # EI 0x00 = reenable interrupts
-                0x1B, 0x45, 0x12, 0xEF,   # JP LABEL_EF1245
+                # 0x06, 0x06,               # EI 0x06 = disable interrupts
+                0x06, 0x03,
+                0x1D, 0x0C, 0x20, 0xEE,   # call code_to_insert
+                # 0x06, 0x00,               # EI 0x00 = reenable interrupts
+                # 0x1B, 0x45, 0x12, 0xEF,   # JP LABEL_EF1245
             ]
-            patches[0xE64772] = PREAMBLE
-            assert len(PREAMBLE) == (0xE6477E - 0xE64772)
-            patches[0xE6477E] = code_to_insert
+            patches[0xEE2000] = PREAMBLE
+#            assert len(PREAMBLE) == 12
+            patches[0xEE200C] = code_to_insert
 
-            assert 0xE6477E + len(code_to_insert) <= 0xE64772 + 3*296*108
+            assert 0xEE200C + len(code_to_insert) <= 0xEE24ff
 
 
         if patch_store_magic_on_flash:
