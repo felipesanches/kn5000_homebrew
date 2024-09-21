@@ -33,13 +33,17 @@ hex_number MACRO value, x, y, color
 STRING_X0: DW ?
 HEX_NUM_STRING: DB 11 DUP (?)
 
-	ORG 0EE200Ch
+
+;	ORG 0EF05E8h ; without preamble
+
+	ORG 0E0018Eh + 020h ; with preamble at the fw_update screen bitmaps
 
 ENTRY:
+	;;;;; EI 6 ; disable interrupts
 	PUSH XWA
 	PUSH XBC
 	PUSH XDE
-	PUSH XHL
+	PUSH XHL 
 	PUSH XIX
 	PUSH XIY
 	CALL MAIN
@@ -49,50 +53,119 @@ ENTRY:
 	POP XDE
 	POP XBC
 	POP XWA
+	;;;;;;;	EI 0 ; enable interrupts
 	RET
-
+	
 
 MAIN:
-	call 0EF55A7h        ;	CALL Some_VGA_setup
+	LD C, 0
+	LD A, 'S'
+	LD (0160000h), A
+	call PAUSE
+	DEC C
+	LD (0160004h), C
+	call PAUSE
+
+	ld BC, 8h
+	ld XIX, 0E00038h
+
+	LD A, 080h
+	LD (0160006h), A
+	call PAUSE
+DUMP:
+	LD A, (XIX+)
+	LD (0160000h), A
+	call PAUSE
+	LD (0160004h), C
+	call PAUSE
+	DJNZ BC, DUMP
+	DEC C
+
+	; call init_vga
+	; call print_OK
+	; text FROM_BOOT_STR, 1, 3, 3
+	call print_END
+	ret
 	
-	text HELLO_WORLD_STR, 1, 1, 1
-	text TEST_STR, 1, 2, 2
-	text FELIPE_STR, 1, 3, 3
+; infloop:
+;	JP infloop
 
-	text YEAH_STR, 1, 5, 7
+init_vga:
+	LD A, 'V'
+	LD (0160000h), A
+	call PAUSE
+	DEC C
+	LD (0160004h), C
+	call PAUSE
+	
+	LD A, 'G'
+	LD (0160000h), A
+	call PAUSE
+	DEC C
+	LD (0160004h), C
+	call PAUSE
 
-	hex_number 1B7F23CAh, 1, 6, 1
-	hex_number 0cafe12h, 1, 7, 3
+	LD A, 'A'
+	LD (0160000h), A
+	call PAUSE
+	DEC C
+	LD (0160004h), C
+	call PAUSE
 
-	CALL LONG_PAUSE
-	CALL LONG_PAUSE
-	CALL LONG_PAUSE
-	RET
+	call 0EF55A7h        ;	CALL Some_VGA_setup
+	ret
 
-HELLO_WORLD_STR: db "HELLO WORLD", 0
-TEST_STR: db "RUNNING DURING BOOT OF KN5000.", 0
-FELIPE_STR: db "FELIPE CORREA DA SILVA SANCHES", 0
-YEAH_STR: db "FUCK YEAH", 0
+print_OK:
+	LD A, 'O'
+	LD (0160000h), A
+	DEC C
+	LD (0160004h), C
+	call PAUSE
+
+	call PAUSE
+	LD A, 'K'
+	LD (0160000h), A
+	call PAUSE
+	DEC C
+	LD (0160004h), C
+	call PAUSE
+	ret
+
+print_END:
+	LD (0160000h), 'E'
+	call PAUSE
+	DEC C
+	LD (0160004h), C
+	call PAUSE
+
+	LD (0160000h), 'N'
+	call PAUSE
+	DEC C
+	LD (0160004h), C
+	call PAUSE
+
+	LD (0160000h), 'D'
+	call PAUSE
+	DEC C
+	LD (0160004h), C
+	call PAUSE
+	ret
 
 
-LONG_PAUSE:
-	LD BC, 0
-LONG_PAUSE_LOOP1:
-	LD DE, 080h
-LONG_PAUSE_LOOP2:
-	DJNZ DE, LONG_PAUSE_LOOP2
-	DJNZ BC, LONG_PAUSE_LOOP1
-	RET
+FROM_BOOT_STR: db "RUNNING DURING BOOT OF KN5000.", 0
 
 PAUSE:
+	PUSH BC
+	PUSH DE
 	LD BC, 0
 PAUSE_LOOP1:
-	LD DE, 01h
+	LD DE, 020h
 PAUSE_LOOP2:
 	DJNZ DE, PAUSE_LOOP2
 	DJNZ BC, PAUSE_LOOP1
-	RET
-
+	POP DE
+	POP BC
+	ret
 
 PRINT_HEX:
 ; XIX: number

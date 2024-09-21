@@ -12,13 +12,17 @@
 #        file and then be imported here. Similar refactoring must be done
 #        to the encoding code.
 
-DANGEROUS_DO_NOT_RUN_THIS_ON_REAL_KN5000 = True
+patch_images = False  # Technics logo replaced by "Happy Hacking KN5000"
+patch_memory_dump_screen = False
+patch_code_snippet_during_boot = False
 
-insert_code_snippet_at_boot = True
+patch_insert_code_snippet_with_preamble = True
+
+DANGEROUS_DO_NOT_RUN_THIS_ON_REAL_KN5000 = False
+
+patch_insert_code_snippet = False
 patch_store_magic_on_flash = False
 patch_nop_unknown_LDC_instructions = False
-patch_images = True  # Technics logo replaced by "Happy Hacking KN5000"
-patch_memory_dump_screen = True
 patch_run_at_boot = False
 patch_run_code_from_RCM = False
 patch_run_code_from_MIDI = False
@@ -89,7 +93,19 @@ for version in versions:
         raw_data = list(raw_data)
         patches = {}
 
-        if insert_code_snippet_at_boot:
+        # 0xFB729E # "MainCPU_self_test_routines"
+        # 0xFB7328 # "A_Short_Pause"
+
+        if patch_code_snippet_during_boot:
+            code_to_insert = list(open("demos/monitor/monitor.rom", "rb").read())
+            codeinsert_address = 0xEF05E8  # "User_didnt_request_flash_mem_update"
+            upper_limit = 0xEF061E
+            patches[codeinsert_address] = code_to_insert
+            assert codeinsert_address + len(code_to_insert) <= upper_limit
+
+
+           
+        if patch_insert_code_snippet_with_preamble:
             if DANGEROUS_DO_NOT_RUN_THIS_ON_REAL_KN5000:
                 patches[0xEF0526] = [
                     0x1B, 0x00, 0x20, 0xEE,   # JP PREAMBLE
@@ -106,27 +122,37 @@ for version in versions:
             #	LD XBC, 0x00e64772
 	        #   LD DE, 0x0128
 	        #   JR T LABEL_F74C0A
- 
-            
             
             code_to_insert = list(open("demos/monitor/monitor.rom", "rb").read())
+            PREAMBLE_address = 0xE0018E # one of the fw-update bitmaps
+            upper_limit = 0xE008C6 # another fw-update bitmap
+            codeinsert_address = PREAMBLE_address + 0x20
 
-            patches[0xEF064D] = [
-                0x1B, 0x00, 0x20, 0xEE,   # JP PREAMBLE
-	        ]
+            PREAMBLE_address_bytes = [
+                (PREAMBLE_address >> (i*8)) & 0xFF for i in range(3)]
+            codeinsert_address_bytes = [
+                (codeinsert_address >> (i*8)) & 0xFF for i in range(3)]
+
+            patches[0xEF05E8] = [   # Patched at "User_didnt_request_flash_mem_update"
+                                    # overwriting C1 02 04 21 D8 
+                0x1B] + PREAMBLE_address_bytes   # JP PREAMBLE
+
             PREAMBLE = [
-                # 0x06, 0x06,               # EI 0x06 = disable interrupts
-                0x06, 0x03,
-                0x1D, 0x0C, 0x20, 0xEE,   # call code_to_insert
-                # 0x06, 0x00,               # EI 0x00 = reenable interrupts
-                # 0x1B, 0x45, 0x12, 0xEF,   # JP LABEL_EF1245
+                0x06, 0x06,                     # EI 0x06 = disable interrupts
+                0x1D] + codeinsert_address_bytes + \
+            [  # call code_to_insert
+                #0x06, 0x00,               # EI 0x00 = reenable interrupts
+                0xC1, 0x02, 0x04,         # LD A (0x0402)
+                0x21, 0xD8,               # EXTZ WA
+                0x1B, 0xED, 0x05, 0xEF,   # JP LABEL_EF05ED
             ]
-            patches[0xEE2000] = PREAMBLE
-#            assert len(PREAMBLE) == 12
-            patches[0xEE200C] = code_to_insert
 
-            assert 0xEE200C + len(code_to_insert) <= 0xEE24ff
+            patches[PREAMBLE_address] = PREAMBLE
+            assert len(PREAMBLE) < (codeinsert_address - PREAMBLE_address)
+            patches[codeinsert_address] = code_to_insert
 
+            assert codeinsert_address + len(code_to_insert) <= upper_limit
+        
 
         if patch_store_magic_on_flash:
             patches[0xEF197C] = [
