@@ -13,22 +13,48 @@
 	maxmode	on
 
 text MACRO stringptr, x, y, color
+	PUSH XIX
+	PUSH XIY
+	PUSH DE
+	PUSH HL
+	PUSH BC
+	PUSH WA
 	LD XIX, stringptr
 	LD DE, x
 	LD HL, y
 	LD B, color
 	CALL DRAW_STRING
+	POP WA
+	POP BC
+	POP HL
+	POP DE
+	POP XIY
+	POP XIX
 	ENDM
 
 hex_number MACRO value, x, y, color
+	PUSH XIX
+	PUSH XIY
+	PUSH DE
+	PUSH HL
+	PUSH BC
+	PUSH WA
 	LD XIX, value
 	LD DE, x
 	LD HL, y
 	LD B, color
 	CALL PRINT_HEX
+	POP WA
+	POP BC
+	POP HL
+	POP DE
+	POP XIY
+	POP XIX
 	ENDM
-
-	ORG 01E8000h
+	
+;	ORG 01E8000h  ; mainboard DRAM
+;	ORG 0000800h  ; mainboard SRAM
+	ORG 0200000h  ; HDAE5000 SRAM
 
 STRING_X0: DW ?
 HEX_NUM_STRING: DB 11 DUP (?)
@@ -39,7 +65,6 @@ HEX_NUM_STRING: DB 11 DUP (?)
 	ORG 0E0018Eh + 020h ; with preamble at the fw_update screen bitmaps
 
 ENTRY:
-	;;;;; EI 6 ; disable interrupts
 	PUSH XWA
 	PUSH XBC
 	PUSH XDE
@@ -53,118 +78,240 @@ ENTRY:
 	POP XDE
 	POP XBC
 	POP XWA
-	;;;;;;;	EI 0 ; enable interrupts
 	RET
 	
 
-MAIN:
-	LD C, 0
-	LD A, 'S'
+SEND_BYTE:
 	LD (0160000h), A
 	call PAUSE
-	DEC C
-	LD (0160004h), C
+	XOR (0160004h), 1
 	call PAUSE
+	ret
 
-	ld BC, 8h
-	ld XIX, 0E00038h
+MAIN:
+	
+	call 0EF55A7h        ;	CALL Some_VGA_setup
+	call draw_please_wait_bitmap
+	CALL LONG_PAUSE
+
+	push BC
+	push HL
+	PUSH DE
+	LD HL, 4
+	LD DE, 8
+	LD B, 15
+	LD C, 'M'
+	; DE: x
+	; HL: y
+	; B: color
+	; C: character
+	call DRAW_CHAR
+	POP DE
+	POP HL
+	POP BC
+	CALL LONG_PAUSE
+
+	LD BC, 030h
+	LD DE, 050h
+	call draw_completed_bitmap
+
+	LD A, 083h  ; Ports A & C-upper: output / Port B & C-lower: input 
+	LD (0160006h), A
+	
+_LOOP:
+	call send_PL
+
+	LD C, (0160004h)
+_wait_receive_strobe:
+	LD A, (0160004h)
+	XOR A, C
+	AND A, 2
+	JP Z, _wait_receive_strobe
+
+	LD A, (0160002h)
+	LD BC, 00h
+	LD DE, 00h
+	LD C, A
+	AND C, 15
+	EX D, E
+	call draw_completed_bitmap
+	
+	JP _LOOP
+	; receive_length
+	; receive_buffer
+	; execute_payload
+	
+	RET
+
+;	text FROM_BOOT_STR, 1, 3, 3
 
 	LD A, 080h
 	LD (0160006h), A
 	call PAUSE
-DUMP:
-	LD A, (XIX+)
-	LD (0160000h), A
-	call PAUSE
-	LD (0160004h), C
-	call PAUSE
-	DJNZ BC, DUMP
-	DEC C
 
-	; call init_vga
-	; call print_OK
-	; text FROM_BOOT_STR, 1, 3, 3
-	call print_END
-	ret
+	ld XIX, 0300000h
+	; Will read 256 * 4kb = 1Mb
+
+;	ld BC, 256
+	ld BC, 16
+	CALL DUMP ; 300000h
+
+	call draw_completed_bitmap
+
+;	text RESUME_BOOT_STR, 5, 4, 3	
+;	CALL LONG_PAUSE
+	RET
 	
-; infloop:
-;	JP infloop
+TODO__OTHER_ROM_DUMPS:
+	ld BC, 256
+	CALL DUMP ; 400000h
+
+	ld BC, 256
+	CALL DUMP ; 500000h
+
+	ld BC, 256
+	CALL DUMP ; 600000h
+
+	ld BC, 256
+	CALL DUMP ; 700000h
+
+	ld BC, 256
+	CALL DUMP ; 800000h
+
+	ld BC, 256
+	CALL DUMP ; 900000h
+
+	ld BC, 256
+	CALL DUMP ; a00000h
+
+	ld BC, 256
+	CALL DUMP ; b00000h
+
+	ld BC, 256
+	CALL DUMP ; c00000h
+
+	ld BC, 256
+	CALL DUMP ; d00000h
+
+	ld BC, 256
+	CALL DUMP ; e00000h
+
+	ld BC, 256
+	CALL DUMP ; f00000h
+
+	call send_END
+	
+	RET
+
+
+DUMP:	; BC chunks of 4kb
+	PUSH DE
+_BC_loop:
+	call send_OK
+	; hex_number XIX, 4, 4, 15
+	LD DE, 01000h
+_DE_loop:
+	LD A, (XIX+)
+	call SEND_BYTE
+	DJNZ DE, _DE_loop
+	DJNZ BC, _BC_loop
+	POP DE
+	RET
+
+
+draw_please_wait_bitmap:
+	PUSH XWA
+	PUSH BC
+	PUSH DE
+	PUSHW 0008h
+	PUSHW 0003h
+	LD XWA, 00e00b2eh  ; "Please Wait !!"
+	LD BC, 0030h
+	LD DE, 0050h
+	CALL 0EF5040h        ; call Draw_FlashMemUpdate_message_bitmap
+	POP DE
+	POP BC
+	POP XWA
+	RET
+
+draw_completed_bitmap:
+	PUSH XWA
+	PUSH BC
+	PUSH DE
+	PUSHW 0008h
+	PUSHW 0003h
+	LD XWA, 00e008c6h  ; "Completed!"
+;	LD BC, 0030h
+;	LD DE, 0050h
+	CALL 0EF5040h        ; call Draw_FlashMemUpdate_message_bitmap
+	POP DE
+	POP BC
+	POP XWA
+	RET
 
 init_vga:
 	LD A, 'V'
-	LD (0160000h), A
-	call PAUSE
-	DEC C
-	LD (0160004h), C
-	call PAUSE
+	call SEND_BYTE
 	
 	LD A, 'G'
-	LD (0160000h), A
-	call PAUSE
-	DEC C
-	LD (0160004h), C
-	call PAUSE
+	call SEND_BYTE
 
 	LD A, 'A'
-	LD (0160000h), A
-	call PAUSE
-	DEC C
-	LD (0160004h), C
-	call PAUSE
+	call SEND_BYTE
 
 	call 0EF55A7h        ;	CALL Some_VGA_setup
 	ret
 
-print_OK:
+send_PL:  ; payload
+	LD A, 'P'
+	call SEND_BYTE
+
+	LD A, 'L'
+	call SEND_BYTE
+	ret
+
+send_OK:
 	LD A, 'O'
-	LD (0160000h), A
-	DEC C
-	LD (0160004h), C
-	call PAUSE
+	call SEND_BYTE
 
-	call PAUSE
 	LD A, 'K'
-	LD (0160000h), A
-	call PAUSE
-	DEC C
-	LD (0160004h), C
-	call PAUSE
+	call SEND_BYTE
 	ret
 
-print_END:
-	LD (0160000h), 'E'
-	call PAUSE
-	DEC C
-	LD (0160004h), C
-	call PAUSE
+send_END:
+	LD A, 'E'
+	call SEND_BYTE
 
-	LD (0160000h), 'N'
-	call PAUSE
-	DEC C
-	LD (0160004h), C
-	call PAUSE
+	LD A, 'N'
+	call SEND_BYTE
 
-	LD (0160000h), 'D'
-	call PAUSE
-	DEC C
-	LD (0160004h), C
-	call PAUSE
+	LD A, 'D'
+	call SEND_BYTE
 	ret
 
 
-FROM_BOOT_STR: db "RUNNING DURING BOOT OF KN5000.", 0
+FROM_BOOT_STR: db "DUMPING A ROM...", 0
+RESUME_BOOT_STR: db "WILL NOW RESUME BOOT SEQUENCE...", 0
 
-PAUSE:
+LONG_PAUSE:
 	PUSH BC
 	PUSH DE
 	LD BC, 0
 PAUSE_LOOP1:
-	LD DE, 020h
+	LD DE, 03h
 PAUSE_LOOP2:
 	DJNZ DE, PAUSE_LOOP2
 	DJNZ BC, PAUSE_LOOP1
 	POP DE
 	POP BC
+	ret
+
+PAUSE:
+	PUSH DE
+	LD DE, 0C0h
+PAUSE_LOOP_:
+	DJNZ DE, PAUSE_LOOP_
+	POP DE
 	ret
 
 PRINT_HEX:

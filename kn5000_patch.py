@@ -135,17 +135,21 @@ for version in versions:
 
             patches[0xEF05E8] = [   # Patched at "User_didnt_request_flash_mem_update"
                                     # overwriting C1 02 04 21 D8 
-                0x1B] + PREAMBLE_address_bytes   # JP PREAMBLE
+                0x1D] + PREAMBLE_address_bytes + [0x00]  # CALL PREAMBLE; NOP
 
             PREAMBLE = [
-                0x06, 0x06,                     # EI 0x06 = disable interrupts
                 0x1D] + codeinsert_address_bytes + \
             [  # call code_to_insert
-                #0x06, 0x00,               # EI 0x00 = reenable interrupts
-                0xC1, 0x02, 0x04,         # LD A (0x0402)
-                0x21, 0xD8,               # EXTZ WA
-                0x1B, 0xED, 0x05, 0xEF,   # JP LABEL_EF05ED
+                0xC1, 0x02, 0x04,   # LD A (0x0402)
+                0x21, 0xD8,         # EXTZ WA
+                0x0E,   			# RET
             ]
+            
+            def hex_print(v):
+                print(list(map(hex, v)))
+            
+            hex_print(patches[0xEF05E8])
+            hex_print(PREAMBLE)
 
             patches[PREAMBLE_address] = PREAMBLE
             assert len(PREAMBLE) < (codeinsert_address - PREAMBLE_address)
