@@ -88,25 +88,6 @@ SEND_BYTE:
 	call PAUSE
 	ret
 
-FOO:
-	push BC
-	push HL
-	PUSH DE
-	LD HL, 4
-	LD DE, 8
-	LD B, 15
-	LD C, 'M'
-	; DE: x
-	; HL: y
-	; B: color
-	; C: character
-	call DRAW_CHAR
-	POP DE
-	POP HL
-	POP BC
-	CALL PAUSE
-	RET
-
 MAIN:
 	
 	call 0EF55A7h        ;	CALL Some_VGA_setup
@@ -117,11 +98,32 @@ MAIN:
 
 	CALL LONG_PAUSE
 	
-;	CALL FOO
+	push BC
+	PUSH XWA
+	PUSH XIY
+	PUSH XDE
+	push XHL
+	LD HL, 6
+	LD DE, 12
+	LD B, 6
+	LD C, 'M'
+	; DE: x
+	; HL: y
+	; B: color
+	; C: character
+	call DRAW_CHAR
+	POP XHL
+	POP XDE
+	POP XIY
+	POP XWA
+	POP BC
+
+	CALL LONG_PAUSE
 
 	LD BC, 040h
 	LD DE, 060h
 	call draw_completed_bitmap
+
 	CALL LONG_PAUSE
 
 	ret
@@ -311,7 +313,7 @@ LONG_PAUSE:
 	PUSH DE
 	LD BC, 0
 PAUSE_LOOP1:
-	LD DE, 03h
+	LD DE, 20h
 PAUSE_LOOP2:
 	DJNZ DE, PAUSE_LOOP2
 	DJNZ BC, PAUSE_LOOP1
@@ -428,7 +430,7 @@ DRAW_CHAR:
 	EXTS XDE
 	EXTS XHL
 
-	LD XIX, 1a0000h
+	LD XIX, 043C00h ; offscreen buffer
 	MUL XHL, 320
 	ADD XIX, XHL
 	ADD XIX, XDE
