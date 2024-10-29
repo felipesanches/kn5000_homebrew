@@ -88,12 +88,7 @@ SEND_BYTE:
 	call PAUSE
 	ret
 
-MAIN:
-	
-	call 0EF55A7h        ;	CALL Some_VGA_setup
-	call draw_please_wait_bitmap
-	CALL LONG_PAUSE
-
+FOO:
 	push BC
 	push HL
 	PUSH DE
@@ -109,14 +104,32 @@ MAIN:
 	POP DE
 	POP HL
 	POP BC
-	CALL LONG_PAUSE
+	CALL PAUSE
+	RET
+
+MAIN:
+	
+	call 0EF55A7h        ;	CALL Some_VGA_setup
 
 	LD BC, 030h
 	LD DE, 050h
+	call draw_please_wait_bitmap
+
+	CALL LONG_PAUSE
+	
+;	CALL FOO
+
+	LD BC, 040h
+	LD DE, 060h
 	call draw_completed_bitmap
+	CALL LONG_PAUSE
+
+	ret
+
+
 
 	LD A, 083h  ; Ports A & C-upper: output / Port B & C-lower: input 
-	LD (0160006h), A
+;	LD (0160006h), A
 	
 _LOOP:
 	call send_PL

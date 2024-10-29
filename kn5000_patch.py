@@ -12,7 +12,7 @@
 #        file and then be imported here. Similar refactoring must be done
 #        to the encoding code.
 
-patch_images = False  # Technics logo replaced by "Happy Hacking KN5000"
+patch_images = True  # Technics logo replaced by "Happy Hacking KN5000"
 patch_memory_dump_screen = False
 patch_code_snippet_during_boot = False
 
@@ -111,17 +111,6 @@ for version in versions:
                     0x1B, 0x00, 0x20, 0xEE,   # JP PREAMBLE
                     0x1B, 0x2a, 0x05, 0xEF,   # inf. loop
                 ]
-
-            # Code must have entry_point at the first byte,
-            # alocated at address E64782
-            # It cannot be larger than 93kbytes
-            # and it will run at this point:
-            # (when the used visits the MIDI conenctions submenu)
-            #
-            # F74BAB:
-            #	LD XBC, 0x00e64772
-	        #   LD DE, 0x0128
-	        #   JR T LABEL_F74C0A
             
             code_to_insert = list(open("demos/monitor/monitor.rom", "rb").read())
             PREAMBLE_address = 0xE0018E # one of the fw-update bitmaps
@@ -134,15 +123,16 @@ for version in versions:
                 (codeinsert_address >> (i*8)) & 0xFF for i in range(3)]
 
             patches[0xEF05E8] = [   # Patched at "User_didnt_request_flash_mem_update"
-                                    # overwriting C1 02 04 21 D8 
-                0x1D] + PREAMBLE_address_bytes + [0x00]  # CALL PREAMBLE; NOP
+                                    # overwriting C1 02 04 21 D8 12 
+                0x1D] + PREAMBLE_address_bytes + [0x00, 0x00]  # CALL PREAMBLE; NOP
+            CALL = 0x1d
 
             PREAMBLE = [
-                0x1D] + codeinsert_address_bytes + \
+                CALL] + codeinsert_address_bytes + \
             [  # call code_to_insert
-                0xC1, 0x02, 0x04,   # LD A (0x0402)
-                0x21, 0xD8,         # EXTZ WA
-                0x0E,   			# RET
+                0xC1, 0x02, 0x04, 0x21, # LD A (0x0402)
+                0xD8, 0x12,             # EXTZ WA
+                0x0E,   			    # RET
             ]
             
             def hex_print(v):
@@ -151,9 +141,9 @@ for version in versions:
             hex_print(patches[0xEF05E8])
             hex_print(PREAMBLE)
 
-            patches[PREAMBLE_address] = PREAMBLE
+            patches[PREAMBLE_address] = PREAMBLE # <-- faz patch do preambulo
             assert len(PREAMBLE) < (codeinsert_address - PREAMBLE_address)
-            patches[codeinsert_address] = code_to_insert
+            patches[codeinsert_address] = code_to_insert # <-- faz patch da ROM (monitor.rom)
 
             assert codeinsert_address + len(code_to_insert) <= upper_limit
         
