@@ -1,2 +1,2 @@
-git+git://github.com/felipesanches/pylzss
+pylzss
 pillow

@@ -12,11 +12,11 @@
 #        file and then be imported here. Similar refactoring must be done
 #        to the encoding code.
 
-patch_images = True  # Technics logo replaced by "Happy Hacking KN5000"
+patch_images = False  # Technics logo replaced by "Happy Hacking KN5000"
 patch_memory_dump_screen = False
 patch_code_snippet_during_boot = False
 
-patch_insert_code_snippet_with_preamble = True
+patch_insert_code_snippet_with_preamble = False
 
 DANGEROUS_DO_NOT_RUN_THIS_ON_REAL_KN5000 = False
 
@@ -29,6 +29,10 @@ patch_run_code_from_MIDI = False
 patch_dump_rom_via_ROM_orig = False
 dump_address = 0x800000 # to try dumping the first 0x1100 bytes
 versions = ["10"] # ["5", "6", "7", "8", "9", "10"]
+
+
+subcpu_dump_bootrom_via_serial = True
+
 
 
 import lzss
@@ -91,7 +95,30 @@ for version in versions:
     # This is still experimental:
     if version == "10":
         raw_data = list(raw_data)
+        raw_data2 = list(raw_data2)
         patches = {}
+        subcpu_patches = {}
+
+## FIX THIS!!!
+##        patches[0xFB7848] = [0x66]  # para passar de um teste com falha de comunicação com os MCUs do painel de controle
+        
+        
+        #FB7843 = 6E # para não mostrar o erro de comm. inter cpu
+ 
+ 
+##        patches:
+##        EF3393 = 0E # um RET para terminar mais rápido a carga (sem sucesso) de payload para a subCPU
+##        FB7863 = E0 # para mostrar a tela de seleção de demonstrações musicais
+##        FB786B = D7, FA, 05, 0E # para não mostrar o erro de comm. inter cpu
+        
+        
+        # não funciona:  patches[0xFEBF91] = [0x6E]
+        # PC=f5535d 
+        # PC=ef125f
+        # PC=f559a8
+        # PC=ef15cb
+        # PC=ef2a6b
+##        pc=f5ab2f
 
         # 0xFB729E # "MainCPU_self_test_routines"
         # 0xFB7328 # "A_Short_Pause"
@@ -280,9 +307,51 @@ for version in versions:
 #        patches[0xE80FF6] = [0xE6, 0x2E, 0xFA]
 #        patches[0xEAD216] = [0x65, 0xB6, 0xF7]
 
+
+        if subcpu_dump_bootrom_via_serial:
+            # ROTINA NECESSARIAS:
+            # subcpu_patches[0x20F1F] = [ 0x0E ] # MICRODMA_CH0_HANDLER: RET
+            # subcpu_patches[0x1FB41] = [ 0x0E ] # ?: RET
+            # subcpu_patches[0x1FDC8] = [ 0x0E ] # ?: RET  ; sem ela, leitura vai só até endereço  0x000B
+
+            # não preciso, mas tmb náo é quem zica:
+            subcpu_patches[0x20E86] = [ 0x0E ] # INT0_HANDLER: RET
+            subcpu_patches[0x1F736] = [ 0x0E ] # INTRX1_HANDLER: RET
+            subcpu_patches[0x20F01] = [ 0x0E ] # MICRODMA_CH2_HANDLER: RET
+            subcpu_patches[0x1FBBD] = [ 0x0E ] # watchdog: RET
+            subcpu_patches[0x1FBF4] = [ 0x0E ] # mute and halt: RET
+            
+            subcpu_patches[0x1f90f] = [
+                0x2B,			# SC1MOD => 8-bit UART, 38400 baud via external clock
+            ]
+            subcpu_patches[0x1fad0] = [
+                0x1D, 0x0B, 0xF9, 0x01,			# 1fad0: CALL 1f90b  # initializes serial port #1 and writes a 0xFE byte
+                0xF1, 0x38, 0x10, 0x00, 0x03,	# 1fad4: set var_1038 = 03
+                0x1B, 0xD9, 0xFA, 0x01,			# 1fad9: JP 1fad9  # infinite loop
+            ]
+
+            subcpu_patches[0x1f76c] = [
+                0xC2, 0x38, 0x10, 0x00, 0x3f, 0x03,	#   1f76c:  CP (var_1038), 0x03
+                0xF2, 0xA3, 0xF7, 0x01, 0xDE,		#   1f772:  JP NZ LABEL_1F7A3
+                0x41, 0x8b, 0xF7, 0x01, 0x00,		#	1f777:	LD XBC, 0x1F78b	; dump_address
+                0xA1, 0x22,							# 	1f77c:	LD XDE, (XBC)
+                0x82, 0x21,							#	1f77e:	LD A, (XDE)
+                0xEA, 0x61,							#	1f780:	INC 1, XDE
+                0xF0, 0xD4, 0x41,					#	1f782:	LD (SC1BUF), A 	; SC1BUF=D4
+                0xB1, 0x62,							#	1f785:	LD (XBC), XDE
+                0x1B, 0xA3, 0xF7, 0x01,				#	1f787:	JP LABEL_1F7A3
+                #0xE3, 0x20, 0x01, 0x00,				#	1f78b: (DUMP_ADDRESS) - string "KN5000 SOUND RAM" at 0x0120E3
+                #0x00, 0xf0, 0x00, 0x00,				#	1f78b: (DUMP_ADDRESS) - payload at 0x00f000-2eeff
+                0x00, 0xf8, 0xff, 0x00,				#	1f78b: (DUMP_ADDRESS) - subcpu boot rom at fe0000-ffffff
+            ]
+
         for ptr, injected_code in patches.items():
             for i, value in enumerate(injected_code):
                 raw_data[ptr - 0xE00000 + i] = value
+
+        for ptr, injected_code in subcpu_patches.items():
+            for i, value in enumerate(injected_code):
+                raw_data2[0x100 + ptr - 0x00f000 + i] = value
 
         if patch_run_code_from_RCM:
             # At address F18AA7 we insert some code in the routine that loads
@@ -330,6 +399,9 @@ for version in versions:
                 raw_data[ptr + i] = value
 
         raw_data = bytes(raw_data)
+        raw_data2 = bytes(raw_data2)
+
+
 
 # ------------------------------------------------------------------------------------
 
