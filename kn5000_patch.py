@@ -316,7 +316,6 @@ for version in versions:
 
             # não preciso, mas tmb náo é quem zica:
             subcpu_patches[0x20E86] = [ 0x0E ] # INT0_HANDLER: RET
-            subcpu_patches[0x1F736] = [ 0x0E ] # INTRX1_HANDLER: RET
             subcpu_patches[0x20F01] = [ 0x0E ] # MICRODMA_CH2_HANDLER: RET
             subcpu_patches[0x1FBBD] = [ 0x0E ] # watchdog: RET
             subcpu_patches[0x1FBF4] = [ 0x0E ] # mute and halt: RET
@@ -330,20 +329,57 @@ for version in versions:
                 0x1B, 0xD9, 0xFA, 0x01,			# 1fad9: JP 1fad9  # infinite loop
             ]
 
+                                       # INTRX1_HANDLER: (1F736)
+                                                # 1f736: 3e       PUSH XIZ
+                                                # 1f737: 3d       PUSH XIY
+                                                # 1f738: 3c       PUSH XIX
+                                                # 1f739: 3b       PUSH XHL
+                                                # 1f73a: 3a       PUSH XDE
+                                                # 1f73b: 39       PUSH XBC
+                                                # 1f73c: 38       PUSH XWA
+            subcpu_patches[0x1f73d] = [
+                0xC1, 0xD4, 0x00, 0x25,             #   1f73d:  LD E, (SC1BUF)
+                0x41, 0x96, 0xF7, 0x01, 0x00,		#	1f741:	LD XBC, 0x1F796	; dump_address
+                0x43, 0x9c, 0xF7, 0x01, 0x00,       #   1f746:  LD XHL, 0x1F79c ; MSG_INDEX
+                0x83, 0x21,                         #   1f74b:  LD A, (XHL)
+                0xD8, 0x12,                         #   1f74d:  EXTZ WA
+                0xf3, 0x07, 0xe4, 0xe0, 0x45,       #   1f74f:  LD (XBC + WA), E
+                0xc9, 0x61,                         #   1f754:  INC 1, A
+                0xc9, 0xcf, 0x05,                   #   1f756:  CP A, 5
+                0xF2, 0x60, 0xf7, 0x01, 0xDE,       #   1f759:  JP NZ, END ; 0x01f760
+                0x21, 0x00,                         #   1f75e:  LD A, 0
+                0xb3, 0x41,                     # END:  1f760:  LD (XHL), A ; MSG_INDEX
+                0x1b, 0xA3, 0xf7, 0x01,             #   1f762:  JP T 1F7A3 ; Since this new routine is too bit
+                                                    #                      ; we reuse the end of INTTX_HANDLER here.
+                                                    #   1f766:
+            ]
+
+                                                    # INTTX1_HANDLER: ()
+                                                    # ...
             subcpu_patches[0x1f76c] = [
                 0xC2, 0x38, 0x10, 0x00, 0x3f, 0x03,	#   1f76c:  CP (var_1038), 0x03
                 0xF2, 0xA3, 0xF7, 0x01, 0xDE,		#   1f772:  JP NZ LABEL_1F7A3
-                0x41, 0x8b, 0xF7, 0x01, 0x00,		#	1f777:	LD XBC, 0x1F78b	; dump_address
+                0x41, 0x96, 0xF7, 0x01, 0x00,		#	1f777:	LD XBC, 0x1F796	; dump_address
                 0xA1, 0x22,							# 	1f77c:	LD XDE, (XBC)
-                0x82, 0x21,							#	1f77e:	LD A, (XDE)
-                0xEA, 0x61,							#	1f780:	INC 1, XDE
-                0xF0, 0xD4, 0x41,					#	1f782:	LD (SC1BUF), A 	; SC1BUF=D4
-                0xB1, 0x62,							#	1f785:	LD (XBC), XDE
-                0x1B, 0xA3, 0xF7, 0x01,				#	1f787:	JP LABEL_1F7A3
-                #0xE3, 0x20, 0x01, 0x00,				#	1f78b: (DUMP_ADDRESS) - string "KN5000 SOUND RAM" at 0x0120E3
-                #0x00, 0xf0, 0x00, 0x00,				#	1f78b: (DUMP_ADDRESS) - payload at 0x00f000-2eeff
-                0x00, 0xf8, 0xff, 0x00,				#	1f78b: (DUMP_ADDRESS) - subcpu boot rom at fe0000-ffffff
+                0xe9, 0x64,                         #   1f77e:  INC 4, XBC
+                0x91, 0x23,                         #   1f780:  LD HL, (XBC) ; num_bytes
+                0xdb, 0xd8,                         #   1f782:  CP HL, 0
+                0xf2, 0xa3, 0xf7, 0x01, 0xd6,       #   1f784:  JP Z, LABEL_1F7A3
+                0xEA, 0x61,							#	1f789:	DEC 1, HL
+                0x82, 0x21,							#	1f78b:	LD A, (XDE + HL)
+                0xF0, 0xD4, 0x41,					#	1f78d:	LD (SC1BUF), A 	; SC1BUF=D4
+                0xB1, 0x62,							#	1f790:	LD (XBC), HL
+                0x1B, 0xA3, 0xF7, 0x01,				#	1f792:	JP LABEL_1F7A3
+                0x00, 0x78, 0xff, 0x00,				#	1f796:  dd (DUMP_ADDRESS)
+                0x00, 0x00,                         #   1f79a:  dw (NUM_BYTES)
+                0x00,                               #   1f79c:  db (MSG_INDEX)
+                                                    #   1f79d:
             ]
+
+            # Locations of interest:
+            # string "KN5000 SOUND RAM" at 0x0120E3
+            # payload at 0x00f000-2eeff
+            # subcpu boot rom at fe0000-ffffff
 
         for ptr, injected_code in patches.items():
             for i, value in enumerate(injected_code):
