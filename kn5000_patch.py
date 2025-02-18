@@ -12,7 +12,7 @@
 #        file and then be imported here. Similar refactoring must be done
 #        to the encoding code.
 
-patch_images = False  # Technics logo replaced by "Happy Hacking KN5000"
+patch_images = True  # Technics logo replaced by "Happy Hacking KN5000"
 patch_memory_dump_screen = False
 patch_code_snippet_during_boot = False
 
@@ -329,51 +329,74 @@ for version in versions:
                 0x1B, 0xD9, 0xFA, 0x01,			# 1fad9: JP 1fad9  # infinite loop
             ]
 
+            subcpu_patches[0x1f736] = [
                                        # INTRX1_HANDLER: (1F736)
-                                                # 1f736: 3e       PUSH XIZ
-                                                # 1f737: 3d       PUSH XIY
-                                                # 1f738: 3c       PUSH XIX
+                0x00,                           # NOP! 1f736: 3e       PUSH XIZ
+                0x00,                           # NOP! 1f737: 3d       PUSH XIY
+                0x00,                           # NOP! 1f738: 3c       PUSH XIX
+            ]
                                                 # 1f739: 3b       PUSH XHL
                                                 # 1f73a: 3a       PUSH XDE
                                                 # 1f73b: 39       PUSH XBC
                                                 # 1f73c: 38       PUSH XWA
             subcpu_patches[0x1f73d] = [
                 0xC1, 0xD4, 0x00, 0x25,             #   1f73d:  LD E, (SC1BUF)
-                0x41, 0x96, 0xF7, 0x01, 0x00,		#	1f741:	LD XBC, 0x1F796	; dump_address
-                0x43, 0x9c, 0xF7, 0x01, 0x00,       #   1f746:  LD XHL, 0x1F79c ; MSG_INDEX
+                0x41, 0xAB, 0xF7, 0x01, 0x00,		#	1f741:	LD XBC, 0x1f7ab	; dump_address
+                0x43, 0xB2, 0xF7, 0x01, 0x00,       #   1f746:  LD XHL, 0x1f7b2 ; MSG_INDEX
                 0x83, 0x21,                         #   1f74b:  LD A, (XHL)
                 0xD8, 0x12,                         #   1f74d:  EXTZ WA
                 0xf3, 0x07, 0xe4, 0xe0, 0x45,       #   1f74f:  LD (XBC + WA), E
                 0xc9, 0x61,                         #   1f754:  INC 1, A
-                0xc9, 0xcf, 0x05,                   #   1f756:  CP A, 5
+                0xc9, 0xcf, 0x07,                   #   1f756:  CP A, 7
                 0xF2, 0x60, 0xf7, 0x01, 0xDE,       #   1f759:  JP NZ, END ; 0x01f760
                 0x21, 0x00,                         #   1f75e:  LD A, 0
                 0xb3, 0x41,                     # END:  1f760:  LD (XHL), A ; MSG_INDEX
-                0x1b, 0xA3, 0xf7, 0x01,             #   1f762:  JP T 1F7A3 ; Since this new routine is too bit
+                0x1b, 0xA6, 0xf7, 0x01,             #   1f762:  JP T 1F7A6 ; Since this new routine is too bit
                                                     #                      ; we reuse the end of INTTX_HANDLER here.
                                                     #   1f766:
             ]
 
-                                                    # INTTX1_HANDLER: ()
-                                                    # ...
+                                                    # INTTX1_HANDLER: (0x1f765)
+            subcpu_patches[0x1f765] = [
+                0x00,                           # NOP! 1f765: 3e       PUSH XIZ
+                0x00,                           # NOP! 1f766: 3d       PUSH XIY
+                0x00,                           # NOP! 1f767: 3c       PUSH XIX
+            ]
+                                                # 1f768: 3b       PUSH XHL
+                                                # 1f769: 3a       PUSH XDE
+                                                # 1f76a: 39       PUSH XBC
+                                                # 1f76b: 38       PUSH XWA
             subcpu_patches[0x1f76c] = [
                 0xC2, 0x38, 0x10, 0x00, 0x3f, 0x03,	#   1f76c:  CP (var_1038), 0x03
-                0xF2, 0xA3, 0xF7, 0x01, 0xDE,		#   1f772:  JP NZ LABEL_1F7A3
-                0x41, 0x96, 0xF7, 0x01, 0x00,		#	1f777:	LD XBC, 0x1F796	; dump_address
+                0xF2, 0xA6, 0xF7, 0x01, 0xDE,		#   1f772:  JP NZ LABEL_1F7A6
+                0x41, 0xAB, 0xF7, 0x01, 0x00,		#	1f777:	LD XBC, 0x1F7AB	; dump_address
                 0xA1, 0x22,							# 	1f77c:	LD XDE, (XBC)
-                0xe9, 0x64,                         #   1f77e:  INC 4, XBC
+                0xe9, 0x64,                         #   1f77e:  INC 4, XBC ; now ptr to num_bytes
                 0x91, 0x23,                         #   1f780:  LD HL, (XBC) ; num_bytes
-                0xdb, 0xd8,                         #   1f782:  CP HL, 0
-                0xf2, 0xa3, 0xf7, 0x01, 0xd6,       #   1f784:  JP Z, LABEL_1F7A3
-                0xEA, 0x61,							#	1f789:	DEC 1, HL
-                0x82, 0x21,							#	1f78b:	LD A, (XDE + HL)
-                0xF0, 0xD4, 0x41,					#	1f78d:	LD (SC1BUF), A 	; SC1BUF=D4
-                0xB1, 0x62,							#	1f790:	LD (XBC), HL
-                0x1B, 0xA3, 0xF7, 0x01,				#	1f792:	JP LABEL_1F7A3
-                0x00, 0x78, 0xff, 0x00,				#	1f796:  dd (DUMP_ADDRESS)
-                0x00, 0x00,                         #   1f79a:  dw (NUM_BYTES)
-                0x00,                               #   1f79c:  db (MSG_INDEX)
-                                                    #   1f79d:
+                0x89, 0x01, 0x21,                   #   1f782:  LD A, (XBC+1)
+                0xc9, 0xcf, 0x00,                   #   1f785:  CP A, 0
+                0xf2, 0xa6, 0xf7, 0x01, 0xd6,       #   1f788:  JP Z, LABEL_1F7A6
+                0xdb, 0xd8,                         #   1f78d:  CP HL, 0
+                0xf2, 0x94, 0xf7, 0x01, 0xd6,       #   1f78f:  JP NZ, not_finished_yet
+                0x21, 0x00,                         #   1f794:   LD A, 0 ; indicate that dumping should stop
+                                                  # 1f794:     not_finished_yet:
+                0xf2, 0xa6, 0xf7, 0x01, 0xd6,       #   1f794:  JP Z, LABEL_1F7A6
+                0xEA, 0x61,							#	1f799:	DEC 1, HL
+                0x82, 0x21,							#	1f79b:	LD A, (XDE + HL) ;; dump a byte
+                0xF0, 0xD4, 0x41,					#	1f79d:	LD (SC1BUF), A 	; SC1BUF=D4
+                0xB1, 0x62,							#	1f7a0:	LD (XBC), HL  ; num_bytes--;
+                0x1B, 0xA6, 0xF7, 0x01,				#	1f7a2:	JP LABEL_1F7A6
+                0x58,                 				#	1f7a6:  POP XWA
+                0x59,               				#	1f7a7:  POP XBC
+                0x5A,                				#	1f7a8:  POP XDE
+                0x5B,               				#	1f7a9:  POP XHL
+                0x07,               				#	1f7aa:  RETI
+                         #	1f7ab -> was RING_BUFFER_HAS_OVERRUN but its is OK to use
+                0x00, 0x78, 0xff, 0x00,				#	1f7ab:  dd (DUMP_ADDRESS)
+                0x00, 0x00,                         #   1f7af:  dw (NUM_BYTES)
+                0x00,                               #   1f7b1:  db (DUMP_IT)
+                0x00,                               #   1f7b2:  db (MSG_INDEX)
+                                                    #   1f7b3:
             ]
 
             # Locations of interest:
