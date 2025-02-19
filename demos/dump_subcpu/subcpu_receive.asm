@@ -7,9 +7,6 @@ SC1BUF: EQU 0D4h
 	ORG 01F736h
 
 INTRX1_HANDLER:
-	nop
-	nop
-	nop
 	push xhl
 	push xde
 	push xbc
