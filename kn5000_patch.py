@@ -323,7 +323,8 @@ for version in versions:
             subcpu_patches[0x1f90f] = [
                 0x2B,			# SC1MOD => 8-bit UART, 38400 baud via external clock
             ]
-            subcpu_patches[0x1fad0] = [
+            subcpu_patches[0x1fad0] = [ # This replaces the INIT_RING_BUFFER function
+                                        # and then stops in an infinite loop.
                 0x1D, 0x0B, 0xF9, 0x01,			# 1fad0: CALL 1f90b  # initializes serial port #1 and writes a 0xFE byte
                 0xF1, 0x38, 0x10, 0x00, 0x03,	# 1fad4: set var_1038 = 03
                 0x1B, 0xD9, 0xFA, 0x01,			# 1fad9: JP 1fad9  # infinite loop
@@ -341,8 +342,8 @@ for version in versions:
                                                 # 1f73c: 38       PUSH XWA
             subcpu_patches[0x1f73d] = [
                 0xC1, 0xD4, 0x00, 0x25,             #   1f73d:  LD E, (SC1BUF)
-                0x41, 0xAB, 0xF7, 0x01, 0x00,		#	1f741:	LD XBC, 0x1f7ab	; dump_address
-                0x43, 0xB2, 0xF7, 0x01, 0x00,       #   1f746:  LD XHL, 0x1f7b2 ; MSG_INDEX
+                0x41, 0xAE, 0xF7, 0x01, 0x00,		#	1f741:	LD XBC, 0x1f7ae	; dump_address
+                0x43, 0xB5, 0xF7, 0x01, 0x00,       #   1f746:  LD XHL, 0x1f7b5 ; MSG_INDEX
                 0x83, 0x21,                         #   1f74b:  LD A, (XHL)
                 0xD8, 0x12,                         #   1f74d:  EXTZ WA
                 0xf3, 0x07, 0xe4, 0xe0, 0x45,       #   1f74f:  LD (XBC + WA), E
@@ -351,7 +352,7 @@ for version in versions:
                 0xF2, 0x60, 0xf7, 0x01, 0xDE,       #   1f759:  JP NZ, END ; 0x01f760
                 0x21, 0x00,                         #   1f75e:  LD A, 0
                 0xb3, 0x41,                     # END:  1f760:  LD (XHL), A ; MSG_INDEX
-                0x1b, 0xA6, 0xf7, 0x01,             #   1f762:  JP T 1F7A6 ; Since this new routine is too bit
+                0x1b, 0xA9, 0xf7, 0x01,             #   1f762:  JP T 1F7A9 ; Since this new routine is too bit
                                                     #                      ; we reuse the end of INTTX_HANDLER here.
                                                     #   1f766:
             ]
@@ -367,36 +368,36 @@ for version in versions:
                                                 # 1f76a: 39       PUSH XBC
                                                 # 1f76b: 38       PUSH XWA
             subcpu_patches[0x1f76c] = [
-                0xC2, 0x38, 0x10, 0x00, 0x3f, 0x03,	#   1f76c:  CP (var_1038), 0x03
-                0xF2, 0xA6, 0xF7, 0x01, 0xDE,		#   1f772:  JP NZ LABEL_1F7A6
-                0x41, 0xAB, 0xF7, 0x01, 0x00,		#	1f777:	LD XBC, 0x1F7AB	; dump_address
+                0xC2, 0x38, 0x10, 0x00, 0x3F, 0x03,	#   1f76c:  CP (var_1038), 0x03
+                0xF2, 0xA9, 0xF7, 0x01, 0xDE,		#   1f772:  JP NZ LABEL_1F7A9
+                0x41, 0xAE, 0xF7, 0x01, 0x00,		#	1f777:	LD XBC, 0x1F7AE	; dump_address
                 0xA1, 0x22,							# 	1f77c:	LD XDE, (XBC)
-                0xe9, 0x64,                         #   1f77e:  INC 4, XBC ; now ptr to num_bytes
+                0xE9, 0x64,                         #   1f77e:  INC 4, XBC ; now ptr to num_bytes
                 0x91, 0x23,                         #   1f780:  LD HL, (XBC) ; num_bytes
                 0x89, 0x01, 0x21,                   #   1f782:  LD A, (XBC+1)
-                0xc9, 0xcf, 0x00,                   #   1f785:  CP A, 0
-                0xf2, 0xa6, 0xf7, 0x01, 0xd6,       #   1f788:  JP Z, LABEL_1F7A6
-                0xdb, 0xd8,                         #   1f78d:  CP HL, 0
-                0xf2, 0x94, 0xf7, 0x01, 0xd6,       #   1f78f:  JP NZ, not_finished_yet
+                0xC9, 0xCF, 0x00,                   #   1f785:  CP A, 0
+                0xf2, 0xA9, 0xF7, 0x01, 0xd6,       #   1f788:  JP Z, LABEL_1F7A9
+                0xDB, 0xD8,                         #   1f78d:  CP HL, 0
+                0xf2, 0x94, 0xF7, 0x01, 0xDE,       #   1f78f:  JP NZ, not_finished_yet
                 0x21, 0x00,                         #   1f794:   LD A, 0 ; indicate that dumping should stop
                                                   # 1f794:     not_finished_yet:
-                0xf2, 0xa6, 0xf7, 0x01, 0xd6,       #   1f794:  JP Z, LABEL_1F7A6
-                0xEA, 0x61,							#	1f799:	DEC 1, HL
-                0x82, 0x21,							#	1f79b:	LD A, (XDE + HL) ;; dump a byte
-                0xF0, 0xD4, 0x41,					#	1f79d:	LD (SC1BUF), A 	; SC1BUF=D4
-                0xB1, 0x62,							#	1f7a0:	LD (XBC), HL  ; num_bytes--;
-                0x1B, 0xA6, 0xF7, 0x01,				#	1f7a2:	JP LABEL_1F7A6
-                0x58,                 				#	1f7a6:  POP XWA
-                0x59,               				#	1f7a7:  POP XBC
-                0x5A,                				#	1f7a8:  POP XDE
-                0x5B,               				#	1f7a9:  POP XHL
-                0x07,               				#	1f7aa:  RETI
+                0xF2, 0xA9, 0xF7, 0x01, 0xD6,       #   1f796:  JP Z, LABEL_1F7A9
+                0xDB, 0x69,							#	1f79b:  DEC 1, HL
+                0xC3, 0x07, 0xE8, 0xEC, 0x21,       #	1f79d:  LD A, (XDE + HL) ;; dump a byte
+                0xF0, 0xD4, 0x41,					#	1f7a2:	LD (SC1BUF), A 	; SC1BUF=D4
+                0xB1, 0x53,							#	1f7a5:	LD (XBC), HL  ; num_bytes--;
+                0x00, 0x00,          				#	1f7a7:	NOP NOP
+                0x58,                 				#	1f7a9:  POP XWA
+                0x59,               				#	1f7aa:  POP XBC
+                0x5A,                				#	1f7ab:  POP XDE
+                0x5B,               				#	1f7ac:  POP XHL
+                0x07,               				#	1f7ad:  RETI
                          #	1f7ab -> was RING_BUFFER_HAS_OVERRUN but its is OK to use
-                0x00, 0x78, 0xff, 0x00,				#	1f7ab:  dd (DUMP_ADDRESS)
-                0x00, 0x00,                         #   1f7af:  dw (NUM_BYTES)
-                0x00,                               #   1f7b1:  db (DUMP_IT)
-                0x00,                               #   1f7b2:  db (MSG_INDEX)
-                                                    #   1f7b3:
+                0xE3, 0x20, 0x01, 0x00,				#	1f7ae:  dd (DUMP_ADDRESS)
+                0x10, 0x00,                         #   1f7b2:  dw (NUM_BYTES)
+                0x01,                               #   1f7b4:  db (DUMP_IT)
+                0x00,                               #   1f7b5:  db (MSG_INDEX)
+                                                    #   1f7b6:
             ]
 
             # Locations of interest:

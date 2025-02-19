@@ -7,7 +7,13 @@ ser = serial.Serial(port, 38400)
 data = ser.read(1)
 assert ord(data) == 0xfe
 
-total_size = 16 # string "KN5000 SOUND RAM"
+print("chegou o FE")
+
+# expect to receive, by default, the string "KN5000 SOUND RAM"
+data = reversed(ser.read(16))
+print (data)
+
+print("vou pedir mais")
 
 # total_size = 0x20000 # subcpu boot rom
 
