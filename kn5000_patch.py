@@ -12,6 +12,8 @@
 #        file and then be imported here. Similar refactoring must be done
 #        to the encoding code.
 
+from utils import patch_from_rom_file
+
 patch_images = True  # Technics logo replaced by "Happy Hacking KN5000"
 patch_memory_dump_screen = False
 patch_code_snippet_during_boot = False
@@ -124,13 +126,12 @@ for version in versions:
         # 0xFB7328 # "A_Short_Pause"
 
         if patch_code_snippet_during_boot:
-            code_to_insert = list(open("demos/monitor/monitor.rom", "rb").read())
-            codeinsert_address = 0xEF05E8  # "User_didnt_request_flash_mem_update"
-            upper_limit = 0xEF061E
-            patches[codeinsert_address] = code_to_insert
-            assert codeinsert_address + len(code_to_insert) <= upper_limit
-
-
+            patch_from_rom_file(
+                patches,
+                filename = "demos/monitor/monitor.rom",
+                patch_address = 0xEF05E8, # "User_didnt_request_flash_mem_update"
+                upper_limit = 0xEF061E # why?
+            )
            
         if patch_insert_code_snippet_with_preamble:
             if DANGEROUS_DO_NOT_RUN_THIS_ON_REAL_KN5000:
@@ -138,7 +139,9 @@ for version in versions:
                     0x1B, 0x00, 0x20, 0xEE,   # JP PREAMBLE
                     0x1B, 0x2a, 0x05, 0xEF,   # inf. loop
                 ]
-            
+
+            # TODO: try to use utils.patch_from_rom_file here as well:
+
             code_to_insert = list(open("demos/monitor/monitor.rom", "rb").read())
             PREAMBLE_address = 0xE0018E # one of the fw-update bitmaps
             upper_limit = 0xE008C6 # another fw-update bitmap
@@ -330,18 +333,16 @@ for version in versions:
                 0x1B, 0xD9, 0xFA, 0x01,			# 1fad9: JP 1fad9  # infinite loop
             ]
 
-            def patch_from_rom_file(filename, patch_address, upper_limit):
-                code_to_insert = list(open(filename, "rb").read())
-                assert patch_address + len(code_to_insert) <= upper_limit, f"end address = {patch_address + len(code_to_insert):06X} exceeds upper_limit by {patch_address + len(code_to_insert) - upper_limit} bytes"
-                patches[patch_address] = code_to_insert
+            # TODO: fix this:
+            #patch_from_rom_file(
+            #    subcpu_patches,
+            #    filename = "demos/dump_subcpu/subcpu_receive.rom",
+            #    patch_address = 0x1f736,  # INTRX1_HANDLER
+            #    upper_limit = 0x1F765 # INTTX1_HANDLER
+            #)
 
             patch_from_rom_file(
-                filename = "demos/dump_subcpu/subcpu_receive.rom",
-                patch_address = 0x1f736,  # INTRX1_HANDLER
-                upper_limit = 0x1F765 # INTTX1_HANDLER
-            )
-
-            patch_from_rom_file(
+                subcpu_patches,
                 filename = "demos/dump_subcpu/subcpu_send.rom",
                 patch_address = 0x1f765,  # INTTX1_HANDLER
                 upper_limit = 0x1F7B9 # READ_BYTE_FROM_RING_BUFFER
