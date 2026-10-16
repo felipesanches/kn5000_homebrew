@@ -36,7 +36,16 @@ card: build/BASEEXT.XAP
 run: card
 	$(MAME) -rompath $(ROMPATH) kn7000 -bios sp7001 -harddisk build/kn7000_clock_sd.img -window
 
+# Automated check: boots the card, presses the SD CARD button, logs what the clock drew
+# (build/clock_test.log) and takes snapshots (build/snap/). A clean MAME build needs
+# -str rather than -skip_gameinfo for the autoboot script to start.
+test: card
+	CLOCK_TEST_LOG=build/clock_test.log $(MAME) -rompath $(ROMPATH) kn7000 -bios sp7001 \
+	    -harddisk build/kn7000_clock_sd.img -window -nothrottle -sound none -str 40 \
+	    -snapshot_directory build/snap -autoboot_script test/clock_test.lua
+	cat build/clock_test.log
+
 clean:
 	rm -rf -- build
 
-.PHONY: all card run clean
+.PHONY: all card run test clean
