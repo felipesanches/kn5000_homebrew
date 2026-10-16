@@ -72,5 +72,11 @@ SP7001 card, keeping the original file as a backup.
 
 ## Status
 
-Built and statically checked (the assembled module disassembles back to the
-source). Not yet run.
+Works in MAME (`make test`, 2026-10-16, program 942). After the SD CARD button is
+pressed at 11 s, the clock task takes kernel task slot 10, and the digits read back
+from the LCD frame match the time computed from the kernel counter at each check —
+`00:00:19`, `00:00:27`, `00:00:35`. The SP7001 main menu stays fully drawn around the
+box. Not yet tried on an instrument.
+
+`make test` needs a MAME with the kn7000 driver (`MAME=...`, `ROMPATH=...`); it writes
+`build/clock_test.log` and snapshots to `build/snap/`.
