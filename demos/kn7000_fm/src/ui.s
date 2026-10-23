@@ -742,6 +742,8 @@ dtt_rate:
     call    PutDecN, 0, 0
     mov     str_persec, a1
     call    StrCpy, 0, 0
+    clr     d0
+    movbu   d0, (a0)
     mov     C_DIM, d0
     mov     d0, (V_FG)
     mov     TMPSTR, a0
@@ -889,8 +891,12 @@ dd_stroke:
     add     DIAG_X, d0
     movhu   (2, a3), d1
     add     DIAG_Y, d1
-    movhu   (4, a3), a0
-    movhu   (6, a3), a1
+    movhu   (4, a3), d0             # (movhu loads data registers only)
+    mov     d0, a0
+    movhu   (6, a3), d0
+    mov     d0, a1
+    movhu   (a3), d0
+    add     DIAG_X, d0
     call    FillRect, 0, 0
     add     8, a3
     add     -1, d3

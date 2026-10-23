@@ -211,19 +211,9 @@ fe_answer:
     bra     fe_ret
 fe_park:
     mov     MAILBOX, a0
-    mov     (V_STATE), d0
-    cmp     ST_RUN, d0
-    bne     fe_text
-    mov     RQ_PARK, d0             # running: call again, leave the screen alone
-    movbu   d0, (a0)
-    clr     d0
-    movbu   d0, (1, a0)
-    movbu   d0, (2, a0)
-    movbu   d0, (3, a0)
-    movbu   d0, (4, a0)
-    bra     fe_ret
-fe_text:
-    mov     RQ_TEXT, d0             # starting, or failed: our text
+    mov     RQ_TEXT, d0             # request 5 every time: it keeps the firmware's main task decoding the panel
+    movbu   d0, (a0)                #   and passing the keybed's notes to MIDI OUT, without repainting the
+                                    #   screen (Another World's README-CNV.md); request 1 starves both
     movbu   d0, (a0)
     call    AnswerText, 0, 0        # a1 = the text
     inc     a0
@@ -243,6 +233,10 @@ AnswerText:
     cmp     ST_FAIL, d0
     beq     at_fail
     mov     msg_start, a1
+    cmp     ST_RUN, d0
+    bne     at_ret
+    mov     msg_run, a1
+at_ret:
     rets
 at_fail:
     mov     (V_FAIL), d0
@@ -509,6 +503,7 @@ mode_rb:        .asciz  "rb"
 mode_wb:        .asciz  "wb"
 str_bankfile:   .asciz  "BANK0.SYX"
 msg_start:      .asciz  "KN7FM: starting..."
+msg_run:        .asciz  "KN7FM: HOLD EXIT TO QUIT"
 msg_fw:         .ascii  "KN7FM: UNKNOWN FIRMWARE "
 msg_fw_d:       .asciz  "00"
 msg_dsp:        .ascii  "KN7FM: NO DSP "
