@@ -66,6 +66,19 @@ local function active()
 end
 local function s32(v) if v >= 0x80000000 then v = v - 0x100000000 end; return v end
 
+local NOTENUM = { C3 = 48, C4 = 60, E4 = 64, G4 = 67 }
+local NDUMP = 0
+local function dump(name, addr, len, head)  -- main-CPU memory to OUT/name (after head's u32s), for check_words.py
+  local f = assert(io.open(OUT .. "/" .. name, "wb"))
+  for _, v in ipairs(head or {}) do f:write(string.pack("<I4", v)) end
+  for i = 0, len - 1 do f:write(string.char(sp:read_u8(addr + i))) end
+  f:close()
+end
+local function dump_words(key)
+  dump(string.format("pimg_%d.bin", NDUMP), 0x502D8FC0, 67 * 4, { sp:read_u32(V_PATCH) })
+  if key then dump(string.format("stage_%d.bin", NDUMP), 0x502D8E00, 18 * 4, { sp:read_u32(V_PATCH), key }) end
+  NDUMP = NDUMP + 1
+end
 -- ---- the tap ------------------------------------------------------------------------------------------------
 local tap = assert(io.open(OUT .. "/tap.txt", "w"))
 tap:write("t state step fail dvstate dvfail hooked slot0 slot9 frame active mixmax notes steals busy rate redraws dirty dead patch\n")
@@ -119,6 +132,7 @@ local function play(keys, secs, label)
     coroutine.yield()
   end
   M.video:snapshot()
+  dump_words(NOTENUM[keys[#keys]])
   for _, k in ipairs(keys) do KEY[k]:set_value(0) end
   E("%s: voices active %02X, |MIX| max %d (%.1f dBFS), notes sent %d, busy %d", label, seen, mm,
     20 * math.log(math.max(mm, 1) / 8388607, 10), sp:read_u32(V_NOTES), sp:read_u32(V_BUSY))
@@ -135,10 +149,23 @@ local co = coroutine.create(function()
   E("KN7FM: state %d, search step %d, fail %X, DSP found %02X state %d fail %d hooked %d, slots %012X %012X",
     sp:read_u32(V_STATE), sp:read_u32(V_STEP), sp:read_u32(V_FAIL), sp:read_u32(DV_FOUND), sp:read_u32(DV_STATE),
     sp:read_u32(DV_FAIL), sp:read_u32(DV_HOOKED), slot(0x8080), slot(0x80A0))
+  if sp:read_u32(V_STATE) == 5 then                    -- failed: the DSP's memory as it is, for dsp_regions.py
+    local f = assert(io.open(OUT .. "/dsp_mem.txt", "w"))
+    for _, r in ipairs({ { "pm", 0x8100, 0x8400 }, { "pm", 0x8E00, 0x9000 }, { "dm", 0x9B20, 0x9FA0 } }) do
+      for a = r[2], r[3] - 1 do
+        local v = (r[1] == "pm") and (pm:read_u64(a) & 0xFFFFFFFFFFFF) or dm:read_u32(a)
+        f:write(string.format("%s %04X %012X\n", r[1], a, v))
+      end
+    end
+    f:close()
+    E("the DSP's memory dumped (dsp_mem.txt); readback of 0x%04X, stopped early %d", sp:read_u32(DH + 0x68), sp:read_u32(DH + 0x5C))
+    dump("rbbuf.bin", DH + 0x200, 0x200)
+  end
   wait(4)
   M.video:snapshot()
   E("running: DSP frames %d, rate %d/s, dirty %X", dm:read_u32(G_FRAME), sp:read_u32(V_RATE), sp:read_u32(V_DIRTY))
   if sp:read_u32(V_STATE) == 4 then
+    dump("bank.bin", 0x502D9200, 32 * 155)
     play({ "C4" }, 1.5, "C4")
     play({ "C4", "E4", "G4" }, 2.0, "C E G")
     press("CPC_SEG11", 0x10); wait(1)                   -- PAGE UP: the next voice

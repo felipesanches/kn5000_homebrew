@@ -33,6 +33,7 @@
 .equ DV_U9,        DSP_HOST + 0x58  # 1 when unit 9's slot is the kernel's form: it is hooked too
 .equ DV_RBFAIL,    DSP_HOST + 0x5C  # the last readback stopped early
 .equ DV_READY,     DSP_HOST + 0x64  # 1: the engine is loaded and hooked
+.equ DV_VERADDR,   DSP_HOST + 0x68  # the DSP address DspPrepare was reading back last (a failure's report)
 .equ DV_PEND,      DSP_HOST + 0x80  # (Another World's DspUnhook clears it; unused here)
 .equ DV_LASTCALLS, DSP_HOST + 0x84  # the watchdog (DspWatch): converter calls last seen,
 .equ DV_LASTMS,    DSP_HOST + 0x88  #   and when they last changed

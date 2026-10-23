@@ -17,15 +17,15 @@
 .equ VOICEV,        0x502D8D00      # the voice allocator: NVOICES records of VR_LEN bytes
 .equ STAGEBUF,      0x502D8E00      # 18 x u32: a key-on's words (PITCH, OLRS, STATE), as the DSP's STAGE
 .equ PIMG,          0x502D8E80      # the patch's DSP words (DSP_PATCH_WORDS), computed
-.equ PSENT,         0x502D8F80      # the same, as last uploaded
-.equ TMPSTR,        0x502D9080      # 64 bytes: text being built
-.equ PATHBUF,       0x502D90C0      # 48 bytes: the folder and a file name
-.equ PREFIX,        0x502D90F0      # 16 bytes: the folder ("KN7FM\"), from the menu's launch block
-.equ BANK,          0x502D9100      # 32 x 155 bytes: the bank, unpacked voices (VCED), to 0x502DA460
+.equ PSENT,         0x502D8FC0      # the same, as last uploaded
+.equ TMPSTR,        0x502D9100      # 64 bytes: text being built
+.equ PATHBUF,       0x502D9140      # 48 bytes: the folder and a file name
+.equ PREFIX,        0x502D9170      # 16 bytes: the folder ("KN7FM\"), from the menu's launch block
+.equ BANK,          0x502D9200      # 32 x 155 bytes: the bank, unpacked voices (VCED), to 0x502DA560
 .equ VCED_LEN,      155
-.equ FILEBUF,       0x502DA500      # 4,104 bytes: a 32-voice SysEx dump read or to be written, to 0x502DB508
+.equ FILEBUF,       0x502DA600      # 4,104 bytes (and room to read 64 more): a 32-voice SysEx dump, to 0x502DB648
 .equ SYX_LEN,       4104
-.equ AREA_END,      0x502DB600      # the end of what KN7FM uses (below the launch block, LB_ADDR)
+.equ AREA_END,      0x502DB700      # the end of what KN7FM uses (below the launch block, LB_ADDR)
 
 # ---- what fwfind.s finds (FwStep), as in Another World's port --------------------------------------
 .equ FW_STEPS,      8               # 0-5 must find what they look for; 6-7 (the effects DSP) may not

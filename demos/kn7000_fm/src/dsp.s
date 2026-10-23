@@ -856,6 +856,7 @@ dpr_ver:
     or      4, d0                   # DMAC_UP_x -> DMAC_RB_x (TRAN)
     mov     d0, a1
     mov     (a3), d0
+    mov     d0, (DV_VERADDR)        # (what was being read back, kept for a failure's report)
     call    Verify, 0, 0
     cmp     0, d0
     bne     dpr_fail
@@ -865,6 +866,7 @@ dpr_ver2:
     mov     DSP_PATCH, d0
     mov     DSP_PATCH_WORDS, d1
     mov     DMAC_RB_DM, a1
+    mov     d0, (DV_VERADDR)
     mov     PSENT, a2
     call    Verify, 0, 0
     cmp     0, d0
@@ -874,6 +876,7 @@ dpr_ver2:
     mov     a0, a2
     mov     DSP_ALG0, d0
     mov     DMAC_RB_PM, a1
+    mov     d0, (DV_VERADDR)
     call    Verify, 0, 0
     cmp     0, d0
     bne     dpr_fail
