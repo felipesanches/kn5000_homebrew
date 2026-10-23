@@ -2,7 +2,7 @@
 # (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
 # Licensed under the terms of the GNU General Public License v3 or later
 #
-# compare_state.py OUT [--novol] -- voice 0's words in MAME against the model's, at the frames fm_capture.lua dumped
+# compare_state.py OUT [--novol] [--first] -- voice 0's words in MAME against the model's, at the frames fm_capture.lua dumped
 # them (OUT/voice_dumps.txt: FRAME after the frame, voice 0's 64 words, the globals), for the key-on frame that
 # fits best: which word differs first, and by how much. (compare_capture.py says whether the samples agree; this
 # says where they part.)
@@ -71,6 +71,24 @@ for k in range(first - 140, first + 1):
         res.append(diffs(words(t.v[0]), w))
     results.append((sum(len(r) for r in res), k, res))
     e.frame()
+if '--first' in sys.argv:                           # every frame dumped: where do they part first?
+    results.sort()
+    n, k, res = results[0]
+    t = m.Engine()
+    t.set_patch(patch)
+    t.vol = None if '--novol' in sys.argv else m.volume_word(m.VOL_DEFAULT)
+    for fr, w, glob in dumps:
+        while t.frame_no <= fr:
+            if t.frame_no == k:
+                t.key_on(0, patch, key, vel)
+            t.frame()
+        r = diffs(words(t.v[0]), w)
+        if r:
+            print(f'key-on frame {k}: the first difference after frame {fr} (slot {fr & 63}): ' + '; '.join(r[:8]))
+            break
+    else:
+        print(f'key-on frame {k}: every dumped frame equal')
+    sys.exit(0)
 results.sort()
 n, k, res = results[0]
 print(f'key {key} velocity {vel}; the best key-on frame {k}: {n} words differ in all')

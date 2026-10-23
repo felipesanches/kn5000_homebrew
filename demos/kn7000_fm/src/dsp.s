@@ -1072,14 +1072,14 @@ DspKeyOn:
     mov     STAGEBUF, a0
     mov     DMAC_UP_DM, a1
     call    DspUpload, 0, 0
-    mov     1, d1
+    mov     0x10000, d1             # its key-on bit, 16 + voice: in the high half (tools/fm_dsp.py)
     asl     d2, d1
     mov     DSP_MSGR6, d0
     call    DspWrite, 0, 0
 dko_ret:
     ret     [d2,d3,a2,a3], 0x30
 
-# DspKeyOff(d0 = a mask of voices): MSGR6 = their key-off bits (8 + voice).
+# DspKeyOff(d0 = a mask of voices): MSGR6 = their key-off bits (24 + voice).
 DspKeyOff:
     movm    [d2,d3,a2,a3], (sp)
     add     -0x20, sp
@@ -1093,7 +1093,7 @@ DspKeyOff:
     cmp     0, d0
     bne     dkf_ret
     mov     d2, d1
-    asl     8, d1
+    asl     24, d1
     mov     DSP_MSGR6, d0
     call    DspWrite, 0, 0
 dkf_ret:

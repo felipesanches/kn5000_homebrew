@@ -155,15 +155,25 @@ local co = coroutine.create(function()
   local n = 0
   local vf = assert(io.open(OUT .. "/voice_dumps.txt", "w"))
   local sounding = nil
+  local ring, ringpos = {}, 0
   cap = dm:install_write_tap(G_MIX, G_MIX, "fmcap", function(offset, data, mask)
     local fr = dm:read_u32(G_FRAME)
     f:write(string.format("%d %d\n", fr, s32(data))); n = n + 1
-    if sounding == nil and data ~= 0 then sounding = fr end
-    if sounding and (fr == sounding or fr == sounding + 64 or fr == sounding + 2000) then
+    local function vline()
       local w = {}
       for a = 0x9D00, 0x9D3F do w[#w + 1] = string.format("%08X", dm:read_u32(a)) end
       for a = 0x9C21, 0x9C32 do w[#w + 1] = string.format("%08X", dm:read_u32(a)) end
-      vf:write(fr .. " " .. table.concat(w, " ") .. "\n")
+      return fr .. " " .. table.concat(w, " ") .. "\n"
+    end
+    if sounding == nil and data ~= 0 then             -- the last 100 frames before the first sound, kept in a ring
+      sounding = fr
+      for i = 1, #ring do vf:write(ring[(ringpos + i - 1) % #ring + 1]) end
+    end
+    if sounding == nil then
+      ringpos = ringpos % 100 + 1
+      ring[ringpos] = vline()
+    elseif fr < sounding + 200 or fr == sounding + 2000 then
+      vf:write(vline())
     end
   end)
   KEY["C4"]:set_value(1); wait(1.0); KEY["C4"]:set_value(0); wait(1.0)

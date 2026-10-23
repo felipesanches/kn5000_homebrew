@@ -407,11 +407,11 @@ class Rig:
         pitch, olrs, state = m.note_words(self.patch, note, vel)
         for k, x in enumerate(pitch + olrs + state):
             self.s.dm[d.STAGE + k] = x & MASK
-        self.s.dm[d.MSGR6] = self.s.dm.get(d.MSGR6, 0) | (1 << v)
+        self.s.dm[d.MSGR6] = self.s.dm.get(d.MSGR6, 0) | (1 << (16 + v))
         self.e.key_on(v, self.patch, note, vel)
 
     def key_off(self, v):
-        self.s.dm[d.MSGR6] = self.s.dm.get(d.MSGR6, 0) | (1 << (8 + v))
+        self.s.dm[d.MSGR6] = self.s.dm.get(d.MSGR6, 0) | (1 << (24 + v))
         self.e.key_off(v)
 
     def frame(self):

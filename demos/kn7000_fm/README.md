@@ -89,8 +89,8 @@ addresses it):
 | DM 0x9B20-0x9C3F, 0x9C60-0x9CFF | the sine table and the variables; the patch's 67 words                    | no record loads them, no instruction refers to them (the kernel's per-unit state ends at 0x9B1F, 0x9C53) |
 | DM 0x9F00-0x9F75                | msfa's "static" table; the key-on's staging block                         | the same                                                                                                 |
 
-Commands: the main CPU stages a key-on's 18 words, then writes MSGR6 (bit v key-on voice v, bit 8 + v key-off);
-the DSP takes them at its next frame and writes MSGR6 = 0. A kernel runs about 14 cycles an operator.
+Commands: the main CPU stages a key-on's 18 words, then writes MSGR6 (bit 16 + v key-on voice v, bit 24 + v
+key-off; the low half 0); the DSP takes them at its next frame and writes MSGR6 = 0. A kernel runs about 14 cycles an operator.
 
 ## Checked
 

@@ -28,10 +28,13 @@
 #
 # The frame (unit 0, E0; 44,100 a second):
 #   1. heartbeat MSGR7 + 1; the unit's input kept;
-#   2. commands, when MSGR6 is not 0: bits 8-15 key off voice 0-7 (each operator's state gets "key-off pending",
-#      the key flag cleared; the pitch envelope goes to stage 3), bits 0-7 key on voice 0-7 from the staging block
+#   2. commands, when MSGR6 is not 0: bits 24-31 key off voice 0-7 (each operator's state gets "key-off pending",
+#      the key flag cleared; the pitch envelope goes to stage 3), bits 16-23 key on voice 0-7 from the staging block
 #      STAGE (pitch, output level and rate scaling, envelope state, per operator: fm_model.note_words); then
-#      MSGR6 = 0 (the host waits for 0 before staging the next note);
+#      MSGR6 = 0 (the host waits for 0 before staging the next note). The commands are in the register's high
+#      half and its low half is 0: the host writes the two halves low first, and MAME's KN7000 driver writes the
+#      register at each half (dsp_data_w), so a command in the low half could be taken, cleared, and written back
+#      by the high half (a key-on taken twice, seen in MAME on 2026-10-23); this way the low half's write leaves 0;
 #   3. control: one step of one thing a frame, slot = FRAME mod 64: voice slot >> 3, k = slot & 7; k = 0 the voice's
 #      pitch envelope, LFO pitch modulation and end; k = 1-6 operator k - 1's envelope, gain and frequency; slot 63
 #      the LFO (fm_model.Engine._control);
@@ -186,7 +189,7 @@ def program():
     e(LD("R2", MSGR6))
     e(A("PASS", "R2", "R2"))
     p.jump("ctl", "EQ")
-    e(IMM("R3", 1))                                         # this voice's key-on bit
+    e(IMM("R3", 1 << 16))                                   # this voice's key-on bit (key-off: << 8)
     e(IMM("R4", VOICES + 32))                               # its block + 32
     e(IMM("R6", m.NVOICES))
     p.label("cl")
