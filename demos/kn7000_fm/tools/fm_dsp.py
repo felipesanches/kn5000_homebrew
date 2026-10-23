@@ -795,7 +795,9 @@ def write_inc(out, w1, w2, labels, algs):
           ("DSP_SINE", SINE), ("DSP_SINE_WORDS", len(m.SIN_TABLE)), ("DSP_STATICS", STATICS),
           ("DSP_GLOBALS", GLOBALS), ("DSP_NGLOBALS", GLOBALS_END - GLOBALS), ("DSP_PATCH", PATCH),
           ("DSP_PATCH_WORDS", PATCH_END - PATCH), ("DSP_STAGE", STAGE), ("DSP_VOICES", VOICES),
-          ("DSP_VOICE_LEN", VOICE_LEN), ("DSP_MSGR6", MSGR6), ("DSP_MSGR7", MSGR7)]
+          ("DSP_VOICE_LEN", VOICE_LEN), ("DSP_NVOICES", m.NVOICES), ("DSP_MSGR4", MSGR4), ("DSP_MSGR6", MSGR6),
+          ("DSP_MSGR7", MSGR7), ("DSP_OURS_LO", 0x8100), ("DSP_OURS_HI", PM_CODE2_END),
+          ("DSP_STAGE_WORDS", STAGE_END - STAGE), ("DSP_ALG_LEN", PM_ALG_LEN)]
     eq += [("DSP_G_" + n, a) for n, a in G.items()]
     eq += [("DSP_V_ACTIVE", O_ACTIVE + 32)]
     with open(os.path.join(out, "dsp_equ.inc"), "w") as f:
@@ -835,6 +837,7 @@ def write_inc(out, w1, w2, labels, algs):
         dm("DspSine", m.SIN_TABLE)
         dm("DspStatics", m.STATICS)
         dm("DspGlobals", initial_globals())
+        dm("DspVoice", voice_image())
 
 
 def main():
