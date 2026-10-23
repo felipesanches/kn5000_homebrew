@@ -18,7 +18,7 @@ EMU="${EMU:-$HOME/compartilhado/kn7000-emulator}"
 KN7="${KN7:-$HOME/compartilhado/technics-roms-disasm/kn7000}"
 MENU="$KN7/tools/kn7menu"
 FLOPPY="$KN7/tools/cnv_romdump/releases/2026-10-19/floppy/kn7load_floppy.img"
-LUA="${2:-$HERE/fm_test.lua}"
+LUA="$(realpath "${2:-$HERE/fm_test.lua}")"
 O="$(mkdir -p "$1" && cd "$1" && pwd)"
 make -s -C "$FM" card-dir > "$O/build.log" 2>&1 || { cat "$O/build.log"; exit 1; }
 make -s -C "$MENU" OUT="$O/menu" > "$O/menu.log" 2>&1 || { cat "$O/menu.log"; exit 1; }
