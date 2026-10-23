@@ -52,7 +52,7 @@ renderer, `msfa_ref`, and `compare.py` renders the same note of the same voices 
 | test (note C4, velocity 100, 32 voices, one per algorithm)            | result                                                                                              |
 |-----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
 | random voices: level                                                  | median 0.00 dB, worst -0.52 dB                                                                      |
-| random voices: envelope (RMS every 10 ms)                             | median error 0.20 dB, worst 1.79 dB                                                                 |
+| random voices: envelope (RMS every 10 ms)                             | median error 0.13 dB, worst 0.97 dB                                                                 |
 | the same with the LFO off: envelope                                   | median 0.10 dB, worst 0.75 dB                                                                       |
 | steady-state spectra (all rates 99, L1 = L2 = L3), peaks within 40 dB | median difference 0.1-1.2 dB for 31 algorithms; algorithm 5 at feedback 7, which is chaotic, 4.5 dB |
 | the same, every voice at feedback 7 (`steady.py MSFA_REF 7`)          | algorithm 32, whose feedback operator is a carrier: median 0.26 dB, 90th percentile 1.35 dB         |

@@ -32,6 +32,10 @@
 #   * every operator is computed every frame (msfa skips operators whose gain is under -83 dB);
 #   * the sine is 256 points with linear interpolation (msfa: 1,024 with interpolation); the gain's exp2 is a cubic
 #     (msfa: 1,024 points with interpolation);
+#   * a key-off reaches each operator at its own next control step (up to 64 frames later; msfa takes it at the next
+#     64-sample block), and the envelope's target, rate and direction are recomputed from its stage at every step
+#     (msfa stores them at each stage change; the results are the same, as the level only moves towards the target);
+#   * the detune term is a Q16 table times (detune - 7), so that the MN10300 computes it without float;
 #   * carriers are scaled 1/32 of a modulator (their outputs are Q19 where msfa's are Q24) so that eight voices of six
 #     carriers sum without overflow; one carrier at full level (output level 99: gain 2.0) is then -18 dBFS at the
 #     DSP's output, the level of one of Another World's voices, which Felipe found "close to a piano note's".
@@ -333,6 +337,7 @@ class Bank:
 
 
 # ---- the main CPU's side: what it sends the DSP ----------------------------------------------------------------
+# Everything here is integer arithmetic on tables, so that the MN10300 code (src/) computes exactly the same words.
 def scaleoutlevel(ol):
     return 28 + ol if ol >= 20 else LEVELLUT[ol]
 
@@ -371,26 +376,25 @@ def scale_level(note, bp, ld, rd, lc, rc):
 
 
 def detune_table():
-    """msfa's detune for a ratio-mode operator, per MIDI note: round(0.0209 e^(-0.396 L) / 7 x logfreq) at detune 8,
-    with L the note's log frequency in octaves; the MN10300 multiplies it by (detune - 7) (a table: no float there)"""
+    """msfa's detune of a ratio-mode operator at detune 8, per MIDI note: 0.0209 e^(-0.396 L) / 7 x logfreq, with L the
+    note's log frequency in octaves; here in Q16, so that the MN10300 needs no float: the detune term is
+    DETUNE_Q[note] x (detune - 7) / 2 ** 16, truncated towards zero (msfa truncates its float product the same way)"""
     out = []
     for n in range(128):
         lf = PITCH_BASE + n * PITCH_STEP
-        ratio = 0.0209 * math.exp(-0.396 * (lf / (1 << 24))) / 7
-        out.append(ratio * lf)
+        out.append(int(round(0.0209 * math.exp(-0.396 * (lf / (1 << 24))) / 7 * lf * 65536)))
     return out
 
 
-DETUNE = detune_table()
+DETUNE_Q = detune_table()
 FINE_TAB = [0] + [int(math.floor(24204406.323123 * math.log(1 + 0.01 * f) + 0.5)) for f in range(1, 100)]
 
 
 def osc_freq(note, mode, coarse, fine, detune):
-    """msfa Dx7Note::osc_freq, standard tuning: an operator's log frequency, Q24 octaves (and with detune in integers:
-    the per-note table times (detune - 7), truncated as msfa's int conversion truncates)"""
+    """msfa Dx7Note::osc_freq, standard tuning: an operator's log frequency, Q24 octaves"""
     if mode == 0:
         logfreq = PITCH_BASE + note * PITCH_STEP
-        logfreq += int(DETUNE[note] * (detune - 7))
+        logfreq += _div_trunc(DETUNE_Q[note] * (detune - 7), 65536)
         logfreq += COARSEMUL[coarse & 31]
         logfreq += FINE_TAB[fine]
     else:
@@ -399,21 +403,38 @@ def osc_freq(note, mode, coarse, fine, detune):
     return logfreq
 
 
+# An operator's envelope state, one DSP word: msfa's staticcount_ (bits 0-23), its stage ix_ (24-26: 0-3, 4 = done),
+# a key-off not yet taken (28: the operator's next control step moves it to stage 3), the key held (29).
+ST_STATIC = 0xFFFFFF
+ST_PEND = 1 << 28
+ST_DOWN = 1 << 29
+ST_KEEP = 0xF0000000
+
+
 def note_words(patch, note, velocity):
-    """per operator (OP6 first): its log frequency, its output level and its rate scaling, as msfa's Dx7Note::init
-    computes them. The note is the key plus the patch's TRANSPOSE (24 = none)."""
+    """the 18 words a key-on stages for the DSP, per operator (OP6 first): its log frequency (PITCH), its output level
+    and rate scaling (OLRS = level << 8 | rate scaling), and its envelope state at the start (STATE: stage 0, the key
+    held, and msfa's "static" count when L1 is 0) -- msfa's Dx7Note::init and Env::init/advance(0). The note is the
+    key plus the patch's TRANSPOSE (24 = none)."""
     note = max(0, min(127, note + patch.get('TRNSP') - 24))
-    pitch, outlevel, rs = [], [], []
+    pitch, olrs, state = [], [], []
     for k in range(6):
         d = patch.data[k * 21:(k + 1) * 21]
         ol = scaleoutlevel(d[16])
         ol += scale_level(note, d[8], d[9], d[10], d[11], d[12])
         ol = min(127, ol) << 5
         ol += scale_velocity(velocity, d[15])
-        outlevel.append(max(0, ol))
-        rs.append(scale_rate(note, d[13]))
+        ol = max(0, ol)
+        rs = scale_rate(note, d[13])
+        olrs.append((ol << 8) | rs)
         pitch.append(osc_freq(note, d[17], d[18], d[19], d[20]))
-    return pitch, outlevel, rs
+        st = ST_DOWN
+        if d[4] == 0:                              # L1 = 0: stage 0 holds level 0 for its "static" time
+            r = min(d[0] + rs, 99)
+            n = STATICS[r]
+            st |= n // 20 if r < 77 else n
+        state.append(st)
+    return pitch, olrs, state
 
 
 def peg_unit():
@@ -421,47 +442,62 @@ def peg_unit():
     return int(CTRL_N * (1 << 24) / (21.3 * FS) + 0.5)
 
 
+LFO_DELTA = [(int(LFO_SOURCE[s] * 4437500000.0 * CTRL_N / FS) & 0xFFFFFFFF) >> 8 for s in range(100)]
+LFO_UNIT = int(CTRL_N * 25190424 / FS + 0.5)
+
+
 def lfo_words(patch):
     """the LFO's per-patch words (msfa Lfo::reset) in the DSP's units: the phase step a control tick and the two delay
     steps, each msfa's 32-bit value >> 8 (the DSP keeps the LFO's phase and delay state in 24 bits: its adds saturate,
     so nothing may rely on a 32-bit wrap), the waveform, sync"""
-    lforatio = 4437500000.0 * CTRL_N / FS
-    delta = int(LFO_SOURCE[patch.get('LFS')] * lforatio) & 0xFFFFFFFF
     a = 99 - patch.get('LFD')
-    unit = int(CTRL_N * 25190424 / FS + 0.5)
     if a == 99:
         d1 = d2 = 0xFFFFFFFF
     else:
         a = (16 + (a & 15)) << (1 + (a >> 4))
-        d1 = (unit * a) & 0xFFFFFFFF
+        d1 = (LFO_UNIT * a) & 0xFFFFFFFF
         a &= 0xff80
         a = max(0x80, a)
-        d2 = (unit * a) & 0xFFFFFFFF
-    return delta >> 8, d1 >> 8, d2 >> 8, patch.get('LFW'), patch.get('LFKS')
+        d2 = (LFO_UNIT * a) & 0xFFFFFFFF
+    return LFO_DELTA[patch.get('LFS')], d1 >> 8, d2 >> 8, patch.get('LFW'), patch.get('LFKS')
+
+
+def env_word(level, qrate, rate):
+    """one envelope stage of one operator, packed for the DSP: the stage's level term (msfa's
+    (scaleoutlevel(L) >> 1) << 6 - 4256, signed, bits 16-31), its rate as msfa's qrate (R x 41 >> 6, bits 8-13) and
+    the raw rate (bits 0-6, for the "static" table)"""
+    return ((level & 0xFFFF) << 16) | (qrate << 8) | rate
 
 
 def patch_words(patch):
-    """what the DSP reads from the patch while voices sound (the MN10300 uploads it at every patch change and edit)"""
+    """what the DSP reads from the patch while voices sound (the MN10300 uploads it at every patch change and edit);
+    per operator OP6 first"""
     alg = patch.get('ALG') & 31
     flags = ALGORITHMS[alg]
     w = {'alg': alg}
-    w['lvl'] = [[((scaleoutlevel(patch.data[k * 21 + 4 + s]) >> 1) << 6) - 4256 for s in range(4)] for k in range(6)]
-    w['qrate'] = [[(patch.data[k * 21 + s] * 41) >> 6 for s in range(4)] for k in range(6)]
-    w['l4zero'] = [patch.data[k * 21 + 7] == 0 for k in range(6)]
-    w['r'] = [[patch.data[k * 21 + s] for s in range(4)] for k in range(6)]
-    w['l'] = [[patch.data[k * 21 + 4 + s] for s in range(4)] for k in range(6)]
-    w['gshift'] = [GSHIFT_CAR if (f & 3) == 0 else GSHIFT_MOD for f in flags]
+    w['env'] = [[env_word(((scaleoutlevel(patch.data[k * 21 + 4 + s]) >> 1) << 6) - 4256,
+                          (patch.data[k * 21 + s] * 41) >> 6, patch.data[k * 21 + s]) for s in range(4)]
+                for k in range(6)]
+    w['gshx'] = [GAIN_EXP + (GSHIFT_CAR if (f & 3) == 0 else GSHIFT_MOD) for f in flags]
     w['mode'] = [patch.data[k * 21 + 17] for k in range(6)]
     w['ams'] = [AMPMODSENSTAB[patch.data[k * 21 + 14] & 3] for k in range(6)]
+    # the voice's end: when the key is up and every carrier has finished its envelope with L4 = 0 (msfa: the note is
+    # free once its carriers are silent); NC marks the operators that are not carriers, ENDW is 0 when some carrier
+    # holds a level after its release (L4 > 0: the voice never ends by itself)
+    car = [(f & 3) == 0 for f in flags]
+    w['nc'] = [0 if c else (1 << 26) | (1 << 28) for c in car]
+    w['endw'] = 0xFFFFFFFF if all(patch.data[k * 21 + 7] == 0 for k in range(6) if car[k]) else 0
+    # feedback, a fractional product: (FB0 + FB1) x FBK / 2 ** 31 = msfa's (FB0 + FB1) >> (fb_shift + 1) for a
+    # modulator; a carrier's output is 2 ** (GSHIFT_MOD - GSHIFT_CAR) = 32 times smaller, so the DSP multiplies its
+    # sum by 16 first and FBK_C is 2 ** (31 - fb_shift); feedback 0: both 0
     fb = patch.get('FB')
-    w['fb_shift'] = FEEDBACK_BITDEPTH - fb if fb != 0 else 16
+    w['fbk_m'] = 1 << (22 + fb) if fb else 0
+    w['fbk_c'] = 1 << (23 + fb) if fb else 0
     unit = peg_unit()
     w['peg_rate'] = [PITCHENV_RATE[patch.get('PR%d' % (s + 1))] * unit for s in range(4)]
     w['peg_level'] = [PITCHENV_TAB[patch.get('PL%d' % (s + 1))] << 19 for s in range(4)]
-    pmd = (patch.get('LPMD') * 165) >> 6
-    pms = PITCHMODSENSTAB[patch.get('LPMS') & 7]
-    # msfa: ((pmd x lfo_delay) x (pms x (lfo_val - 2^23))) >> 39; here one float32 factor for the DSP's product
-    w['pm_k'] = float(F32(pmd * pms / float(1 << 39)))
+    # msfa: ((pmd x lfo_delay) x (pms x (lfo_val - 2^23))) >> 39; here the DSP's FLOAT (pmd x pms) BY -39 as one factor
+    w['pmds'] = ((patch.get('LPMD') * 165) >> 6) * PITCHMODSENSTAB[patch.get('LPMS') & 7]
     w['amd'] = (patch.get('LAMD') * 165) >> 6
     w['lfo'] = lfo_words(patch)
     w['oks'] = patch.get('OKS')
@@ -475,34 +511,28 @@ def i32(x):
 
 
 def ssfr(a, b):
-    """the multiplier's fractional product: floor(a * b / 2 ** 31), the low 32 bits (MAME: mul_32x32_shift / DMULS)"""
+    """the multiplier's fractional product: floor(a * b / 2 ** 31), the low 32 bits (MAME: mul_32x32_shift / DMULS;
+    the chip rounds instead, a difference of one in the last place)"""
     return i32((a * b) >> 31)
 
 
 class Voice:
+    """one voice: the words of its 64-word block in the DSP's memory (tools/fm_dsp.py, VOICES)"""
+
     def __init__(self):
         self.ph = [0] * 6
         self.inc = [0] * 6
         self.g = [0] * 6
         self.dg = [0] * 6
-        self.fb = [0, 0]
         self.level = [0] * 6        # envelope level, Q24 log units as msfa (actual level << 16)
-        self.ix = [4] * 6           # envelope stage: 0-3, 4 = done
-        self.static = [0] * 6       # msfa's staticcount_: samples left of a stage whose level does not change
-        self.target = [0] * 6
-        self.einc = [0] * 6
-        self.rising = [False] * 6
+        self.state = [4 << 24] * 6  # the envelope state word (ST_*)
         self.pitch = [0] * 6
-        self.outlevel = [0] * 6
-        self.rs = [0] * 6
+        self.olrs = [0] * 6
+        self.pmod = [0] * 6         # the voice's pitch modulation, one copy per operator (the DSP's addressing)
+        self.fb = [0, 0]
+        self.active = False
         self.peg_level = 0
         self.peg_ix = 4
-        self.peg_target = 0
-        self.peg_inc = 0
-        self.peg_rising = False
-        self.pmod = 0
-        self.down = False
-        self.active = False
 
 
 class Engine:
@@ -523,72 +553,48 @@ class Engine:
     def set_patch(self, patch):
         self.pw = patch_words(patch)
 
-    # -- envelopes (msfa Env) --
-    def _advance(self, v, k, newix):
-        pw = self.pw
-        v.ix[k] = newix
-        if newix < 4:
-            actual = pw['lvl'][k][newix] + v.outlevel[k]
-            actual = max(16, actual)
-            v.target[k] = actual << 16
-            v.rising[k] = v.target[k] > v.level[k]
-            if v.target[k] == v.level[k] or (newix == 0 and pw['l'][k][0] == 0):
-                r = min(pw['r'][k][newix] + v.rs[k], 99)
-                n = STATICS[r]
-                if r < 77 and newix == 0 and pw['l'][k][0] == 0:
-                    n //= 20
-                v.static[k] = n
-            else:
-                v.static[k] = 0
-            q = min(pw['qrate'][k][newix] + v.rs[k], 63)
-            v.einc[k] = (4 + (q & 3)) << (2 + LG_N + (q >> 2))
+    # -- envelopes (msfa Env; the target, rate and direction recomputed from the stage at every step, which is what
+    #    msfa's advance() stored: the level only ever moves towards the target) --
+    def _target(self, k, ix, ol):
+        return max(16, (i32(self.pw['env'][k][ix]) >> 16) + ol) << 16
+
+    def _advance(self, k, st, newix, level, ol, rs):
+        st = (st & ST_KEEP) | (newix << 24)
+        if newix < 4 and self._target(k, newix, ol) == level:
+            st |= STATICS[min((self.pw['env'][k][newix] & 0x7F) + rs, 99)]
+        return st
 
     def _env_tick(self, v, k):
-        if v.static[k]:
-            v.static[k] -= CTRL_N
-            if v.static[k] <= 0:
-                v.static[k] = 0
-                self._advance(v, k, v.ix[k] + 1)
-        ix = v.ix[k]
-        if ix < 3 or (ix < 4 and not v.down):
-            if v.static[k]:
-                pass
-            elif v.rising[k]:
-                jump = 1716 << 16
-                if v.level[k] < jump:
-                    v.level[k] = jump
-                v.level[k] += (((17 << 24) - v.level[k]) >> 24) * v.einc[k]
-                if v.level[k] >= v.target[k]:
-                    v.level[k] = v.target[k]
-                    self._advance(v, k, ix + 1)
+        st, level = v.state[k], v.level[k]
+        ol, rs = v.olrs[k] >> 8, v.olrs[k] & 0xFF
+        if st & ST_PEND:                           # the key-off: msfa's keydown(false), advance(3)
+            st = self._advance(k, st & ~ST_PEND, 3, level, ol, rs)
+        static = st & ST_STATIC
+        if static:
+            static -= CTRL_N
+            if static > 0:
+                st = (st & ~ST_STATIC) | static
             else:
-                v.level[k] -= v.einc[k]
-                if v.level[k] <= v.target[k]:
-                    v.level[k] = v.target[k]
-                    self._advance(v, k, ix + 1)
-        return v.level[k]
-
-    def _peg_advance(self, v, newix):
-        v.peg_ix = newix
-        if newix < 4:
-            v.peg_target = self.pw['peg_level'][newix]
-            v.peg_rising = v.peg_target > v.peg_level
-            v.peg_inc = self.pw['peg_rate'][newix]
-
-    def _peg_tick(self, v):
-        ix = v.peg_ix
-        if ix < 3 or (ix < 4 and not v.down):
-            if v.peg_rising:
-                v.peg_level += v.peg_inc
-                if v.peg_level >= v.peg_target:
-                    v.peg_level = v.peg_target
-                    self._peg_advance(v, ix + 1)
+                st = self._advance(k, st & ~ST_STATIC, ((st >> 24) & 7) + 1, level, ol, rs)
+        ix = (st >> 24) & 7
+        if (ix < 3 or (ix == 3 and not st & ST_DOWN)) and not st & ST_STATIC:
+            w = self.pw['env'][k][ix]
+            target = self._target(k, ix, ol)
+            q = min(((w >> 8) & 0x3F) + rs, 63)
+            einc = (4 + (q & 3)) << (2 + LG_N + (q >> 2))
+            if target > level:
+                level = max(level, 1716 << 16)
+                level += (((17 << 24) - level) >> 24) * einc
+                if level >= target:
+                    level = target
+                    st = self._advance(k, st, ix + 1, level, ol, rs)
             else:
-                v.peg_level -= v.peg_inc
-                if v.peg_level <= v.peg_target:
-                    v.peg_level = v.peg_target
-                    self._peg_advance(v, ix + 1)
-        return v.peg_level
+                level -= einc
+                if level <= target:
+                    level = target
+                    st = self._advance(k, st, ix + 1, level, ol, rs)
+        v.state[k], v.level[k] = st, level
+        return level
 
     # -- the LFO (msfa Lfo), one step every CTRL_N frames --
     def _lfo_tick(self):
@@ -618,66 +624,71 @@ class Engine:
         else:
             self.lfo_delay_state = dd
             self.lfo_delay = 0 if dd < 0x800000 else (dd << 1) & MASK24
-        self.amod = self._amp_mod()
-
-    def _voice_pitch(self, v):
-        """msfa Dx7Note::compute's pitch: the pitch envelope plus the LFO's pitch modulation (no wheel, no bend); the
-        LFO term in float32 (FLOAT, two multiplies, FIX), and the voice's end"""
-        a = F32(float(self.lfo_delay))
-        b = F32(float(self.lfo_val - (1 << 23)))
-        pm = fix(F32(F32(a * b) * F32(self.pw['pm_k'])))
-        v.pmod = self._peg_tick(v) + pm + self.pitch_base
-        if not v.down:
-            flags = ALGORITHMS[self.pw['alg']]
-            if all(v.ix[k] >= 4 and self.pw['l4zero'][k] for k in range(6) if (flags[k] & 3) == 0):
-                v.active = False
-
-    def _amp_mod(self):
-        """msfa: amod_1 = ((amd x lfo_delay) >> 8) x ((1 << 24) - lfo_val) >> 24, Q24, its products 64-bit; here regrouped
-        so that every product fits a signed 32-bit register: (((amd x (lfo_delay >> 8)) >> 8) x (lv >> 9)) >> 7"""
+        # msfa: amod_1 = ((amd x lfo_delay) >> 8) x ((1 << 24) - lfo_val) >> 24, Q24, its products 64-bit; here
+        # regrouped so that every product fits a signed 32-bit register
         lv = (1 << 24) - self.lfo_val
         a = (self.pw['amd'] * (self.lfo_delay >> 8)) >> 8
-        return (a * (lv >> 9)) >> 7
+        self.amod = (a * (lv >> 9)) >> 7
+
+    def _voice_control(self, v):
+        """msfa Dx7Note::compute's pitch: the pitch envelope (msfa PitchEnv) plus the LFO's pitch modulation (no wheel,
+        no bend), the LFO term in float32 (FLOAT, two multiplies, FIX); and the voice's end"""
+        pw = self.pw
+        down = v.state[0] & ST_DOWN
+        ix, lvl = v.peg_ix, v.peg_level
+        if ix < 3 or (ix == 3 and not down):
+            target, inc = pw['peg_level'][ix], pw['peg_rate'][ix]
+            if target > lvl:
+                lvl += inc
+                if lvl >= target:
+                    lvl, ix = target, ix + 1
+            else:
+                lvl -= inc
+                if lvl <= target:
+                    lvl, ix = target, ix + 1
+        v.peg_ix, v.peg_level = ix, lvl
+        a = F32(float(self.lfo_delay))
+        b = F32(float(self.lfo_val - (1 << 23)))
+        pm = fix(F32(F32(a * b) * F32(pw['pmds'] * 2.0 ** -39)))
+        v.pmod = [lvl + pm + self.pitch_base] * 6
+        if not down:
+            acc = pw['endw']
+            for k in range(6):
+                acc &= (v.state[k] ^ ST_PEND) | pw['nc'][k]
+            if (acc >> 26) & 5 == 5:
+                v.active = False
 
     def _op_control(self, v, k):
         pw = self.pw
         level = self._env_tick(v, k)
         if pw['ams'][k]:
             # msfa: level -= level x (exp(sensamp / 262144 x 0.07 + 12.2) << 4) >> 28 = level x 2 ** (AM_K0 + AM_K1
-            # sensamp) / 2 ** 24 (AM_K*, Q24); here level x exp2_q24(x, 0) >> 24 with x = AM_K0 + (sensamp >> 4) AM_K1
+            # sensamp) / 2 ** 24 (AM_K*, Q24); here level x exp2_f32(x) with x = AM_K0 + (sensamp >> 4) AM_K1
             sensamp = ((self.amod >> 9) * (pw['ams'][k] >> 9)) >> 6
             x = AM_K0 + (sensamp >> 4) * AM_K1
             level -= fix(F32(F32(float(level)) * exp2_f32(x)))
-        g = exp2_q24(level, GAIN_EXP + pw['gshift'][k])
+        g = exp2_q24(level, pw['gshx'][k])
         v.dg[k] = (g - v.g[k]) >> LG_N
-        if pw['mode'][k]:
-            v.inc[k] = exp2_q24(v.pitch[k] + self.pitch_base + FREQ_K, 0)
-        else:
-            v.inc[k] = exp2_q24(v.pitch[k] + v.pmod + FREQ_K, 0)
+        v.inc[k] = exp2_q24(v.pitch[k] + (self.pitch_base if pw['mode'][k] else v.pmod[k]) + FREQ_K, 0)
 
-    # -- the host's commands --
+    # -- the host's commands, taken at the start of the next frame --
     def key_on(self, n, patch, note, velocity):
         v = self.v[n]
-        v.pitch, v.outlevel, v.rs = note_words(patch, note, velocity)
+        v.pitch, v.olrs, v.state = (list(x) for x in note_words(patch, note, velocity))
+        v.level = [0] * 6
         if self.pw['oks']:
             v.ph = [0] * 6
-        v.down = True
-        v.active = True
-        for k in range(6):
-            v.level[k] = 0
-            self._advance(v, k, 0)
         v.peg_level = self.pw['peg_level'][3]
-        self._peg_advance(v, 0)
+        v.peg_ix = 0
+        v.active = True
         if self.pw['lfo'][4]:
-            self.lfo_phase = 0x7FFFFFFF
+            self.lfo_phase = 0x7FFFFF                   # msfa: (1 << 31) - 1, >> 8
         self.lfo_delay_state = 0
 
     def key_off(self, n):
         v = self.v[n]
-        v.down = False
-        for k in range(6):
-            self._advance(v, k, 3)
-        self._peg_advance(v, 3)
+        v.state = [(st & ~ST_DOWN) | ST_PEND for st in v.state]
+        v.peg_ix = 3
 
     # -- one frame --
     def _control(self):
@@ -685,10 +696,10 @@ class Engine:
         vn, k = slot >> 3, slot & 7
         if slot == CTRL_N - 1:
             self._lfo_tick()
-        if vn < len(self.v):
+        elif vn < len(self.v):
             v = self.v[vn]
             if k == 0:
-                self._voice_pitch(v)
+                self._voice_control(v)
             elif k <= 6:
                 self._op_control(v, k - 1)
 
@@ -707,17 +718,14 @@ class Engine:
             inbus, outbus, add = (fl >> 4) & 3, fl & 3, fl & 4
             v.g[k] = i32(v.g[k] + v.dg[k])
             if (fl & 0xC0) == 0xC0:
-                fbs = self.pw['fb_shift']
-                # a carrier's output is 2 ** (GSHIFT_MOD - GSHIFT_CAR) smaller than a modulator's (msfa's scale)
-                mod = (v.fb[0] + v.fb[1]) >> (fbs + 1) if outbus else \
-                    ((v.fb[0] + v.fb[1]) << (GSHIFT_MOD - GSHIFT_CAR)) >> (fbs + 1)
-                if fbs >= 16:
-                    mod = 0
+                s = v.fb[0] + v.fb[1]
+                mod = ssfr(s, self.pw['fbk_m']) if outbus else ssfr(s << 4, self.pw['fbk_c'])
+                v.fb[0] = v.fb[1]
             else:
                 mod = bus[inbus] if inbus else 0
             y = ssfr(self._sine((v.ph[k] + mod) & 0xFFFFFFFF), v.g[k])
             if (fl & 0xC0) == 0xC0:
-                v.fb[0], v.fb[1] = v.fb[1], y
+                v.fb[1] = y
             if outbus == 0:
                 out += y
             elif add:
@@ -734,7 +742,7 @@ class Engine:
             if v.active:
                 out += self._voice_audio(v)
         self.frame_no += 1
-        return max(-OUT_MAX - 1, min(OUT_MAX, out))
+        return max(-OUT_MAX, min(OUT_MAX, out))       # the DSP's CLIP: symmetric
 
 
 def render(patch, events, seconds, nvoices=NVOICES):
