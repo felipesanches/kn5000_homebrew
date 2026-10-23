@@ -52,9 +52,10 @@ renderer, `msfa_ref`, and `compare.py` renders the same note of the same voices 
 | test (note C4, velocity 100, 32 voices, one per algorithm)            | result                                                                                              |
 |-----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
 | random voices: level                                                  | median 0.00 dB, worst -0.52 dB                                                                      |
-| random voices: envelope (RMS every 10 ms)                             | median error 0.21 dB, worst 1.79 dB                                                                 |
+| random voices: envelope (RMS every 10 ms)                             | median error 0.20 dB, worst 1.79 dB                                                                 |
 | the same with the LFO off: envelope                                   | median 0.10 dB, worst 0.75 dB                                                                       |
 | steady-state spectra (all rates 99, L1 = L2 = L3), peaks within 40 dB | median difference 0.1-1.2 dB for 31 algorithms; algorithm 5 at feedback 7, which is chaotic, 4.5 dB |
+| the same, every voice at feedback 7 (`steady.py MSFA_REF 7`)          | algorithm 32, whose feedback operator is a carrier: median 0.26 dB, 90th percentile 1.35 dB         |
 
 Waveform correlation is not a measure here: a vibrato or a detuned pair of operators a fraction of a cycle apart
 decorrelates two signals with the same spectrum (voice 0: correlation -0.07, the same partials within 0.5 dB).
@@ -66,6 +67,7 @@ g++ -O2 -std=c++17 -I $M/msfa -I $M -o $M/msfa_ref tests/msfa_ref/msfa_ref.cpp $
 python3 tests/msfa_ref/compare.py $M/msfa_ref --n 32            # random voices
 python3 tests/msfa_ref/compare.py $M/msfa_ref --n 32 --nolfo    # the same, LFO off
 python3 tests/msfa_ref/steady.py $M/msfa_ref                     # steady-state spectra, algorithm by algorithm
+python3 tests/msfa_ref/steady.py $M/msfa_ref 7                   # the same, all at feedback 7
 ```
 
 ## Where it lives in the DSP
@@ -91,6 +93,7 @@ addresses it):
 | `tests/msfa_ref/fetch.sh`, `msfa_ref.cpp` | msfa at a pinned Dexed commit; a one-note renderer built on it                                       |
 | `tests/msfa_ref/compare.py`               | the model against msfa: level, envelope, spectra                                                     |
 | `tests/msfa_ref/steady.py`                | the same voices made static: steady-state spectra, algorithm by algorithm                            |
+| `tools/sharc_enc.py`                      | an assembler for the ADSP-21065L instructions the DSP program uses (checked against MAME's unidasm)  |
 
 ## Credits
 

@@ -517,6 +517,7 @@ class Engine:
         self.lfo_delay_state = 0
         self.lfo_delay = 0
         self.lfo_rand = 0
+        self.amod = 0
         self.pitch_base = 0
 
     def set_patch(self, patch):
@@ -617,6 +618,7 @@ class Engine:
         else:
             self.lfo_delay_state = dd
             self.lfo_delay = 0 if dd < 0x800000 else (dd << 1) & MASK24
+        self.amod = self._amp_mod()
 
     def _voice_pitch(self, v):
         """msfa Dx7Note::compute's pitch: the pitch envelope plus the LFO's pitch modulation (no wheel, no bend); the
@@ -631,11 +633,11 @@ class Engine:
                 v.active = False
 
     def _amp_mod(self):
-        """msfa: amod_1 = ((amd x lfo_delay) >> 8) x ((1 << 24) - lfo_val) >> 24, Q24 (amd <= 255: the first product
-        fits 32 bits; the second is taken as (a >> 8) x (lv >> 8) >> 8, which also does)"""
+        """msfa: amod_1 = ((amd x lfo_delay) >> 8) x ((1 << 24) - lfo_val) >> 24, Q24, its products 64-bit; here regrouped
+        so that every product fits a signed 32-bit register: (((amd x (lfo_delay >> 8)) >> 8) x (lv >> 9)) >> 7"""
         lv = (1 << 24) - self.lfo_val
-        a = (self.pw['amd'] * self.lfo_delay) >> 8
-        return ((a >> 8) * (lv >> 8)) >> 8
+        a = (self.pw['amd'] * (self.lfo_delay >> 8)) >> 8
+        return (a * (lv >> 9)) >> 7
 
     def _op_control(self, v, k):
         pw = self.pw
@@ -643,7 +645,7 @@ class Engine:
         if pw['ams'][k]:
             # msfa: level -= level x (exp(sensamp / 262144 x 0.07 + 12.2) << 4) >> 28 = level x 2 ** (AM_K0 + AM_K1
             # sensamp) / 2 ** 24 (AM_K*, Q24); here level x exp2_q24(x, 0) >> 24 with x = AM_K0 + (sensamp >> 4) AM_K1
-            sensamp = ((self._amp_mod() >> 8) * (pw['ams'][k] >> 8)) >> 8
+            sensamp = ((self.amod >> 9) * (pw['ams'][k] >> 9)) >> 6
             x = AM_K0 + (sensamp >> 4) * AM_K1
             level -= fix(F32(F32(float(level)) * exp2_f32(x)))
         g = exp2_q24(level, GAIN_EXP + pw['gshift'][k])
@@ -706,7 +708,9 @@ class Engine:
             v.g[k] = i32(v.g[k] + v.dg[k])
             if (fl & 0xC0) == 0xC0:
                 fbs = self.pw['fb_shift']
-                mod = (v.fb[0] + v.fb[1]) >> (fbs + 1) if outbus else ((v.fb[0] + v.fb[1]) << 4) >> (fbs + 1)
+                # a carrier's output is 2 ** (GSHIFT_MOD - GSHIFT_CAR) smaller than a modulator's (msfa's scale)
+                mod = (v.fb[0] + v.fb[1]) >> (fbs + 1) if outbus else \
+                    ((v.fb[0] + v.fb[1]) << (GSHIFT_MOD - GSHIFT_CAR)) >> (fbs + 1)
                 if fbs >= 16:
                     mod = 0
             else:

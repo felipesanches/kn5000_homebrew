@@ -2,10 +2,11 @@
 # (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
 # Licensed under the terms of the GNU General Public License v3 or later
 #
-# steady.py MSFA_REF -- do the model and msfa give the same steady-state spectrum, algorithm by algorithm?
+# steady.py MSFA_REF [FB] -- do the model and msfa give the same steady-state spectrum, algorithm by algorithm?
 # compare.py's 32 random voices (seed 1, one per algorithm) made static: every rate 99, L2 = L3 = L1, no LFO, a flat
 # pitch envelope; C4 at velocity 100; one long FFT over 0.25-1.0 s. Prints per algorithm the median and 90th
-# percentile of the dB difference over the bins within 40 dB of the loudest, and the level difference.
+# percentile of the dB difference over the bins within 40 dB of the loudest, and the level difference. FB (0-7), when
+# given, replaces every voice's feedback (algorithm 32's feedback operator is a carrier: FB 7 tests that path).
 import os
 import random
 import subprocess
@@ -24,6 +25,8 @@ with tempfile.TemporaryDirectory() as td:
     vf = os.path.join(td, 'v.bin')
     for idx in range(32):
         p = c.random_patch(rng, idx)
+        if len(sys.argv) > 2:
+            p.set('FB', int(sys.argv[2]))
         for f in ('LPMD', 'LAMD', 'LPMS'):
             p.set(f, 0)
         for f in ('PL1', 'PL2', 'PL3', 'PL4'):
