@@ -47,7 +47,10 @@ ALU = {
     "FLOATBY": (0xDA, "F{n} = FLOAT R{x} BY R{y}")}
 SHIFT_IMM = {"LSHIFT": 0x00, "ASHIFT": 0x01}
 FIELD_IMM = {"FEXT": 0x10, "FDEP": 0x11}
-SHIFT_REG = {"LSHIFT": 0x00, "ASHIFT": 0x04}   # shifter (compute field CU = 10): Rn = LSHIFT/ASHIFT Rx BY Ry
+# shifter (compute field CU = 10): Rn = LSHIFT/FEXT Rx BY Ry. Not ASHIFT or FDEP by a register: MAME's interpreter
+# lacks ASHIFT and FDEP by Ry and its recompiler stops at them (generate_unimplemented_compute)
+SHIFT_REG = {"LSHIFT": 0x00, "FEXT": 0x40}
+BIT_IMM = {"BSET": 0x30, "BCLR": 0x31, "BTST": 0x33}
 
 
 def _r(name):
@@ -85,7 +88,8 @@ def mul_ssi(rn, rx, ry):
 
 
 def shift_reg(op, rn, rx, ry):
-    """single-function shifter (CU = 10): Rn = LSHIFT/ASHIFT Rx BY Ry (Ry's low byte, signed: < 0 shifts right)"""
+    """single-function shifter (CU = 10): Rn = LSHIFT Rx BY Ry (Ry signed: < 0 shifts right), or FEXT Rx BY Ry (Ry =
+    len << 6 | pos)"""
     return (2 << 20) | (SHIFT_REG[op] << 12) | (_r(rn) << 8) | (_r(rx) << 4) | _r(ry), \
         f"R{_r(rn)} = {op} R{_r(rx)} BY R{_r(ry)}"
 
@@ -132,6 +136,14 @@ def field_imm(op, rn, rx, pos, length, cond="TRUE"):
             | ((d & 0xFF) << 8) | (_r(rn) << 4) | _r(rx), _if(cond) + f"R{_r(rn)} = {op} R{_r(rx)} BY {pos}:{length}")
 
 
+def bit_imm(op, rn, rx, bit, cond="TRUE"):
+    """type 6 without a data move: Rn = BSET/BCLR Rx BY bit, or BTST Rx BY bit (SZ set when the bit is 0)"""
+    assert 0 <= bit < 32
+    w = (0x02 << 40) | (COND[cond] << 33) | (BIT_IMM[op] << 16) | (bit << 8) | (_r(rn) << 4) | _r(rx)
+    text = f"BTST R{_r(rx)} BY {bit}" if op == "BTST" else f"R{_r(rn)} = {op} R{_r(rx)} BY {bit}"
+    return w, _if(cond) + text
+
+
 def compute_dm(comp, dreg, offset, ireg, write, cond="TRUE"):
     """type 4: IF cond compute, dreg = DM(offset, Ia) / DM(offset, Ia) = dreg -- a 6-bit signed offset, Ia not
     modified (pre-modify); all reads of the instruction happen before its writes"""
@@ -144,9 +156,11 @@ def compute_dm(comp, dreg, offset, ireg, write, cond="TRUE"):
     return w, _if(cond) + (text + ",  " if text else "") + mv
 
 
-def ureg_move(dst, src, cond="TRUE"):
-    """type 5: dst = src (any two universal registers)"""
-    return (0x7 << 44) | (_u(src) << 36) | (COND[cond] << 31) | (_u(dst) << 23), _if(cond) + f"{dst} = {src}"
+def ureg_move(dst, src, cond="TRUE", comp=None):
+    """type 5: [IF cond] [compute,] dst = src (any two universal registers; src is read before the compute writes)"""
+    field, text = comp if comp is not None else (0, "")
+    return ((0x7 << 44) | (_u(src) << 36) | (COND[cond] << 31) | (_u(dst) << 23) | field,
+            _if(cond) + (text + ",  " if text else "") + f"{dst} = {src}")
 
 
 def ureg_imm(dst, value):
