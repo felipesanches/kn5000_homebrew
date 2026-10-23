@@ -143,6 +143,7 @@ UiNow:
 .equ K_SAVE,        5               # UP twice: write it
 .equ K_NAME,        6               # a character of the name (VCED offset), 32-126
 .equ K_VOL,         7               # V_VOL, the master volume
+.equ K_POLY,        8               # V_NV, the voices played (1-8)
 .equ T_NUM,         0
 .equ T_PLUS1,       1               # shown + 1 (the algorithm)
 .equ T_MODE,        2               # RATIO / FIXED
@@ -222,6 +223,8 @@ ParamStep:
     beq     ps_file
     cmp     K_VOL, d0
     beq     ps_vol
+    cmp     K_POLY, d0
+    beq     ps_poly
     cmp     K_LOAD, d0
     beq     ps_load
     cmp     K_SAVE, d0
@@ -302,6 +305,18 @@ ps_vol:
     mov     d0, (V_VOL)
     mov     1, d0
     mov     d0, (V_VOLDIRTY)
+    clr     d0
+    bra     ps_dirty
+ps_poly:
+    mov     (V_NV), d0
+    add     d3, d0
+    cmp     1, d0
+    blt     ps_ret
+    cmp     NVOICES, d0
+    bgt     ps_ret
+    mov     d0, (V_NV)
+    mov     1, d0
+    mov     d0, (V_NVDIRTY)
     clr     d0
     bra     ps_dirty
 ps_load:
@@ -465,6 +480,14 @@ up_patch:
     mov     d0, (V_VOLDIRTY)
     call    DspSetVol, 0, 0
 up_patch2:
+    mov     (V_NVDIRTY), d0         # the voices played
+    cmp     0, d0
+    beq     up_patch3
+    clr     d0
+    mov     d0, (V_NVDIRTY)
+    call    AllNotesOff, 0, 0
+    call    DspSetNV, 0, 0
+up_patch3:
     mov     (V_PDIRTY), d0          # the DSP's words
     cmp     0, d0
     beq     up_msg
@@ -1265,6 +1288,14 @@ DrawValue:
     beq     dv_draw
     cmp     K_SAVE, d0
     beq     dv_draw
+    cmp     K_POLY, d0
+    bne     dv_vol
+    mov     TMPSTR, a0
+    mov     (V_NV), d0
+    mov     1, d1
+    call    PutDecN, 0, 0
+    bra     dv_draw
+dv_vol:
     cmp     K_VOL, d0
     bne     dv_file
     mov     TMPSTR, a0
@@ -1784,8 +1815,8 @@ page_bank:
     .long   str_vol
     .byte   K_LOAD, 0, 0, T_ACT
     .long   str_load
-    .byte   K_NONE, 0, 0, 0
-    .long   str_none
+    .byte   K_POLY, 0, 8, T_NUM
+    .long   str_poly
     .byte   K_SAVE, 0, 0, T_ACT
     .long   str_save
     .byte   K_NONE, 0, 0, 0
@@ -1861,6 +1892,7 @@ str_load:       .asciz  "LOAD"
 str_save:       .asciz  "SAVE"
 str_name:       .asciz  "NAME"
 str_vol:        .asciz  "VOL"
+str_poly:       .asciz  "POLY"
 str_ratio:      .asciz  "RAT"
 str_fixed:      .asciz  "FIX"
 str_mln:        .asciz  "-LN"

@@ -881,6 +881,7 @@ dpr_ver2:
     cmp     0, d0
     bne     dpr_fail
     call    DspSetVol, 0, 0         # the editor's volume (the variables came with full volume)
+    call    DspSetNV, 0, 0          # and its voices (they came with all eight)
     mov     DSP_MSGR7, d0           # the heartbeat before the hook
     call    DspRead, 0, 0
     mov     d0, (V_HB0)
@@ -1031,6 +1032,19 @@ DspSetVol:
     call    DspUpload, 0, 0
     ret     [d2,d3,a2,a3], 0x30
 
+# DspSetNV: V_NV into the engine's NV, the voices its kernel plays.
+DspSetNV:
+    movm    [d2,d3,a2,a3], (sp)
+    add     -0x20, sp
+    mov     (V_NV), d0
+    mov     d0, (V_NVWORD)
+    mov     DSP_G_NV, d0
+    mov     1, d1
+    mov     V_NVWORD, a0
+    mov     DMAC_UP_DM, a1
+    call    DspUpload, 0, 0
+    ret     [d2,d3,a2,a3], 0x30
+
 # DspCmdWait -> d0 = 0 once MSGR6 reads 0 (the engine has taken the last command, which it does at its next
 # frame), within CMD_POLLS reads; else 1 (V_BUSY + 1).
 DspCmdWait:
@@ -1122,6 +1136,21 @@ DspRate:
     divu    d3, d0
     mov     d0, (V_RATE)
     mov     d2, (V_HBMS)
+    cmp     RATE_MIN, d0            # frames missed: the voices take more than a frame. One voice less
+    bcc     drt_dirty
+    mov     (V_NV), d0
+    cmp     1, d0
+    bls     drt_dirty
+    add     -1, d0
+    mov     d0, (V_NV)
+    call    AllNotesOff, 0, 0
+    call    DspSetNV, 0, 0
+    mov     msg_busy, d0
+    call    PostMsg, 0, 0
+    mov     (V_COLDIRTY), d0
+    or      8, d0                   # (the BANK page's POLY column, the fourth, when shown)
+    mov     d0, (V_COLDIRTY)
+drt_dirty:
     mov     (V_DIRTY), d0
     or      D_TITLE, d0
     mov     d0, (V_DIRTY)
@@ -1183,6 +1212,7 @@ dq_ret:
 # the search's step 1 must succeed.)
 
 # ---- data ------------------------------------------------------------------------------------------------------
+msg_busy:       .asciz  "DSP too busy: a voice less"
     .align  4
 upload_list:    # what DspPrepare uploads and reads back: DSP address, words, where, DMAC mode
     .long   DSP_CODE_ADDR, DSP_CODE_WORDS, DspCode, DMAC_UP_PM

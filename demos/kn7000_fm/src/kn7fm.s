@@ -72,7 +72,7 @@ fe_first:                           # a fresh load: everything here is zero
     mov     d0, (V_STATE)
     mov     0xFF, d0
     mov     d0, (V_ALG)
-    mov     NVOICES, d0
+    mov     NV_DEFAULT, d0
     mov     d0, (V_NV)
     mov     VOL_DEFAULT, d0
     mov     d0, (V_VOL)

@@ -119,6 +119,8 @@
 .equ V_VOL,         M_VARS + 0xDC   # the master volume, 0-31 (T_VOLUME: 1.5 dB steps, 31 = full)
 .equ V_VOLDIRTY,    M_VARS + 0xE0   # 1: it changed, to be sent
 .equ V_VOLWORD,     M_VARS + 0xE4   # its Q31 word, as uploaded
+.equ V_NVWORD,      M_VARS + 0xE8   # V_NV, as uploaded to the DSP's NV
+.equ V_NVDIRTY,     M_VARS + 0xEC   # 1: V_NV changed, to be sent
 .equ V_DECBUF,      M_VARS + 0x100  # 16 bytes: PutDec's digits
 
 .equ ST_FIRST,      0               # V_STATE
@@ -197,7 +199,9 @@
 .equ PG_BANK,       2               #   the bank's file, LOAD, SAVE, the voice's name
 
 # ---- the synthesizer -------------------------------------------------------------------------------------
-.equ NVOICES,       8
+.equ NVOICES,       8               # the DSP's voices
+.equ NV_DEFAULT,    5               # played at the start: in MAME the kernel keeps every frame up to 5 (KN7FM README)
+.equ RATE_MIN,      43500           # fewer DSP frames a second than this: a voice less (DspRate)
 .equ VR_NOTE,       0               # the voice allocator's records (VOICEV): u8 the key (0xFF = none)
 .equ VR_STATE,      1               #   u8: VS_*
 .equ VR_AGE,        4               #   u32: V_AGE at its last key-on or key-off
