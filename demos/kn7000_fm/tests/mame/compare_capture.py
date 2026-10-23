@@ -33,25 +33,56 @@ print(f'captured {len(mix)} frames from frame {frames[0]}; key {key} velocity {v
 e = m.Engine()
 e.set_patch(patch)
 e.vol = None if '--novol' in sys.argv else m.volume_word(m.VOL_DEFAULT)   # --novol: a build without the volume
-lo = frames[first] - 140
-while e.frame_no < lo:
+while e.frame_no < frames[0]:
     e.frame()
-best = None
-for k in range(lo, frames[first] + 1):
-    t = copy.deepcopy(e)
-    t.key_on(0, patch, key, vel)
-    while t.frame_no < frames[0]:
+idx = {f: i for i, f in enumerate(frames)}
+
+
+def run_from(t, i0, upto):
+    """t at frame frames[i0]: its samples compared with MIX from i0 -> the first index that differs (or upto)"""
+    for i in range(i0, upto):
+        if t.frame() != mix[i]:
+            return i
+    return upto
+
+
+def search(t0, i0, i_lo, i_hi, act, upto):
+    """t0 at index i0: the frame in [i_lo, i_hi] at which act(t) (a key-on or key-off) makes the model follow MIX
+    longest"""
+    best = None
+    t = copy.deepcopy(t0)
+    for i in range(i0, i_lo):
         t.frame()
-    got = []
-    for i in range(len(mix)):
-        got.append(t.frame())
-        if got[-1] != mix[i] and i > first + 64:
-            break
-    n = next((i for i in range(len(got)) if got[i] != mix[i]), len(got))
-    if best is None or n > best[1]:
-        best = (k, n, got)
-    e.frame()
-k, n, got = best
-print(f'best key-on frame {k}: the first {n} of {len(mix)} samples equal' + ('' if n == len(mix) else
-      f'; then model {got[n:n + 4]}, MAME {mix[n:n + 4]}'))
+    i = i_lo
+    while i <= i_hi:
+        c = copy.deepcopy(t)
+        act(c)
+        n = run_from(c, i, upto)
+        if best is None or n > best[1]:
+            best = (i, n)
+        if t.frame() != mix[i]:
+            break                                   # the model without the act no longer matches: stop
+        i += 1
+    return best
+
+
+base = copy.deepcopy(e)
+assert run_from(e, 0, first) == first, 'the model is not silent where MIX is'
+k_on, n = search(base, 0, max(0, first - 140), first, lambda c: c.key_on(0, patch, key, vel), len(mix))
+print(f'key-on at frame {frames[k_on]}: the samples equal up to frame {frames[n - 1] if n else None} '
+      f'({n} of {len(mix)})')
+if n < len(mix):
+    t = copy.deepcopy(base)
+    for i in range(0, k_on):
+        t.frame()
+    t.key_on(0, patch, key, vel)
+    lo = max(k_on, n - 140)
+    for i in range(k_on, lo):
+        t.frame()
+    k_off, n2 = search(t, lo, lo, n, lambda c: c.key_off(0), len(mix))
+    print(f'key-off at frame {frames[k_off]}: the samples equal up to the end' if n2 == len(mix) else
+          f'key-off at frame {frames[k_off]}: equal up to sample {n2} of {len(mix)}')
+    n = n2
+nz = sum(1 for x in mix if x)
+print(f'compare_capture: {"all" if n == len(mix) else n} of {len(mix)} samples equal ({nz} not zero)')
 sys.exit(0 if n == len(mix) else 1)
