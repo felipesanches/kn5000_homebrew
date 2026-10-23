@@ -24,6 +24,13 @@ local V_NOTES, V_STEALS, V_BUSY, V_RATE, V_REDRAWS, V_DIRTY = MV + 0x90, MV + 0x
 local DH = 0x502D8400
 local DV_STATE, DV_FAIL, DV_FOUND, DV_HOOKED = DH, DH + 4, DH + 0x28, DH + 0x54
 local VOICES, G_MIX, G_FRAME = 0x9D00, 0x9C23, 0x9C26
+-- the DSP program's addresses, from the build (run_fm.sh passes build/dsp_equ.inc)
+local EQU = {}
+local equ_path = assert(os.getenv("FM_EQU"), "set FM_EQU")
+for line in io.lines(equ_path) do
+  local k, v = line:match("^%.equ%s+([%w_]+),%s+(0x%x+)")
+  if k then EQU[k] = tonumber(v) end
+end
 local menuV, V_NPROG, ORDER, PR_NAME = 0x502C0000, 0x502C0034, 0x502C3800, 0x40   -- the menu's (kn7menu menu.inc)
 local NAME = "KN7FM: DX7-style FM synthesizer"
 
@@ -76,6 +83,7 @@ local function dump(name, addr, len, head)  -- main-CPU memory to OUT/name (afte
 end
 local function dump_words(key)
   dump(string.format("pimg_%d.bin", NDUMP), 0x502D8FC0, 67 * 4, { sp:read_u32(V_PATCH) })
+  dump(string.format("voice_%d.bin", NDUMP), 0x502D9200 + 155 * sp:read_u32(V_PATCH), 155)   -- the voice, as edited
   if key then dump(string.format("stage_%d.bin", NDUMP), 0x502D8E00, 18 * 4, { sp:read_u32(V_PATCH), key }) end
   NDUMP = NDUMP + 1
 end
@@ -171,11 +179,38 @@ local co = coroutine.create(function()
     press("CPC_SEG11", 0x10); wait(1)                   -- PAGE UP: the next voice
     E("PAGE UP: patch %d", sp:read_u32(V_PATCH))
     play({ "C3" }, 1.5, "C3 voice 2")
-    press("CPL_SEG0", 0x08); wait(1)                    -- LCDL 2: OP2
-    for _ = 1, 3 do press("CPC_SEG5", 0x10); wait(0.3) end  -- MUTE UP 1: R1 + 1
+    local BANK, VCED = 0x502D9200, 155
+    local function vbyte(voice, off) return sp:read_u8(BANK + VCED * voice + off) end
+    local function check(name, ok, fmt, ...) E("CHECK %s: %s; " .. fmt, name, ok and "ok" or "FAIL", ...) end
+    press("CPL_SEG0", 0x08); wait(1)                    -- LCDL 2: OP2 (the VCED's operator 4)
+    for _ = 1, 3 do press("CPC_SEG5", 0x20); wait(0.3) end  -- MUTE DOWN 1: its R1 - 1, three times
     wait(1); M.video:snapshot()
-    press("CPR_SEG7", 0x01); wait(1); M.video:snapshot() -- LCDR 3: VOICE
-    press("CPR_SEG6", 0x01); wait(1); M.video:snapshot() -- LCDR 4: BANK
+    local r1 = vbyte(1, 4 * 21)
+    check("OP2 R1 down 3", r1 == 96, "R1 = %d", r1)
+    press("CPR_SEG7", 0x01); wait(1)                    -- LCDR 3: VOICE
+    press("CPC_SEG5", 0x10); wait(1.5)                  -- MUTE UP 1: the algorithm + 1
+    local alg, valg = vbyte(1, 134), sp:read_u32(MV + 0x3C)
+    check("ALG up", alg == 1 and valg == 1, "ALG byte %d, the kernel running %d, TRAMP %012X", alg, valg, slot(EQU.DSP_TRAMP))
+    M.video:snapshot()
+    play({ "C3" }, 1.0, "C3 on algorithm 2")
+    press("CPR_SEG6", 0x01); wait(1)                    -- LCDR 4: BANK
+    for _ = 1, 2 do press("CPC_SEG5", 0x80); wait(0.3) end  -- MUTE DOWN 2: the volume - 2
+    wait(1)
+    local vol, vw = sp:read_u32(MV + 0xDC), dm:read_u32(EQU.DSP_G_VOL)
+    check("VOL down 2", vol == 21 and vw == sp:read_u32(MV + 0xE4), "V_VOL %d, the DSP's VOL %08X", vol, vw)
+    press("CPC_SEG5", 0x10); wait(0.5)                  -- MUTE UP 1: FILE 1
+    press("CPC_SEG8", 0x01); wait(3)                    -- MUTE UP 3 (CPC_SEG8 SW0): LOAD BANK1.SYX
+    local name = ""
+    for k = 0, 9 do name = name .. string.char(vbyte(0, 145 + k)) end
+    check("LOAD BANK1.SYX", sp:read_u32(MV + 0x34) == 2 and name == "LOADED V01", "bank from %d, voice 1 %q",
+      sp:read_u32(MV + 0x34), name)
+    M.video:snapshot()
+    press("CPC_SEG5", 0x10); wait(0.5)                  -- FILE 2
+    press("CPC_SEG8", 0x10); wait(0.5)                  -- MUTE UP 5 (CPC_SEG8 SW4): SAVE, armed
+    press("CPC_SEG8", 0x10); wait(4)                    -- again: BANK2.SYX written
+    check("SAVE BANK2.SYX", sp:read_u32(MV + 0x2C) == 4104, "bytes written %d, request %d result %d",
+      sp:read_u32(MV + 0x2C), sp:read_u32(MV + 0x24), sp:read_u32(MV + 0x28))
+    M.video:snapshot()
   end
   press("CPC_SEG11", 0x80, 2.0)                         -- EXIT held 2 s
   local q = wait_until(function() return sp:read_u32(V_TASKDONE) == 1 and sp:read_u32(DV_STATE) ~= 2 end, 20)

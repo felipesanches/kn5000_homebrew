@@ -5,7 +5,8 @@
 # check_words.py OUT -- does the MN10300 compute the DSP's words exactly as tools/fm_model.py does? fm_test.lua dumps,
 # from a MAME run, the bank as the program unpacked it (bank.bin, 32 x 155 bytes), and per check point the voice
 # number, the patch words the program sent (pimg_N.bin, 70 u32) and the last key-on's staged words with its key
-# (stage_N.bin: key, then 18 u32). This compares:
+# (stage_N.bin: key, then 18 u32), and the voice as it was then (voice_N.bin, when the run dumped it: edits since
+# bank.bin). This compares:
 #   * the bank with tools/fm_host.py's built-in bank (when no BANK0.SYX was on the card: pass --bank FILE else);
 #   * each pimg with fm_dsp.patch_image(fm_model.patch_words(voice));
 #   * each stage with fm_model.note_words(voice, key, v) for some velocity v (the keybed's is not known: the one
@@ -40,7 +41,9 @@ def main():
         voice = struct.unpack('<I', b[:4])[0]
         n = d.PATCH_END - d.PATCH
         words = list(struct.unpack('<%dI' % n, b[4:4 + 4 * n]))
-        ref = d.patch_image(m.patch_words(got[voice]))
+        vf = f.replace('pimg_', 'voice_')                  # the voice as it was then (edits since bank.bin)
+        pv = m.Patch(open(vf, 'rb').read()) if os.path.exists(vf) else got[voice]
+        ref = d.patch_image(m.patch_words(pv))
         diff = [k for k in range(len(ref)) if ref[k] != words[k]]
         print(f'{os.path.basename(f)}: voice {voice + 1}: {len(ref) - len(diff)} of {len(ref)} patch words equal'
               + (f'; first differences at {diff[:6]}: got {[hex(words[k]) for k in diff[:3]]}, '
@@ -51,15 +54,17 @@ def main():
         voice, key = struct.unpack('<II', b[:8])
         words = list(struct.unpack('<18I', b[8:8 + 72]))
         found = None
+        vf = f.replace('stage_', 'voice_')
+        pv = m.Patch(open(vf, 'rb').read()) if os.path.exists(vf) else got[voice]
         for vel in range(1, 128):
-            p, o, s = m.note_words(got[voice], key, vel)
+            p, o, s = m.note_words(pv, key, vel)
             if [x & 0xFFFFFFFF for x in p + o + s] == words:
                 found = vel
                 break
         if found:
             print(f'{os.path.basename(f)}: voice {voice + 1} key {key}: the 18 words equal note_words at velocity {found}')
         else:
-            p, o, s = m.note_words(got[voice], key, 100)
+            p, o, s = m.note_words(pv, key, 100)
             ref = [x & 0xFFFFFFFF for x in p + o + s]
             diff = [k for k in range(18) if ref[k] != words[k]]
             print(f'{os.path.basename(f)}: voice {voice + 1} key {key}: NO velocity matches; at 100 words {diff} '

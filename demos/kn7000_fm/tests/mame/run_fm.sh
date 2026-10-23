@@ -25,6 +25,7 @@ make -s -C "$MENU" OUT="$O/menu" > "$O/menu.log" 2>&1 || { cat "$O/menu.log"; ex
 rm -rf -- "${O:?}/tree" "${O:?}/snap"; mkdir -p "$O/tree" "$O/snap" "$O/cfg" "$O/nv"
 cp "$O/menu/KN7APP.BIN" "$O/tree/KN7APP.BIN"
 cp -r "$FM/build/card/KN7FM" "$O/tree/KN7FM"
+python3 -I "$HERE/make_extra.py" "$O" >> "$O/build.log"   # BANK1.SYX for the LOAD test
 if [ -d "$O/extra" ]; then cp "$O"/extra/* "$O/tree/KN7FM/"; fi
 cp "$EMU/sdcard_from_real_kn7000.img" "$O/sd.img"; chmod u+w "$O/sd.img"
 python3 -I "$MENU/fatimg.py" "$O/sd.img" put "$O/tree" > "$O/fatimg.txt"
@@ -35,7 +36,7 @@ rm -f -- "$O/run.wav"
   echo "KN7FM KN7APP.BIN $(sha1sum < "$FM/build/KN7APP.BIN" | cut -c1-40), menu $(sha1sum < "$O/menu/KN7APP.BIN" | cut -c1-40)"
   echo "floppy $(sha1sum < "$FLOPPY" | cut -c1-40), card image $(sha1sum < "$EMU/sdcard_from_real_kn7000.img" | cut -c1-40)"
 } > "$O/versions.txt"
-( cd "$EMU" && env FM_OUT="$O" FM_DEAD=0x500066D8 FM_PANEL=0x5006BE4C DISPLAY="${DISPLAY:-:0}" timeout 3600 \
+( cd "$EMU" && env FM_OUT="$O" FM_EQU="$FM/build/dsp_equ.inc" FM_DEAD=0x500066D8 FM_PANEL=0x5006BE4C DISPLAY="${DISPLAY:-:0}" timeout 3600 \
     ./kn7000 kn7000 -bios v13 -rompath ./roms -pluginspath ./plugins -skip_gameinfo -window -nothrottle \
     -harddisk "$O/sd.img" -flop "$O/floppy.img" -wavwrite "$O/run.wav" \
     -nvram_directory "$O/nv" -cfg_directory "$O/cfg" -snapshot_directory "$O/snap" \
