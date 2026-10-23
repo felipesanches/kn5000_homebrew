@@ -3,7 +3,8 @@
 --
 -- rate.lua -- the effects DSP's frame rate in MAME with a program of the menu running: DISK MENU, STYLE CONVERT,
 -- OK; the menu's row named $RATE_NAME, RUN; then MSGR7 (DM 0x0F, the heartbeat DSPTONE's and KN7FM's units count)
--- read every second for 10 s, with the keys named in $RATE_KEYS held. Writes $RATE_OUT/rate.txt. (run_rate.sh; -nodrc in $EXTRA to try MAME's
+-- read every second for 10 s, with the keys named in $RATE_KEYS held (and KN7FM's POLY first raised
+-- $RATE_POLY_UP steps). Writes $RATE_OUT/rate.txt. (run_rate.sh; -nodrc in $EXTRA to try MAME's
 -- interpreter.)
 local M = manager.machine
 local sp = M.devices[":maincpu"].spaces["program"]
@@ -50,6 +51,13 @@ local co = coroutine.create(function()
   press("CPL_SEG0", ({ 0x02, 0x08, 0x20, 0x01, 0x04 })[idx % 5 + 1]); wait(1)
   press("CPR_SEG5", 0x01)
   wait(20)
+  local up = tonumber(os.getenv("RATE_POLY_UP") or "0")  -- BANK page, MUTE UP 4 (POLY) this many times
+  if up > 0 then
+    press("CPR_SEG6", 0x01); wait(1)
+    for _ = 1, up do press("CPC_SEG8", 0x04); wait(0.3) end
+    wait(1)
+    E("POLY raised: %d voices", sp:read_u32(0x502D8844))
+  end
   local keys = {}                                   -- $RATE_KEYS: keybed keys held while measuring ("C4 E4 ...")
   for name in (os.getenv("RATE_KEYS") or ""):gmatch("%S+") do
     for _, tag in ipairs({ ":KEYS0", ":KEYS1", ":KEYS2", ":KEYS3" }) do
@@ -64,7 +72,7 @@ local co = coroutine.create(function()
   for _ = 1, 10 do
     wait(1)
     local h, t = dm:read_u32(0x0F), now()
-    E("MSGR7 %d: %.0f frames a second", h, (h - h0) / (t - t0))
+    E("MSGR7 %d: %.0f frames a second; KN7FM plays %d voices", h, (h - h0) / (t - t0), sp:read_u32(0x502D8844))
     h0, t0 = h, t
   end
   f:close()

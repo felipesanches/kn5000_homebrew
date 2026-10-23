@@ -6,12 +6,11 @@ KN7000's effects DSP (IC306, an ADSP-21065L "SHARC"), loaded through the firmwar
 DSPTONE and Another World programs do. It is an application of the KN7000 program loader (`KN7LOAD.CNV`, started
 from DISK MENU > STYLE CONVERT; the program menu's folder `KN7FM\`).
 
-> **Status (2026-10-23): runs in MAME; not yet tried on the instrument.** The engine's model is checked against
-> msfa (the DX7 engine Dexed uses); the DSP program against the model, word for word, in a simulator; the main CPU's
-> program in MAME (program 893, through the loader floppy and the program menu): it finds the firmware, loads and
-> hooks the DSP, plays the keybed's notes on eight voices, edits, and puts the firmware's effects back when it ends.
-> Not yet: a sample-exact check of the DSP's output in MAME (under way), the cycle budget on the chip, LOAD/SAVE in
-> MAME, the instrument.
+> **Status (2026-10-23): runs in MAME; not yet tried on the instrument.** In MAME (program 893, through the loader
+> floppy and the program menu) it finds the firmware, loads and hooks the DSP, plays the keybed's notes, edits,
+> loads and saves banks, and puts the firmware's effects back when it ends. The DSP's output there equals the model's
+> sample for sample, under both of MAME's SHARC cores. The open question for the instrument is how many voices its
+> DSP has time for: in MAME, five (below).
 
 ## What it is meant to do
 
@@ -94,17 +93,30 @@ key-off; the low half 0); the DSP takes them at its next frame and writes MSGR6 
 
 ## Checked
 
-| what                                                       | how                                                                        | result                                                                                                                                                                                                 |
-|------------------------------------------------------------|----------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| every SHARC word means what it was written for             | `tools/fm_dsp.py --check`: MAME's unidasm over all 3,619 words             | all disassemble as meant                                                                                                                                                                               |
-| the DSP program computes the model, word for word          | `tools/fm_sim.py --seconds 1.5`: all 32 algorithms, 8 voices, random notes | 66,150 frames per algorithm, 37-53 key events each: every sample and every voice word identical; no overflow                                                                                           |
-| its cost                                                   | the same run: instructions, + 2 per branch taken                           | at most 1,252 cycles a frame, mean 669-894 by algorithm; the frame is about 1,360 at 60 MHz, less the kernel's own work: see below                                                                     |
-| the main CPU computes the DSP's words exactly              | `tests/mame/check_words.py` on a MAME run's dumps                          | the bank (32 voices), the patch words (67 of 67, two voices), the key-on words (18 of 18, three notes) equal the model's                                                                               |
-| it runs in MAME (program 893, the loader floppy, the menu) | `tests/mame/run_fm.sh OUT` (`fm_test.lua`)                                 | finds everything, hooks units 0 and 9, DSP at 44,1xx frames/s; C4 -15.9 dBFS, a chord on three voices; every voice ends after release; PAGE UP, the editor's pages; EXIT puts both slots back as found |
+| what                                                       | how                                                                          | result                                                                                                                                                                                                                                                             |
+|------------------------------------------------------------|------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| every SHARC word means what it was written for             | `tools/fm_dsp.py --check`: MAME's unidasm over all 3,619 words               | all disassemble as meant                                                                                                                                                                                                                                           |
+| the DSP program computes the model, word for word          | `tools/fm_sim.py --seconds 1.5`: all 32 algorithms, 8 voices, random notes   | 66,150 frames per algorithm, 37-53 key events each: every sample and every voice word identical; no overflow                                                                                                                                                       |
+| its cost                                                   | the same run: instructions, + 2 per branch taken                             | at most 1,252 cycles a frame, mean 669-894 by algorithm; the frame is about 1,360 at 60 MHz, less the kernel's own work: see below                                                                                                                                 |
+| the main CPU computes the DSP's words exactly              | `tests/mame/check_words.py` on a MAME run's dumps                            | the bank (32 voices), the patch words (67 of 67, two voices), the key-on words (18 of 18, three notes) equal the model's                                                                                                                                           |
+| it runs in MAME (program 893, the loader floppy, the menu) | `tests/mame/run_fm.sh OUT` (`fm_test.lua`)                                   | finds everything, hooks units 0 and 9, DSP at 44,1xx frames/s; notes and chords; every voice ends after release; PAGE UP; the editor: an envelope rate, the algorithm (the kernel swapped), the volume (`CHECK` lines, all ok); EXIT puts both slots back as found |
+| LOAD and SAVE                                              | the same session: `BANK1.SYX` (`make_extra.py`) loaded, saved as `BANK2.SYX` | loaded (its renamed voice there); `BANK2.SYX` read back off the card (`card_get.py`) equals `BANK1.SYX` byte for byte                                                                                                                                              |
+| the DSP's output in MAME equals the model's                | `fm_capture.lua` (a write tap on MIX, every frame), `compare_capture.py`     | one C4, 2 s: all 88,200 samples equal under the recompiler (MAME's default), all 35,217 under the interpreter (`EXTRA=-nodrc`)                                                                                                                                     |
+| how many voices the DSP has time for (MAME)                | `tests/mame/run_rate.sh` with keys held                                      | E.PIANO: 44,100 frames/s with 5 voices, 30,731 with 6, 24,325 with 7, 23,010 with 8                                                                                                                                                                                |
 
-The budget is the open question for the instrument: the kernel's other eight units run in the same frame, and
-how many cycles they leave is not known (the DSP's clock is not confirmed either). Eight voices may be too many
-there; the engine plays `NV` voices (a DSP variable), so the main CPU can lower it.
+**Voices.** The kernel's other eight units run in the same frame. In MAME, which counts one cycle an
+instruction, they leave KN7FM room for five voices of the E.PIANO: with six or more the DSP misses frames, and
+everything it plays slows down. KN7FM therefore plays five voices to start, the BANK page's POLY sets 1-8, and every
+second the main CPU reads the DSP's frame rate (MSGR7): below 43,500 frames a second it plays a voice less and says
+so. On the chip a frame may well cost more than in MAME (taken branches, SDRAM wait states, the 40-bit float
+mode), so fewer voices may fit there; nobody has measured it. The kernels run about 14 cycles an operator, and could
+be brought nearer 10 by overlapping operators.
+
+Under `-nodrc` the DSP runs only about 17,800 frames a second in MAME, with any unit: DSPTONE's measures the same
+(`run_rate.sh`). It is MAME's interpreter, not the program; the sample comparison does not mind.
+
+MAME writes a host-port register at each 16-bit half (kn7000_mame `notes/dsp-host-iop-write-halves.md`): KN7FM's
+commands are in MSGR6's high half so that this cannot take a key-on twice.
 
 In MAME the keybed's own sound is still heard: the expression (CC 11) KN7FM sends to mute it is not emulated
 (Another World's port records the same).
@@ -122,15 +134,15 @@ at the start (else the built-in one); `BANK1.SYX` ... `BANK9.SYX` load and save 
 
 ## Playing and editing
 
-| control               | what                                                                            |
-|-----------------------|---------------------------------------------------------------------------------|
-| the keybed, MIDI IN 1 | the notes (any channel); the sustain pedal (CC 64)                              |
-| PAGE UP / DOWN        | the next / previous voice of the bank                                           |
-| LCDL 1-4, LCDR 1-2    | OP1-OP6: envelope, level, frequency; again: keyboard scaling                    |
-| LCDR 3                | VOICE: algorithm, feedback, sync, transpose, the LFO; again: the pitch envelope |
-| LCDR 4                | BANK: the file number, LOAD (UP), SAVE (UP twice), the voice's name             |
-| MUTE UP / DOWN 1-16   | the column above: one step (held: repeats)                                      |
-| EXIT held 1.5 s       | leave: the firmware's effects back, the keybed's sound back                     |
+| control               | what                                                                                           |
+|-----------------------|------------------------------------------------------------------------------------------------|
+| the keybed, MIDI IN 1 | the notes (any channel); the sustain pedal (CC 64)                                             |
+| PAGE UP / DOWN        | the next / previous voice of the bank                                                          |
+| LCDL 1-4, LCDR 1-2    | OP1-OP6: envelope, level, frequency; again: keyboard scaling                                   |
+| LCDR 3                | VOICE: algorithm, feedback, sync, transpose, the LFO; again: the pitch envelope                |
+| LCDR 4                | BANK: the file number, VOL, LOAD (UP), POLY (voices played), SAVE (UP twice), the voice's name |
+| MUTE UP / DOWN 1-16   | the column above: one step (held: repeats)                                                     |
+| EXIT held 1.5 s       | leave: the firmware's effects back, the keybed's sound back                                    |
 
 ## Files
 

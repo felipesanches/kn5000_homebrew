@@ -21,7 +21,7 @@ cp -r "$SRC" "$O/tree/"
 cp "$EMU/sdcard_from_real_kn7000.img" "$O/sd.img"; chmod u+w "$O/sd.img"
 python3 -I "$MENU/fatimg.py" "$O/sd.img" put "$O/tree" > "$O/fatimg.txt"
 cp "$FLOPPY" "$O/floppy.img"; chmod u+w "$O/floppy.img"
-( cd "$EMU" && env RATE_OUT="$O" RATE_NAME="$3" RATE_KEYS="${RATE_KEYS:-}" DISPLAY="${DISPLAY:-:0}" timeout 3600 \
+( cd "$EMU" && env RATE_OUT="$O" RATE_NAME="$3" RATE_KEYS="${RATE_KEYS:-}" RATE_POLY_UP="${RATE_POLY_UP:-0}" DISPLAY="${DISPLAY:-:0}" timeout 3600 \
     ./kn7000 kn7000 -bios v13 -rompath ./roms -pluginspath ./plugins -skip_gameinfo -window -nothrottle \
     -harddisk "$O/sd.img" -flop "$O/floppy.img" -nvram_directory "$O/nv" -cfg_directory "$O/cfg" \
     -autoboot_script "$HERE/rate.lua" $EXTRA ) > "$O/run.log" 2>&1
