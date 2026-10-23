@@ -11,6 +11,7 @@
 #     owner's), the owner's loader floppy as released, -wavwrite OUT/run.wav, the script as -autoboot_script.
 # OUT is scratch (~/compartilhado/tmp/..., never /tmp); the card and floppy copies are deleted afterwards.
 set -uo pipefail
+EXTRA="${EXTRA:-}"            # more MAME options (-nodrc for the interpreter)
 HERE="$(cd "$(dirname "$0")" && pwd)"
 FM="$(cd "$HERE/../.." && pwd)"
 EMU="${EMU:-$HOME/compartilhado/kn7000-emulator}"
@@ -38,7 +39,7 @@ rm -f -- "$O/run.wav"
     ./kn7000 kn7000 -bios v13 -rompath ./roms -pluginspath ./plugins -skip_gameinfo -window -nothrottle \
     -harddisk "$O/sd.img" -flop "$O/floppy.img" -wavwrite "$O/run.wav" \
     -nvram_directory "$O/nv" -cfg_directory "$O/cfg" -snapshot_directory "$O/snap" \
-    -autoboot_script "$LUA" ) > "$O/run.log" 2>&1
+    -autoboot_script "$LUA" $EXTRA ) > "$O/run.log" 2>&1
 if [ -n "${KEEP_SD:-}" ]; then mv "$O/sd.img" "$O/sd_after.img"; else rm -f -- "$O/sd.img"; fi
 rm -f -- "$O/floppy.img"
 rm -rf -- "${O:?}/tree"
