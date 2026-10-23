@@ -735,6 +735,15 @@ def patch_image(pw):
     return [x & 0xFFFFFFFF for x in out]
 
 
+def voice_image():
+    """a silent voice's 64 words (fm_model.Voice()): every envelope done (stage 4), the pitch envelope too"""
+    v = [0] * VOICE_LEN
+    for k in range(6):
+        v[32 + O_STATE + k] = 4 << 24
+    v[32 + O_PEGIX] = 4
+    return v
+
+
 def initial_globals(nv=m.NVOICES):
     v = [0] * (GLOBALS_END - GLOBALS)
     v[G["ROUTE"] - GLOBALS] = 1
