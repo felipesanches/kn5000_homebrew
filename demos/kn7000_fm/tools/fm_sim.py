@@ -388,6 +388,7 @@ class Rig:
         s.dm[I4_BASE + 0x21] = 0
         self.e = m.Engine(nv)
         self.e.set_patch(patch)
+        s.dm[d.G["VOL"]] = self.e.vol = m.volume_word(m.VOL_DEFAULT)    # the editor's default, not full
         self.patch = patch
 
     def load_alg(self, alg):

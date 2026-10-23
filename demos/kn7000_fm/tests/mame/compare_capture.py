@@ -2,7 +2,7 @@
 # (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
 # Licensed under the terms of the GNU General Public License v3 or later
 #
-# compare_capture.py OUT -- does the DSP in MAME produce, frame for frame, the samples tools/fm_model.py computes?
+# compare_capture.py OUT [--novol] -- does the DSP in MAME produce, frame for frame, the samples tools/fm_model.py computes?
 # fm_capture.lua records (FRAME after the frame, MIX) for every DSP frame of one C4 (OUT/capture.txt) and the
 # key-on's words (OUT/stage_0.bin). The model starts as the engine was hooked (FRAME 0, the built-in bank's voice 1,
 # every voice silent), runs to the key-on, which is tried at every frame before the first sound (the host's command
@@ -32,6 +32,7 @@ first = next(i for i, x in enumerate(mix) if x != 0)
 print(f'captured {len(mix)} frames from frame {frames[0]}; key {key} velocity {vel}; first sound at frame {frames[first]}')
 e = m.Engine()
 e.set_patch(patch)
+e.vol = None if '--novol' in sys.argv else m.volume_word(m.VOL_DEFAULT)   # --novol: a build without the volume
 lo = frames[first] - 140
 while e.frame_no < lo:
     e.frame()

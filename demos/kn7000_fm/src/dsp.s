@@ -880,6 +880,7 @@ dpr_ver2:
     call    Verify, 0, 0
     cmp     0, d0
     bne     dpr_fail
+    call    DspSetVol, 0, 0         # the editor's volume (the variables came with full volume)
     mov     DSP_MSGR7, d0           # the heartbeat before the hook
     call    DspRead, 0, 0
     mov     d0, (V_HB0)
@@ -1012,6 +1013,23 @@ pis_cpy:
     add     -1, d1
     bne     pis_cpy
     rets
+
+# DspSetVol: the master volume word (T_VOLUME[V_VOL]) into the engine's VOL.
+DspSetVol:
+    movm    [d2,d3,a2,a3], (sp)
+    add     -0x20, sp
+    mov     (V_VOL), d0
+    asl     2, d0
+    mov     T_VOLUME, a0
+    add     d0, a0
+    mov     (a0), d0
+    mov     d0, (V_VOLWORD)
+    mov     DSP_G_VOL, d0
+    mov     1, d1
+    mov     V_VOLWORD, a0
+    mov     DMAC_UP_DM, a1
+    call    DspUpload, 0, 0
+    ret     [d2,d3,a2,a3], 0x30
 
 # DspCmdWait -> d0 = 0 once MSGR6 reads 0 (the engine has taken the last command, which it does at its next
 # frame), within CMD_POLLS reads; else 1 (V_BUSY + 1).

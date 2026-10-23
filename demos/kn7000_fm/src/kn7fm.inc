@@ -116,6 +116,9 @@
 .equ V_TMP,         M_VARS + 0xD0
 .equ V_TMP2,        M_VARS + 0xD4
 .equ V_PEGSEL,      M_VARS + 0xD8   # 1: the graph shows the pitch envelope
+.equ V_VOL,         M_VARS + 0xDC   # the master volume, 0-31 (T_VOLUME: 1.5 dB steps, 31 = full)
+.equ V_VOLDIRTY,    M_VARS + 0xE0   # 1: it changed, to be sent
+.equ V_VOLWORD,     M_VARS + 0xE4   # its Q31 word, as uploaded
 .equ V_DECBUF,      M_VARS + 0x100  # 16 bytes: PutDec's digits
 
 .equ ST_FIRST,      0               # V_STATE

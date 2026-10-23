@@ -74,6 +74,8 @@ fe_first:                           # a fresh load: everything here is zero
     mov     d0, (V_ALG)
     mov     NVOICES, d0
     mov     d0, (V_NV)
+    mov     VOL_DEFAULT, d0
+    mov     d0, (V_VOL)
     bra     fe_answer
 fe_search:                          # one step of the firmware search per call
     mov     (V_STEP), d0

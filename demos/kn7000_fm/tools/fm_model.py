@@ -149,6 +149,15 @@ PITCH_BASE = 50857777         # Dexed's standard tuning: midinote_to_logfreq(n) 
 PITCH_STEP = (1 << 24) // 12
 FEEDBACK_BITDEPTH = 8
 OUT_MAX = (1 << 23) - 1       # the DSP's output words are 24-bit
+VOL_FULL = (1 << 31) - 1      # the master volume (a Q31 factor on the mix); render() and the msfa checks use this
+VOL_STEPS = 32                # the editor's volume: step v is VOL_DB x (v - 31) dB, step 0 silent
+VOL_DB = 1.5
+VOL_DEFAULT = 23              # -12 dB: in MAME a C4 at velocity 66 is then near the instrument's own piano
+
+
+def volume_word(step):
+    """the Q31 factor of an editor volume step (0 = silent)"""
+    return 0 if step == 0 else min(VOL_FULL, int(round(10 ** (VOL_DB * (step - 31) / 20) * (1 << 31))))
 MASK24 = (1 << 24) - 1
 
 
@@ -549,6 +558,7 @@ class Engine:
         self.lfo_rand = 0
         self.amod = 0
         self.pitch_base = 0
+        self.vol = VOL_FULL
 
     def set_patch(self, patch):
         self.pw = patch_words(patch)
@@ -742,6 +752,8 @@ class Engine:
             if v.active:
                 out += self._voice_audio(v)
         self.frame_no += 1
+        if self.vol is not None:
+            out = ssfr(out, self.vol)                 # the master volume (None: none, as before 2026-10-23)
         return max(-OUT_MAX, min(OUT_MAX, out))       # the DSP's CLIP: symmetric
 
 

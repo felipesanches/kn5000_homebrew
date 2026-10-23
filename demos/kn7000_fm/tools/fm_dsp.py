@@ -77,7 +77,7 @@ O_FB0, O_FB1, O_ACTIVE, O_PEGL, O_PEGIX = 22, 23, 24, 25, 26
 SINE = 0x9B20             # 257 words, Q30 (fm_model.SIN_TABLE)
 GLOBALS = 0x9C21          # to 0x9C3F
 GLOBAL_NAMES = ["SAVEI5", "SAVEI7", "MIX", "HB9", "ROUTE", "FRAME", "CNT", "NV", "LFO_PH", "LFO_VAL", "LFO_DST",
-                "LFO_DLY", "LFO_RAND", "AMOD", "PBASE", "IN_L", "IN_R"]
+                "LFO_DLY", "LFO_RAND", "AMOD", "PBASE", "IN_L", "IN_R", "VOL"]
 G = {n: GLOBALS + k for k, n in enumerate(GLOBAL_NAMES)}
 GLOBALS_END = GLOBALS + len(GLOBAL_NAMES)
 PATCH = 0x9C60            # to 0x9CFF; written by the host at every patch change and edit
@@ -283,6 +283,9 @@ def program():
     e(IMM("I5", VOICES + 32))
     p.call("TRAMP")
     p.label("mixed")
+    e(A("PASS", "R1", "R13"))                               # the master volume: a Q31 factor
+    e(LD("R4", G["VOL"]))
+    e(mf("R13", "R1", "R4"))
     e(IMM("R14", 0x7FFFFF))
     e(A("CLIP", "R13", "R13", "R14"))
     e(ST(G["MIX"], "R13"))
@@ -749,6 +752,7 @@ def initial_globals(nv=m.NVOICES):
     v[G["ROUTE"] - GLOBALS] = 1
     v[G["NV"] - GLOBALS] = nv
     v[G["LFO_VAL"] - GLOBALS] = 1 << 23
+    v[G["VOL"] - GLOBALS] = m.VOL_FULL                      # the main CPU sets the editor's volume at once
     return v
 
 
