@@ -302,9 +302,11 @@ static void syncVisuals(void)
  * tests/mame/pt_test.lua reads them. */
 uint32_t ptLate[7], ptLateMax;
 
-/* Every tick that is due: the replayer, then Paula's changes to the DSP. Called between pieces of drawing. */
+/* Every tick that is due: the replayer, then Paula's changes to the DSP. Called between pieces of drawing. The panel's
+ * ring too: a switch the firmware decodes before the platform takes it from the firmware still acts (PLAN-EDITING.md). */
 static void service(void)
 {
+	host->panelScan();
 	if (song == NULL || !editor.songPlaying)
 	{
 		ticking = false;

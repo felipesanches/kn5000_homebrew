@@ -10,7 +10,7 @@
 #define PF_PFHOST_H
 #include "kn7.h"
 
-#define PFHOST_ABI 10
+#define PFHOST_ABI 11
 #define PFGAME_MAGIC 0x4D474650u  /* "PFGM" */
 #define PFHOST_MAGIC 0x54534850u  /* "PHST" */
 #define PT_PROGRAM 0x50  /* PfGameHeader::table of PT.BIN */
@@ -91,6 +91,10 @@ typedef struct PfHost {
   int (*dspSend)(const u32* records, u32 bytes, u32 words, u32 sum, u32 id);
   u32 dspBase;    /* the bank's first SDRAM word: a voice's base is dspBase + the sample's word in the bank */
   u32 dspMaxWords; /* the SDRAM words a bank may fill */
+  /* ABI 11: the panel's receive ring read now, from the program's task (as the converter calls read it): the switches
+   * into `panel` and the wheel's detents into `wheel`, each frame taken from the firmware before its main task decodes
+   * it. The firmware's tasks do not preempt each other, so this never meets the main task halfway through a frame. */
+  void (*panelScan)(void);
 } PfHost;
 
 /* The header at the start of PT.BIN (GAME_BASE). */

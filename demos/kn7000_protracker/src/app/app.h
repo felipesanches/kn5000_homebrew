@@ -83,6 +83,8 @@ extern char prefix[24];
 extern u32 calls;  /* converter calls so far */
 int bank_send(const u32* rec, u32 bytes, u32 words, u32 sum, u32 id);  /* game task: PfHost::dspSend */
 void wheel_led(int blink);  /* PfHost::wheelLed (entry.c) */
+extern u8 panel_real[0x40];
+void wheel_scan(void);       /* PfHost::panelScan: the ring's frames, the switches and the wheel taken from the firmware */  /* the switches as the panel reports them, kept from the firmware (entry.c panel_scan) */
 extern volatile s32 wheel_steps;  /* the TEMPO/PROGRAM wheel's detents so far, signed (entry.c wheel_scan) */
 void set_status(const char* s);
 /* The diagnostic build (`make DIAG=1`, README.md "If it does not start"): the text the converter calls answer, which

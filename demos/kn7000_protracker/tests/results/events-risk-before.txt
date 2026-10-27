@@ -1,0 +1,15 @@
+   57.43 menu: up, 1 programs, "ProTracker 2.3D" at 0
+   59.08 RUN
+   76.03 RISK C4 alone: notes held 60
+   78.20 RISK after TRANSPOSE +: C4 gives notes 60; dsp state 2 fail 0 ready 1 flushes 327 busy 0 bank 457 ms; song "adrenaline" pos 1 patt 5 row 23 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 302/32/16/1/0/0/0 max 6.6 ms
+   80.35 RISK after TRANSPOSE +: C4 gives notes 60; dsp state 2 fail 0 ready 1 flushes 383 busy 0 bank 457 ms; song "adrenaline" pos 1 patt 5 row 50 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 388/42/22/6/1/0/0 max 10.8 ms
+   82.52 RISK after R1/R2 OCTAVE +: C4 gives notes 72; dsp state 2 fail 0 ready 1 flushes 441 busy 0 bank 457 ms; song "adrenaline" pos 2 patt 7 row 13 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 479/53/26/7/2/0/0 max 13.3 ms
+   84.67 RISK after PIANO (sound group): C4 gives notes 72; dsp state 2 fail 0 ready 1 flushes 495 busy 0 bank 457 ms; song "adrenaline" pos 2 patt 7 row 40 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 561/63/34/11/5/1/0 max 24.1 ms
+   86.83 RISK after 8 & 16 BEAT (rhythm group): C4 gives notes 72; dsp state 2 fail 0 ready 1 flushes 581 busy 0 bank 457 ms; song "adrenaline" pos 3 patt 8 row 3 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 643/77/40/14/8/1/0 max 24.1 ms
+   89.00 RISK after PANEL MEMORY 1: C4 gives notes 48; dsp state 2 fail 0 ready 1 flushes 589 busy 101 bank 457 ms; song "adrenaline" pos 3 patt 8 row 30 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 720/89/48/21/10/3/0 max 33.1 ms
+   91.15 RISK after PANEL MEMORY SET: C4 gives notes 48; dsp state 2 fail 0 ready 1 flushes 589 busy 210 bank 457 ms; song "adrenaline" pos 3 patt 8 row 57 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 803/100/53/28/12/3/0 max 33.1 ms
+   93.32 RISK after FADE IN: C4 gives notes 48; dsp state 2 fail 0 ready 1 flushes 589 busy 319 bank 457 ms; song "adrenaline" pos 4 patt 9 row 20 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 887/113/56/33/15/3/0 max 33.1 ms
+   95.47 RISK after PERFORMANCE PAD 1: C4 gives notes 48; dsp state 2 fail 0 ready 1 flushes 589 busy 427 bank 457 ms; song "adrenaline" pos 4 patt 9 row 47 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 974/121/65/34/17/3/0 max 33.1 ms
+   97.63 RISK after EASY REC: C4 gives notes 48; dsp state 2 fail 0 ready 1 flushes 589 busy 537 bank 457 ms; song "adrenaline" pos 5 patt 3 row 10 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 1062/127/72/37/21/4/0 max 33.1 ms
+   99.80 RISK after SEQUENCER PLAY: C4 gives notes 48; dsp state 2 fail 0 ready 1 flushes 589 busy 646 bank 457 ms; song "adrenaline" pos 5 patt 3 row 37 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 1138/143/78/44/23/5/0 max 33.1 ms
+   99.80 end

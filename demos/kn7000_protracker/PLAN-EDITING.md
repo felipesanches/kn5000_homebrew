@@ -137,7 +137,21 @@ Each control is mapped so that what it does on the KN7000 suggests what it does 
   - the volume sliders, CONTRAST, REVERB and the other effect buttons stay the firmware's;
   - PROGRAM MENUS, DEMO, MUSIC STYLE ARRANGER, SPLIT POINT, TECHNI-CHORD, CUSTOM PANEL and FAVORITES are spare.
 
-### Risks to check first
+### Risks to check first (checked in MAME, 2026-10-27)
+
+**Result** (`tests/mame/pt_test.lua` `PT_RISK=1`, `tests/results/events-risk-before.txt` and `-after.txt`):
+- **Before:** TRANSPOSE did nothing to the keybed's notes, but R1/R2 OCTAVE moved them an octave. PANEL MEMORY 1
+  recalled a registration: that moved them too, and it reloaded the effects DSP over the mixer, so the music stopped.
+- **The fix, in the platform (KN7APP.BIN `entry.c`):** the firmware's main task decodes the panel's frames from its
+  receive ring. KN7APP now reads every switch frame there first, keeps the real state for the program
+  (`PfHost::panel`), and clears the switches in the frame, so the firmware sees no change. CONTRAST is left to the
+  firmware. This is how the Pinball port already takes the TEMPO/PROGRAM wheel's frames.
+  - It reads the ring on each converter call, waiting for a frame's second byte.
+  - It also reads the ring from the program's own task at every replayer tick (ABI 11 `panelScan`).
+- **After:** all 22 switch frames were taken before the firmware decoded them. No control reached the firmware, and
+  the music played on. Program 893 only, as for the wheel.
+
+What the checks were:
 
 The firmware keeps decoding the panel while the converter runs, though its user interface is parked on our text.
 A button whose firmware action still happens would interfere. The Pinball port used START/STOP, VARIATION, the soft

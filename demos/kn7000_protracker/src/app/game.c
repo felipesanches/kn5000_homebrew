@@ -64,6 +64,7 @@ static PfHost host = {
     .dspSend = bank_send,
     .dspBase = DSP_BANK,
     .dspMaxWords = DSP_BANK_MAX,
+    .panelScan = wheel_scan,
 };
 
 static u32 crc32(const u8* p, u32 n) {
@@ -136,7 +137,7 @@ static const char* load_program(void) {
 
 void game_task(void) {
   host.build = fw.build;
-  host.panel = (const volatile u8*)fw.panel;
+  host.panel = panel_real;  /* (entry.c: the switches the firmware no longer sees) */
   host.msCounter = fw.ms;
   host.dspVoices = dsp.state == DS_IDLE || dsp.state == DS_READY ? 8 : 0;
   if (fw.build == BUILD_SP7001) regions[3] = (PfRegion){0, 0};  /* its SD plug-in lives in ARENA3 */

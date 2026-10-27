@@ -116,7 +116,7 @@ static int bank_serve(void) {
 /* EXIT held for QUIT_HOLD_MS: the game task is asked to end (the firmware ignores EXIT while we answer 5). */
 static void watch_exit(void) {
   if (!fw.panel || !fw.ms) return;
-  if (!button(BTN_EXIT)) {
+  if (!(panel_real[BTN_EXIT >> 8] & (BTN_EXIT & 0xFF))) {
     exit_t0 = 0;
     return;
   }
@@ -190,8 +190,30 @@ u32 wheel_frames, wheel_late;  /* wheel frames seen; of them, those the firmware
 static u32 wheel_at;
 static int wheel_on;
 
-static void wheel_scan(void) {
-  if (fw.build != 893) return;
+/* The panel's switches, kept from the firmware (ProTracker, PLAN-EDITING.md "Risks"). A switch frame is [ADDR, DATA]:
+ * ADDR's bits 7-6 the bank (00 the CPR board, 11 the CPL and CPC boards), bits 3-0 the segment; DATA the segment's
+ * switches, bit n switch n, 1 pressed, the whole segment each time; the firmware finds the presses by XOR with its own
+ * copy (kn7000_mame notes/panel-serial-protocol.md, "Switch-report frame"). In MAME, while the converter ran, the
+ * firmware still acted on some: R1/R2 OCTAVE moved the keybed's notes an octave, and PANEL MEMORY 1 recalled a
+ * registration, which reloaded the effects DSP over the mixer (the sound stopped). So panel_scan keeps each segment's
+ * DATA in panel_real (PfHost::panel: the program reads the switches there, laid out as the firmware's bitmap: CPR's
+ * segments at 0-9, CPL's and CPC's at 0x30 + segment) and, in a frame the firmware has not decoded yet, clears every
+ * switch but FW_KEEP's: to the firmware no switch changes. Program 893 only, as the wheel. */
+#define FW_KEEP_SEG (0x30 + 5)   /* CPC_SEG5 ... */
+#define FW_KEEP_BITS 0x0C        /* ... CONTRAST UP and DOWN stay the firmware's */
+u8 panel_real[0x40];
+u32 panel_frames, panel_late;  /* switch frames seen; of them, those the firmware had decoded first */
+static int panel_copied;
+
+void wheel_scan(void) {
+  if (!panel_copied && fw.panel) {  /* the switches as they are when the scan begins */
+    panel_copied = 1;
+    for (u32 i = 0; i < sizeof panel_real; ++i) panel_real[i] = RD8(fw.panel + i);
+  }
+  if (fw.build != 893) {  /* (no scan: the firmware's own bitmap, unfiltered) */
+    for (u32 i = 0; i < sizeof panel_real; ++i) panel_real[i] = RD8(fw.panel + i);
+    return;
+  }
   const u32 rd = *(volatile u16*)PANEL_RX_RD, wr = *(volatile u16*)PANEL_RX_WR;
   if (rd >= PANEL_RING_LEN || wr >= PANEL_RING_LEN) return;
   if (!wheel_on) {
@@ -202,7 +224,17 @@ static void wheel_scan(void) {
     const u32 next = (wheel_at + 1) % PANEL_RING_LEN;
     if (next == wr) break;  /* (half a frame so far) */
     volatile u8* const ring = (volatile u8*)PANEL_RING;
-    if (ring[wheel_at] == 0x17) {
+    const u8 addr = ring[wheel_at];
+    const u32 type = (addr >> 4) & 3, bank = addr & 0xC0;
+    if (addr != 0x17 && type == 0 && (bank == 0 || bank == 0xC0)) {  /* a switch frame (types 0 and 1: bit 3 the segment's) */
+      const u32 idx = (bank ? 0x30 : 0) + (addr & 0x0F);
+      const u8 data = ring[next];
+      panel_real[idx] = data;
+      ++panel_frames;
+      const u32 ahead = (wheel_at + PANEL_RING_LEN - rd) % PANEL_RING_LEN, filled = (wr + PANEL_RING_LEN - rd) % PANEL_RING_LEN;
+      if (ahead < filled) ring[next] = (u8)(idx == FW_KEEP_SEG ? data & FW_KEEP_BITS : 0);
+      else ++panel_late;
+    } else if (addr == 0x17) {
       wheel_steps += (signed char)ring[next];
       ++wheel_frames;
       /* still to be decoded: between the read index and the write index */
@@ -214,15 +246,28 @@ static void wheel_scan(void) {
   }
 }
 
+/* A frame is two bytes and the panel sends them one after the other: when the first has come, the call waits up to
+ * FRAME_WAIT_MS for the second, so that panel_scan sees the frame before the main task decodes it (returning on the
+ * first byte let the firmware decode a third of the switch frames first, in MAME). */
+#define FRAME_WAIT_MS 6
+
 static void rest(void) {
   if (fw.build != 893 || !fw.dly || !fw.ms) return;
   ++rest_calls;
   const u32 t0 = now_ms();
   while (now_ms() - t0 < REST_MS) {
-    if (*(volatile u16*)PANEL_RX_RD != *(volatile u16*)PANEL_RX_WR || file_pending() || bank_want >= 0 || task_done ||
-        quit_req) {
+    if (*(volatile u16*)PANEL_RX_RD != *(volatile u16*)PANEL_RX_WR) {
+      const u32 t1 = now_ms();
+      for (;;) {
+        wheel_scan();  /* (the bytes that ended the rest, before the main task decodes them) */
+        if (wheel_at == *(volatile u16*)PANEL_RX_WR || now_ms() - t1 >= FRAME_WAIT_MS) break;
+        fw_call(fw.dly, 1, 0, 0, 0);  /* (half a frame: its second byte is on its way) */
+      }
       ++rest_early;
-      wheel_scan();  /* (the bytes that ended the rest, before the main task decodes them) */
+      return;
+    }
+    if (file_pending() || bank_want >= 0 || task_done || quit_req) {
+      ++rest_early;
       return;
     }
     fw_call(fw.dly, REST_TICKS, 0, 0, 0);

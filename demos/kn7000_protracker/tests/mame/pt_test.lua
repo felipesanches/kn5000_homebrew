@@ -21,6 +21,7 @@ local NAME = os.getenv("PT_NAME") or "ProTracker 2.3D"
 local EACH = tonumber(os.getenv("PT_EACH") or "") or 20
 local MODULES = tonumber(os.getenv("PT_MODULES") or "") or 2
 local EDIT = os.getenv("PT_EDIT") == "1"
+local RISK = os.getenv("PT_RISK") == "1"  -- does the firmware still act on TRANSPOSE, OCTAVE ... (PLAN-EDITING.md, "Risks")
 local menuV, V_NPROG, ORDER, PR_NAME = 0x502C0000, 0x502C0034, 0x502C3800, 0x40   -- the menu's (kn7menu menu.inc)
 
 -- the builds' symbols (run_pt.sh: nm of kn7app.elf and pt.elf)
@@ -77,6 +78,9 @@ local function state()
       sp:read_u32(m + 0xAEC), EDITOR and sp:read_u8(EDITOR + 0x2E) or -1)
   end
   if UI then s = s .. string.format(", status %q", cstr(UI, 18)) end  -- ui_t's statusMessage, its first field
+  if SYM["_panel_frames"] then  -- entry.c: switch frames kept from the firmware; of them, decoded by it first
+    s = s .. string.format(", panel frames %d late %d", sp:read_u32(SYM["_panel_frames"]), sp:read_u32(SYM["_panel_late"]))
+  end
   local L = SYM["_ptLate"]
   if L then  -- main.c: the ticks run under 1, 2, 5, 10, 20, 50 ms late and later; the latest (ms)
     local t = {}
@@ -105,6 +109,31 @@ local co = coroutine.create(function()
     E("RUN")
     local t0 = now()
     local played = 1
+    if RISK then
+      wait_until(function() return SONG and sp:read_u32(SONG) ~= 0 and EDITOR and sp:read_u8(EDITOR + 0x2E) == 1 end, 60)
+      wait(4)
+      local NOTES = SYM["_notes"]
+      local function held() local t = {} for n = 0, 127 do if sp:read_u16(NOTES + 2 * n) ~= 0 then t[#t + 1] = n end end return table.concat(t, ",") end
+      local function key(k) KEY[k]:set_value(1); wait(0.4); local h = held(); KEY[k]:set_value(0); wait(0.4); return h end
+      E("RISK C4 alone: notes held %s", key("C4"))
+      local function try(name, tag, mask) press(tag, mask); wait(1); E("RISK after %s: C4 gives notes %s; %s", name, key("C4"), state()) end
+      try("TRANSPOSE +", "CPR_SEG3", 0x01)
+      try("TRANSPOSE +", "CPR_SEG3", 0x01)
+      try("R1/R2 OCTAVE +", "CPR_SEG6", 0x02)
+      try("PIANO (sound group)", "CPR_SEG4", 0x10)
+      try("8 & 16 BEAT (rhythm group)", "CPL_SEG2", 0x80)
+      try("PANEL MEMORY 1", "CPR_SEG0", 0x02)
+      try("PANEL MEMORY SET", "CPR_SEG7", 0x40)
+      try("FADE IN", "CPL_SEG3", 0x20)
+      try("PERFORMANCE PAD 1", "CPL_SEG6", 0x10)
+      try("EASY REC", "CPR_SEG0", 0x08)
+      try("SEQUENCER PLAY", "CPR_SEG1", 0x08)
+      M.video:snapshot()
+      E("end")
+      ev:close()
+      M:exit()
+      return
+    end
     if EDIT then
       wait_until(function() return SONG and sp:read_u32(SONG) ~= 0 and EDITOR and sp:read_u8(EDITOR + 0x2E) == 1 end, 60)
       wait(10)
