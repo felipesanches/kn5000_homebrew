@@ -145,10 +145,16 @@ In MAME, the published overlay emulator, program 893 (`tests/mame/run_pt.sh`, `p
     DSP frame clock against the kernel's millisecond counter (the unit's DSP runs at 44,087 Hz by that counter: ROM
     dumper pass 8). With it taken out, 250 ms windows correlate at median 0.75, 90th percentile 0.94. What is left is
     each tick's timing (a few ms), the voices' start on a whole word, and MAME's resampling.
+- **The controls** (`PT_EDIT=1`, `tests/results/events-pt-mame8.txt`):
+  - LCDL 5 shows the spectrum analyzer, whose bars move while the pattern plays (`spectrum-2026-10-27.png`);
+  - MUTE UP 1 mutes channel 1 and shows its mute button, and pressing it again unmutes the channel;
+  - STOP, then EDIT, shows the edit cursor;
+  - the keybed's C3, E3 and G3 play sample 1 and go into the pattern at rows 55-57 as periods 428, 339 and 285
+    (ProTracker's C-2, E-2, G-2; `edit-2026-10-27.png`);
+  - LCDL 2 plays the pattern with them.
 - **Its own consistency:** the sample coder matches `dsp_bank.py` word for word on all six modules (`tests/bank/`).
 
-Not yet tried: the instrument itself, the keybed and the edit mode (MAME has no keybed input in the session), the
-module buttons beyond LCDR 2, the spectrum analyzer.
+Not yet tried: the instrument itself; in MAME, LCDR 1, 3, 4 and 5, PAGE UP/DOWN, the wheel, MUTE DOWN.
 
 ## Files
 

@@ -9,6 +9,9 @@
 --     editor.songPlaying; the status line); a snapshot every 4 s;
 --   * then LCDR 2 (the next module) every $PT_EACH seconds (default 20) until $PT_MODULES modules (default 2) have
 --     played; then STOP (LCDL 3), and the end.
+-- PT_EDIT=1 instead, once the first module has played 10 s: LCDL 5 (the spectrum analyzer), MUTE UP 1 (channel 1
+-- muted), STOP, EDIT (LCDL 4), the keybed's C3, E3 and G3 (into the pattern on channel 1 from the row shown, read back from
+-- PT.BIN's memory and logged), LCDL 2 (the pattern plays), a snapshot after each; then the end.
 -- The sound is in $PT_OUT/sound.wav (-wavwrite): tests/mame/sound_report.py says when it is silent.
 local M = manager.machine
 local sp = M.devices[":maincpu"].spaces["program"]
@@ -16,6 +19,7 @@ local OUT = assert(os.getenv("PT_OUT"), "set PT_OUT")
 local NAME = os.getenv("PT_NAME") or "ProTracker 2.3D"
 local EACH = tonumber(os.getenv("PT_EACH") or "") or 20
 local MODULES = tonumber(os.getenv("PT_MODULES") or "") or 2
+local EDIT = os.getenv("PT_EDIT") == "1"
 local menuV, V_NPROG, ORDER, PR_NAME = 0x502C0000, 0x502C0034, 0x502C3800, 0x40   -- the menu's (kn7menu menu.inc)
 
 -- the builds' symbols (run_pt.sh: nm of kn7app.elf and pt.elf)
@@ -42,6 +46,20 @@ end
 local function wait(s) local t = now() + s; while now() < t do coroutine.yield() end end
 local function wait_until(cond, s) local t = now() + s; while now() < t do if cond() then return true end; coroutine.yield() end; return cond() end
 local function press(tag, mask) local f = field(tag, mask); f:set_value(1); wait(0.3); f:set_value(0) end
+local KEY = {}
+for _, tag in ipairs({ ":KEYS0", ":KEYS1", ":KEYS2", ":KEYS3" }) do
+  local p = M.ioport.ports[tag]
+  if p then for _, f in pairs(p.fields) do KEY[f.name] = f end end
+end
+
+-- note_t (6 bytes: param, sample, command, -, period) of row r, channel c of the current pattern (module_t.patterns at
+-- 0x954, currPattern at 0xAF2: tests/mame/offsets.c)
+local function note(r, c)
+  local m = sp:read_u32(SONG)
+  local patt = sp:read_u32(m + 0x954 + 4 * sp:read_u16(m + 0xAF2))
+  local a = patt + (r * 4 + c) * 6
+  return string.format("period %d sample %d cmd %X%02X", sp:read_u16(a + 4), sp:read_u8(a + 1), sp:read_u8(a + 2), sp:read_u8(a))
+end
 
 -- module_t (pt2_structs.h, PT2_KN7) as mn10300-elf-gcc lays it out (tests/mame/offsets.c): speed 0x10, row 0x14,
 -- header.name 0x16, currRow 0xAE4, currBPM 0xAEC, currPos 0xAF0, currPattern 0xAF2; editor_t: songPlaying 0x2E,
@@ -86,6 +104,32 @@ local co = coroutine.create(function()
     E("RUN")
     local t0 = now()
     local played = 1
+    if EDIT then
+      wait_until(function() return SONG and sp:read_u32(SONG) ~= 0 and EDITOR and sp:read_u8(EDITOR + 0x2E) == 1 end, 60)
+      wait(10)
+      E("playing: %s", state()); M.video:snapshot()
+      press("CPL_SEG0", 0x04); wait(2)                  -- LCDL 5: the spectrum analyzer
+      E("LCDL 5 (spectrum)"); M.video:snapshot()
+      press("CPC_SEG5", 0x10); wait(2)                  -- MUTE UP 1
+      E("MUTE UP 1: %s", state()); M.video:snapshot()
+      press("CPL_SEG0", 0x20); wait(1)                  -- LCDL 3: STOP
+      press("CPL_SEG0", 0x01); wait(1)                  -- LCDL 4: EDIT
+      press("CPC_SEG5", 0x10); wait(1)                  -- MUTE UP 1 again: channel 1 heard
+      E("STOP, EDIT, channel 1 unmuted: %s", state()); M.video:snapshot()
+      local r0 = sp:read_u8(sp:read_u32(SONG) + 0xAE4)  -- the cursor's row (currRow): the notes go there and on
+      for _, k in ipairs({ "C3", "E3", "G3" }) do
+        KEY[k]:set_value(1); wait(0.4); KEY[k]:set_value(0); wait(0.6)
+      end
+      E("keys C3 E3 G3: row %d %s; row %d %s; row %d %s; %s", r0, note(r0, 0), r0 + 1, note(r0 + 1, 0), r0 + 2,
+        note(r0 + 2, 0), state())
+      M.video:snapshot()
+      press("CPL_SEG0", 0x08); wait(4)                  -- LCDL 2: the pattern plays
+      E("LCDL 2 (pattern): %s", state()); M.video:snapshot()
+      E("end")
+      ev:close()
+      M:exit()
+      return
+    end
     local nextSnap, nextMod = t0 + 4, t0 + EACH
     while true do
       wait(1)
