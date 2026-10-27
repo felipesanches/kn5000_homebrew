@@ -1,0 +1,96 @@
+   59 s   -120.0 dBFS  peak     0  silent
+   60 s   -120.0 dBFS  peak     0  silent
+   61 s   -120.0 dBFS  peak     0  silent
+   62 s   -120.0 dBFS  peak     0  silent
+   63 s   -120.0 dBFS  peak     0  silent
+   64 s   -120.0 dBFS  peak     0  silent
+   65 s   -120.0 dBFS  peak     0  silent
+   66 s   -120.0 dBFS  peak     0  silent
+   67 s   -120.0 dBFS  peak     0  silent
+   68 s   -120.0 dBFS  peak     0  silent
+   69 s   -120.0 dBFS  peak     0  silent
+   70 s   -120.0 dBFS  peak     0  silent
+   71 s   -120.0 dBFS  peak     0  silent
+   72 s   -120.0 dBFS  peak     0  silent
+   73 s   -120.0 dBFS  peak     0  silent
+   74 s   -120.0 dBFS  peak     0  silent  LCDR 2: the next module
+   75 s   -120.0 dBFS  peak     0  silent
+   76 s    -33.8 dBFS  peak  4419
+   77 s    -38.7 dBFS  peak  2391
+   78 s    -36.8 dBFS  peak  2511
+   79 s    -36.8 dBFS  peak  2382
+   80 s    -37.1 dBFS  peak  2827
+   81 s    -36.4 dBFS  peak  2762
+   82 s    -33.0 dBFS  peak  4577
+   83 s    -33.6 dBFS  peak  4059
+   84 s    -34.3 dBFS  peak  3428
+   85 s    -32.1 dBFS  peak  4500
+   86 s    -30.9 dBFS  peak  4516
+   87 s    -31.9 dBFS  peak  4863
+   88 s    -32.2 dBFS  peak  3564
+   89 s    -31.4 dBFS  peak  5199
+   90 s   -120.0 dBFS  peak     0  silent  LCDR 2: the next module
+   91 s    -42.2 dBFS  peak  2690
+   92 s    -40.8 dBFS  peak  1489
+   93 s    -40.6 dBFS  peak  1847
+   94 s    -38.8 dBFS  peak  2627
+   95 s    -39.4 dBFS  peak  2229
+   96 s    -37.9 dBFS  peak  2459
+   97 s    -36.0 dBFS  peak  2545
+   98 s    -36.2 dBFS  peak  2777
+   99 s    -34.6 dBFS  peak  3500
+  100 s    -36.0 dBFS  peak  2694
+  101 s    -35.7 dBFS  peak  3211
+  102 s    -35.8 dBFS  peak  2952
+  103 s    -35.9 dBFS  peak  2959
+  104 s    -35.9 dBFS  peak  3190
+  105 s    -39.2 dBFS  peak  2451  LCDR 2: the next module
+  106 s   -120.0 dBFS  peak     0  silent
+  107 s   -120.0 dBFS  peak     0  silent
+  108 s   -120.0 dBFS  peak     0  silent
+  109 s   -120.0 dBFS  peak     0  silent
+  110 s    -43.1 dBFS  peak  2749
+  111 s    -33.4 dBFS  peak  3262
+  112 s    -33.2 dBFS  peak  3271
+  113 s    -33.7 dBFS  peak  3459
+  114 s    -33.4 dBFS  peak  3447
+  115 s    -33.6 dBFS  peak  3199
+  116 s    -33.2 dBFS  peak  3338
+  117 s    -33.2 dBFS  peak  3475
+  118 s    -33.5 dBFS  peak  3559
+  119 s    -33.4 dBFS  peak  3516
+  120 s    -33.7 dBFS  peak  3294
+  121 s    -49.0 dBFS  peak  2749  LCDR 2: the next module
+  122 s   -120.0 dBFS  peak     0  silent
+  123 s   -120.0 dBFS  peak     0  silent
+  124 s   -120.0 dBFS  peak     0  silent
+  125 s   -120.0 dBFS  peak     0  silent
+  126 s    -42.4 dBFS  peak  1926
+  127 s    -35.8 dBFS  peak  3776
+  128 s    -31.8 dBFS  peak  4921
+  129 s    -31.2 dBFS  peak  3695
+  130 s    -31.0 dBFS  peak  4312
+  131 s    -30.8 dBFS  peak  4939
+  132 s    -31.5 dBFS  peak  4299
+  133 s    -31.2 dBFS  peak  4861
+  134 s    -31.1 dBFS  peak  4121
+  135 s    -31.4 dBFS  peak  5112
+  136 s    -33.2 dBFS  peak  3564  LCDR 2: the next module
+  137 s   -120.0 dBFS  peak     0  silent
+  138 s   -120.0 dBFS  peak     0  silent
+  139 s   -120.0 dBFS  peak     0  silent
+  140 s   -120.0 dBFS  peak     0  silent
+  141 s   -120.0 dBFS  peak     0  silent
+  142 s    -36.3 dBFS  peak  4305
+  143 s    -32.6 dBFS  peak  3955
+  144 s    -33.7 dBFS  peak  4421
+  145 s    -32.7 dBFS  peak  3568
+  146 s    -33.6 dBFS  peak  4336
+  147 s    -33.5 dBFS  peak  3815
+  148 s    -32.1 dBFS  peak  3831
+  149 s    -34.9 dBFS  peak  4216
+  150 s    -33.1 dBFS  peak  3718
+  151 s    -32.6 dBFS  peak  4221
+  152 s    -41.0 dBFS  peak  3376  LCDL 3: STOP
+  153 s   -120.0 dBFS  peak     0  silent
+sound: 63 of 79 seconds from RUN + 15 s are heard (16 silent)

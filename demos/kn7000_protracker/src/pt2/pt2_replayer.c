@@ -188,19 +188,24 @@ bool kn7AllocSamples(module_t *m)
 	return m->sampleData != NULL;
 }
 
-/* KN7000: patterns 0 to count-1 in one block, zeroed; the others share one empty pattern until a note is written
+/* KN7000: patterns 0 to count-1, each zeroed in a block of its own (as pt2-clone allocates them: the heap is spread
+** over several regions of RAM, and 64 patterns are 98 KB); the others share one empty pattern until a note is written
 ** into them (kn7PatternForEdit). false: no memory. */
 static note_t emptyPattern[MOD_ROWS * PAULA_VOICES];
 
 bool kn7AllocPatterns(module_t *m, int32_t count)
 {
-	m->patternBlock = (note_t *)calloc(count, MOD_ROWS * sizeof (note_t) * PAULA_VOICES);
-	if (m->patternBlock == NULL)
-		return false;
-
-	m->patternCount = count;
 	for (int32_t i = 0; i < MAX_PATTERNS; i++)
-		m->patterns[i] = i < count ? m->patternBlock + (i * MOD_ROWS * PAULA_VOICES) : emptyPattern;
+	{
+		m->patterns[i] = emptyPattern;
+		if (i < count)
+		{
+			note_t *p = (note_t *)calloc(1, MOD_ROWS * sizeof (note_t) * PAULA_VOICES);
+			if (p == NULL)
+				return false; // (kn7FreeMod frees those made so far)
+			m->patterns[i] = p;
+		}
+	}
 
 	return true;
 }
@@ -224,14 +229,9 @@ void kn7FreeMod(module_t *m)
 		return;
 
 	for (int32_t i = 0; i < MAX_PATTERNS; i++)
-	{
-		note_t *p = m->patterns[i];
-		if (p != NULL && p != emptyPattern && (m->patternBlock == NULL || p < m->patternBlock ||
-			p >= m->patternBlock + (m->patternCount * MOD_ROWS * PAULA_VOICES)))
-			free(p); // (an empty pattern a note was written into)
-	}
+		if (m->patterns[i] != NULL && m->patterns[i] != emptyPattern)
+			free(m->patterns[i]);
 
-	free(m->patternBlock);
 	free(m);
 }
 #else

@@ -26,6 +26,9 @@ void paulaSetBank(uint32_t base, bool ready);
 /* For the scopes and the VU meters: what voice ch plays and where it is (bytes, 16.16), or false when it is silent. */
 bool paulaVoice(int ch, const int8_t** data, uint32_t* length, uint32_t* pos, uint32_t* volume);
 
+/* ---- main.c ---------------------------------------------------------------------------------------------------- */
+uint8_t *kn7Scratch(uint32_t *bytes);  /* the block the module's file is read into, free once it is parsed */
+
 /* ---- bank.c: the samples coded for the DSP's decoder, sent through PfHost::dspSend ------------------------- */
 /* 1 when song's samples are in the DSP's SDRAM, 2 when not (no sound). */
 int bankSend(void);

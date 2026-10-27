@@ -91,11 +91,8 @@ typedef struct module_t
 	int8_t *sampleData;
 #ifdef PT2_KN7
 	// KN7000: the samples packed, each from a multiple of KN7_SAMPLE_ALIGN bytes after KN7_SAMPLE_ALIGN zero bytes (the
-	// null sample), as the effects DSP's SDRAM holds them (kn7/bank.c), in the port's block for samples (not freed);
-	// and the module's patterns in one block
+	// null sample), as the effects DSP's SDRAM holds them (kn7/bank.c), in the port's block for samples (not freed)
 	uint32_t sampleBytes;
-	note_t *patternBlock;
-	int32_t patternCount; // (in patternBlock)
 #endif
 
 	volatile int32_t tick, speed;

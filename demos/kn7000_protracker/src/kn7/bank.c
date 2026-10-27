@@ -207,15 +207,16 @@ int bankSend(void)
 	if (words > host->dspMaxWords)
 		return 2;
 
+	// the records go where the module's file was read (main.c): it has been parsed
 	const uint8_t *bank = (const uint8_t *)song->sampleData;
-	uint32_t *records = (uint32_t *)malloc(bankEncodeMax(words));
-	if (records == NULL)
+	uint32_t room;
+	uint32_t *records = (uint32_t *)kn7Scratch(&room);
+	if (records == NULL || bankEncodeMax(words) > room)
 		return 2;
 
 	const uint32_t bytes = bankEncode(bank, words, records);
 	const uint32_t id = crc32(bank, words * 4) ^ words;
 	const int r = host->dspSend(records, bytes, words, bankChecksum(bank, words), id);
-	free(records);
 	paulaSetBank(host->dspBase, r == 1);
 	return r;
 }

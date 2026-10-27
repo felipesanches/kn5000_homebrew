@@ -1,0 +1,35 @@
+   57.43 menu: up, 1 programs, "ProTracker 2.3D" at 0
+   59.08 RUN
+   60.10 request FF, text ""; dsp state 0 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song ?, status "", late 0/0/0/0/0/0/0 max 0.0 ms
+   61.12 request FF, text "LOADING PROTRACKER"; dsp state 0 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song ?, status "", late 0/0/0/0/0/0/0 max 0.0 ms
+   62.13 request FF, text "LOADING PROTRACKER"; dsp state 0 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song ?, status "", late 0/0/0/0/0/0/0 max 0.0 ms
+   63.15 request FF, text "LOADING PROTRACKER"; dsp state 0 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song ?, status "", late 0/0/0/0/0/0/0 max 0.0 ms
+   64.17 request FF, text "LOADING PROTRACKER"; dsp state 0 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song ?, status "", late 0/0/0/0/0/0/0 max 0.0 ms
+   65.18 request FF, text "LOADING PROTRACKER"; dsp state 0 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song ?, status "", late 0/0/0/0/0/0/0 max 0.0 ms
+   66.20 request FF, text "LOADING PROTRACKER"; dsp state 0 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song ?, status "", late 0/0/0/0/0/0/0 max 0.0 ms
+   67.22 request FF, text "LOADING PROTRACKER"; dsp state 4 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song ?, status "", late 0/0/0/0/0/0/0 max 0.0 ms
+   68.23 request FF, text "LOADING PROTRACKER"; dsp state 4 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song ?, status "", late 0/0/0/0/0/0/0 max 0.0 ms
+   69.25 request FF, text "HOLD EXIT TO QUIT"; dsp state 4 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song ?, status "", late 0/0/0/0/0/0/0 max 0.0 ms
+   70.27 request FF, text "HOLD EXIT TO QUIT"; dsp state 4 fail 0 ready 0 flushes 0 busy 0 bank 0 ms; song "adrenaline" pos 0 patt 0 row 0 speed 6 bpm 125 playing 0, status "SENDING SAMPLES..", late 0/0/0/0/0/0/0 max 0.0 ms
+   71.28 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 1 busy 0 bank 461 ms; song "adrenaline" pos 0 patt 6 row 1 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 6/0/0/0/0/0/0 max 0.6 ms
+   72.30 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 49 busy 0 bank 461 ms; song "adrenaline" pos 0 patt 6 row 13 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 45/5/4/2/0/0/0 max 7.3 ms
+   73.32 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 99 busy 0 bank 461 ms; song "adrenaline" pos 0 patt 6 row 26 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 81/6/13/7/0/0/0 max 8.4 ms
+   74.33 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 147 busy 0 bank 461 ms; song "adrenaline" pos 0 patt 6 row 39 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 123/9/19/7/0/0/0 max 8.4 ms
+   75.35 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 195 busy 0 bank 461 ms; song "adrenaline" pos 0 patt 6 row 52 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 167/12/20/10/0/0/0 max 8.4 ms
+   76.37 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 244 busy 0 bank 461 ms; song "adrenaline" pos 1 patt 5 row 0 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 208/16/26/10/0/0/0 max 8.4 ms
+   77.38 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 290 busy 0 bank 461 ms; song "adrenaline" pos 1 patt 5 row 13 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 247/20/29/14/0/0/0 max 8.4 ms
+   78.40 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 329 busy 0 bank 461 ms; song "adrenaline" pos 1 patt 5 row 26 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 274/28/35/21/3/0/0 max 12.2 ms
+   79.42 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 354 busy 0 bank 461 ms; song "adrenaline" pos 1 patt 5 row 38 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 318/30/38/23/3/0/0 max 12.2 ms
+   80.43 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 382 busy 0 bank 461 ms; song "adrenaline" pos 1 patt 5 row 51 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 358/36/43/23/3/0/0 max 12.2 ms
+   81.45 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 409 busy 0 bank 461 ms; song "adrenaline" pos 2 patt 7 row 0 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 404/37/46/24/3/0/0 max 12.2 ms
+   82.47 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 434 busy 0 bank 461 ms; song "adrenaline" pos 2 patt 7 row 12 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 448/41/48/24/3/0/0 max 12.2 ms
+   83.48 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 459 busy 0 bank 461 ms; song "adrenaline" pos 2 patt 7 row 25 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 494/43/48/27/3/0/0 max 12.2 ms
+   84.50 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 482 busy 0 bank 461 ms; song "adrenaline" pos 2 patt 7 row 38 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 538/48/50/27/3/0/0 max 12.2 ms
+   85.52 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 513 busy 0 bank 461 ms; song "adrenaline" pos 2 patt 7 row 51 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 582/51/51/30/3/0/0 max 12.2 ms
+   86.53 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 562 busy 0 bank 461 ms; song "adrenaline" pos 2 patt 7 row 63 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 614/55/61/33/5/0/0 max 14.3 ms
+   87.55 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 610 busy 0 bank 461 ms; song "adrenaline" pos 3 patt 8 row 12 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 651/57/68/35/7/0/0 max 14.3 ms
+   88.57 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 657 busy 0 bank 461 ms; song "adrenaline" pos 3 patt 8 row 25 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 682/63/77/38/8/1/0 max 20.0 ms
+   89.58 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 693 busy 0 bank 461 ms; song "adrenaline" pos 3 patt 8 row 37 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 714/65/83/47/10/1/0 max 20.0 ms
+   89.90 LCDL 3: STOP
+   91.92 request FF, text "PROTRACKER: HOLD EXIT TO QUIT"; dsp state 2 fail 0 ready 1 flushes 696 busy 0 bank 461 ms; song "adrenaline" pos 3 patt 8 row 38 speed 4 bpm 125 playing 0, status "ALL RIGHT", late 716/65/83/47/11/1/0 max 20.0 ms
+   91.92 end

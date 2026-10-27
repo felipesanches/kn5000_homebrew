@@ -10,7 +10,9 @@ The test modules are the soundtrack of Pinball Fantasies (Digital Illusions, 199
 ("Steelchambers2"), `MOD2.MOD` ("adrenaline") and the four tables' `TABLE1.MOD` .. `TABLE4.MOD`, all ProTracker
 modules ("M.K.", 31 samples). They come from the player's own copy of the game and are not in this repository.
 
-Status: see [What was checked](#what-was-checked).
+> **Status (2026-10-27): runs in MAME; not yet tried on the instrument.** In MAME (program 893, the owner's loader
+> floppy, the program menu on a copy of his card) it starts from the menu, shows ProTracker's screen, loads each of the
+> six Pinball Fantasies modules and plays it on the effects DSP ([What was checked](#what-was-checked)).
 
 Contents: [The card](#the-card) · [Playing](#playing) · [How it works](#how-it-works) ·
 [What differs from the Amiga](#what-differs-from-the-amiga) · [Building](#building) ·
@@ -41,7 +43,7 @@ keys left and right of the display.
 | LCDL 3                 | STOP                                                                                               |
 | LCDL 4                 | EDIT: stop, and the edit mode on or off (space)                                                    |
 | LCDL 5                 | the quadrascope or the spectrum analyzer (clicking the visualizer)                                 |
-| LCDR 1, LCDR 2         | the module before, the module after, in `MODS.TXT` (Disk Op.)                                      |
+| LCDR 1, LCDR 2         | the module before, the module after, in `MODS.TXT`, which then plays (Disk Op., then PLAY)         |
 | LCDR 3, LCDR 4         | the sample before, the sample after                                                                |
 | LCDR 5                 | every channel muted, or none                                                                       |
 | START/STOP             | PLAY, or STOP while playing                                                                        |
@@ -122,7 +124,31 @@ To run it in MAME: `tests/mame/run_pt.sh OUT` (see `tests/mame/`).
 
 ## What was checked
 
-(to be filled in by the first MAME session)
+In MAME, the published overlay emulator, program 893 (`tests/mame/run_pt.sh`, `pt_test.lua`; results in
+`tests/results/`, 2026-10-27):
+- **From the menu:** the program menu lists "ProTracker 2.3D"; RUN starts it.
+- **The screen:** ProTracker's screen appears with the first module's name, positions, samples and pattern. The
+  quadrascope and the VU meters follow the music (`tests/results/screen-2026-10-27.png`).
+- **Loading:** all six modules load, and their samples go to the DSP and are confirmed by its checksum. Sending takes
+  2.07 s for INTRO.MOD (190,016 bytes of samples), 0.46 s for MOD2.MOD, and about 1.6 s for each table's.
+- **Timing:** the replayer keeps time. INTRO.MOD at speed 5 plays 10 rows a second, and its positions over 26 s match
+  the song's timeline as ProTracker's sequencing rules give it. 77 % of the ticks run within 1 ms of when they are due,
+  and the latest was 20 ms late.
+- **Sound:** every module is heard (`tests/mame/sound_report.py`). It was compared at two levels
+  (`tests/mame/compare_render.py`, `tests/results/compare-2026-10-27.txt`):
+  - **What the port should play:** `tests/host/render` builds the port's replayer and Paula for the PC, with a model
+    of the DSP's mixer. Against libopenmpt, which plays ProTracker modules as ProTracker 2.3 does, its loudness
+    envelope correlates at r 0.86-0.95 in every 5 s window, at lag 0 and a constant level, for INTRO, MOD2 and
+    TABLE1. The notes, samples, volumes and timing are libopenmpt's.
+  - **What MAME's DSP played:** the session's sound against that render, as waveforms, in 2 s windows: r median
+    0.66-0.83, at a constant level (-11.5 dB), with the lag creeping by about 0.45 ms a second. That creep is MAME's
+    DSP frame clock against the kernel's millisecond counter (the unit's DSP runs at 44,087 Hz by that counter: ROM
+    dumper pass 8). With it taken out, 250 ms windows correlate at median 0.75, 90th percentile 0.94. What is left is
+    each tick's timing (a few ms), the voices' start on a whole word, and MAME's resampling.
+- **Its own consistency:** the sample coder matches `dsp_bank.py` word for word on all six modules (`tests/bank/`).
+
+Not yet tried: the instrument itself, the keybed and the edit mode (MAME has no keybed input in the session), the
+module buttons beyond LCDR 2, the spectrum analyzer.
 
 ## Files
 

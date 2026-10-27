@@ -9,6 +9,7 @@
 #   make mame-media  $(OUT)/mame/sd.img and floppy.img: a copy of the real KN7000's card with the program menu and
 #                    PROTRACK\, and of the loader floppy (RUNNING-THE-BUILDS.md, KN7000 repo)
 #   make test-bank   the sample coder against dsp_bank.py (tests/bank/)
+#   make render      build/host/render: the port's replayer and Paula on the PC (tests/host/)
 # Needs the mn10300-elf toolchain the Pinball port builds (Pinball kn7000/toolchain/build.sh: GCC patched to make no
 # (d32,An) operand), the KN7000 loader's tools (technics-roms-disasm kn7000/tools/cnv_romdump: its font and mkapp.py),
 # and Another World's DSP tools (technics-anotherworld kn7000/tools: the mixer).
@@ -116,6 +117,15 @@ mame-media: card-dir
 	chmod u+w $(OUT)/mame/floppy.img
 	@echo "mame-media: $(abspath $(OUT))/mame/sd.img and floppy.img"
 
+# the port's replayer and Paula on the PC, with a model of the DSP's mixer (tests/host/README.md)
+HOST_C := tests/host/render.c src/kn7/paula.c src/kn7/stubs.c src/pt2/pt2_replayer.c src/pt2/pt2_module_loader.c \
+          src/pt2/pt2_tables.c src/pt2/pt2_structs.c src/pt2/pt2_textout.c src/pt2/modloaders/pt2_load_mod31.c \
+          src/pt2/modloaders/pt2_load_mod15.c src/pt2/gfx/pt2_gfx_font.c
+render: $(OUT)/host/render
+$(OUT)/host/render: $(HOST_C) $(PT_HDR)
+	@mkdir -p $(dir $@)
+	cc -O2 -w -include src/kn7/pt2_kn7.h -Isrc/kn7/shim -Isrc/kn7/shim/modloaders -Isrc/pt2 -Isrc/kn7 -Isrc/common -o $@ $(HOST_C)
+
 test-bank:
 	mkdir -p $(HOME)/compartilhado/tmp/pt-bank
 	$(PYTHON) -I tests/bank/check_bank.py $(AW_TOOLS) $(HOME)/compartilhado/tmp/pt-bank $(MODS:%=$(PF_DATA)/%)
@@ -123,4 +133,4 @@ test-bank:
 clean:
 	test -n "$(OUT)" && rm -rf -- "$(OUT)"
 
-.PHONY: all card-dir mame-media test-bank clean
+.PHONY: all card-dir mame-media render test-bank clean

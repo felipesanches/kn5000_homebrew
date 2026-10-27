@@ -1,0 +1,54 @@
+# PC render (tests/host/render) against libopenmpt, loudness envelopes
+INTRO.MOD: its first 30.0 s start at 0.000 s of INTRO.wav (loudness envelopes)
+    0.0-  5.0 s: lag   +5.0 ms, r 0.954, level -6.0 dB
+    5.0- 10.0 s: lag   -5.0 ms, r 0.980, level -5.9 dB
+   10.0- 15.0 s: lag   -5.0 ms, r 0.894, level -5.9 dB
+   15.0- 20.0 s: lag   -5.0 ms, r 0.856, level -6.0 dB
+   20.0- 25.0 s: lag   -5.0 ms, r 0.893, level -6.0 dB
+   25.0- 30.0 s: lag   -5.0 ms, r 0.920, level -5.9 dB
+  r: least 0.856, median 0.907
+MOD2.MOD: its first 30.0 s start at 0.000 s of MOD2.wav (loudness envelopes)
+    0.0-  5.0 s: lag   +5.0 ms, r 0.953, level -5.9 dB
+    5.0- 10.0 s: lag   -5.0 ms, r 0.963, level -6.0 dB
+   10.0- 15.0 s: lag   -5.0 ms, r 0.948, level -6.0 dB
+   15.0- 20.0 s: lag   -5.0 ms, r 0.963, level -6.0 dB
+   20.0- 25.0 s: lag   -5.0 ms, r 0.945, level -6.0 dB
+   25.0- 30.0 s: lag   +5.0 ms, r 0.945, level -6.0 dB
+  r: least 0.945, median 0.951
+TABLE1.MOD: its first 7.6 s start at 0.000 s of TABLE1.wav (loudness envelopes)
+    0.0-  5.0 s: lag   +5.0 ms, r 0.943, level -5.9 dB
+  r: least 0.943, median 0.943
+
+# MAME session (program 893) against the PC render, waveforms
+MOD2.wav: its first 20.0 s start at 71.184 s of sound.wav (waveforms)
+    0.0-  2.0 s: lag   +0.0 ms, r 0.863, level -11.5 dB
+    2.0-  4.0 s: lag   +0.0 ms, r 0.803, level -11.4 dB
+    4.0-  6.0 s: lag   +2.9 ms, r 0.662, level -11.6 dB
+    6.0-  8.0 s: lag   +3.2 ms, r 0.750, level -11.5 dB
+    8.0- 10.0 s: lag   +4.7 ms, r 0.490, level -11.6 dB
+   10.0- 12.0 s: lag   +5.0 ms, r 0.838, level -11.5 dB
+   12.0- 14.0 s: lag   +7.2 ms, r 0.573, level -11.5 dB
+   14.0- 16.0 s: lag   +7.2 ms, r 0.665, level -11.4 dB
+   16.0- 18.0 s: lag   +8.2 ms, r 0.414, level -11.5 dB
+   18.0- 20.0 s: lag   +8.2 ms, r 0.330, level -18.4 dB
+  r: least 0.330, median 0.664
+INTRO.wav: its first 26.0 s start at 76.251 s of sound.wav (waveforms)
+    0.0-  2.0 s: lag   +0.0 ms, r 0.868, level -11.6 dB
+    2.0-  4.0 s: lag   +0.0 ms, r 0.890, level -11.5 dB
+    4.0-  6.0 s: lag   +0.2 ms, r 0.756, level -11.5 dB
+    6.0-  8.0 s: lag   +2.7 ms, r 0.831, level -11.5 dB
+    8.0- 10.0 s: lag   +2.7 ms, r 0.560, level -11.5 dB
+   10.0- 12.0 s: lag   +6.0 ms, r 0.532, level -11.6 dB
+   12.0- 14.0 s: lag   +5.8 ms, r 0.781, level -11.5 dB
+   14.0- 16.0 s: lag   +5.8 ms, r 0.657, level -11.6 dB
+   16.0- 18.0 s: lag   +7.7 ms, r 0.866, level -11.5 dB
+   18.0- 20.0 s: lag   +9.0 ms, r 0.544, level -11.5 dB
+   20.0- 22.0 s: lag   +9.0 ms, r 0.752, level -11.5 dB
+   22.0- 24.0 s: lag  +10.6 ms, r 0.733, level -11.5 dB
+   24.0- 26.0 s: lag  +11.8 ms, r 0.626, level -11.5 dB
+  r: least 0.532, median 0.752
+TABLE1.wav: its first 30.0 s start at 105.489 s of sound.wav (waveforms)
+    0.0-  2.0 s: lag   +0.0 ms, r 0.844, level -11.5 dB
+    2.0-  4.0 s: lag   +1.2 ms, r 0.827, level -11.5 dB
+    4.0-  6.0 s: lag   +1.6 ms, r 0.385, level -18.7 dB
+  r: least 0.385, median 0.827

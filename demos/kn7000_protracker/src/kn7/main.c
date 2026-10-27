@@ -12,7 +12,8 @@
  *     drawn between ticks, and its writes to the LCD stop every few rows for the ticks that are due;
  *   * the controls (the soft keys' labels beside the screen, ui.c):
  *       LCDL 1-5   PLAY (song), PATTERN (play it), STOP, EDIT, the scopes or the spectrum analyzer
- *       LCDR 1-5   the module before, after (in MODS.TXT), the sample before, after, every channel muted or none
+ *       LCDR 1-5   the module before, after (in MODS.TXT; it plays at once), the sample before, after, every channel
+ *                  muted or none
  *       START/STOP play the song / stop (ProTracker's right Amiga key and space)
  *       PAGE UP/DOWN  the song position (while playing: the replayer goes there) or, in the edit mode, the row
  *       the TEMPO/PROGRAM wheel  the row (stopped), or the sample (playing)
@@ -82,6 +83,12 @@ static uint8_t *carveLargest(uint32_t *bytes)
 	*bytes = region[best].hi - at;
 	region[best].lo = region[best].hi;
 	return (uint8_t *)at;
+}
+
+uint8_t *kn7Scratch(uint32_t *bytes)
+{
+	*bytes = scratchBytes;
+	return scratch;
 }
 
 int8_t *kn7SampleArena(uint32_t bytes)
@@ -218,7 +225,7 @@ static void emptyModule(void)
 	song->loaded = true;
 }
 
-static void loadModule(int index)
+static bool loadModule(int index)
 {
 	if (song != NULL)
 	{
@@ -245,7 +252,7 @@ static void loadModule(int index)
 		emptyModule();
 		uiFullRedraw();
 		displayErrorMsg(keep);
-		return;
+		return false;
 	}
 
 	song = m;
@@ -257,6 +264,7 @@ static void loadModule(int index)
 		statusAllRight();
 	else
 		displayErrorMsg(host->dspVoices ? "DSP NOT READY !" : "NO DSP: SILENT !");
+	return true;
 }
 
 /* ---- the replayer's clock ------------------------------------------------------------------------------------- */
@@ -283,6 +291,10 @@ static void syncVisuals(void)
 	}
 }
 
+/* How late the ticks ran (the clock's counts past when each was due): under 1, 2, 5, 10, 20, 50 ms and more; the worst.
+ * tests/mame/pt_test.lua reads them. */
+uint32_t ptLate[7], ptLateMax;
+
 /* Every tick that is due: the replayer, then Paula's changes to the DSP. Called between pieces of drawing. */
 static void service(void)
 {
@@ -302,6 +314,15 @@ static void service(void)
 	int n = 0;
 	while ((int32_t)(now - nextTick) >= 0 && editor.songPlaying)
 	{
+		const uint32_t late = now - nextTick;
+		static const uint32_t kLateMs[6] = { 1, 2, 5, 10, 20, 50 };
+		int b = 0;
+		while (b < 6 && late >= kLateMs[b] * TICKS_PER_MS)
+			b++;
+		ptLate[b]++;
+		if (late > ptLateMax)
+			ptLateMax = late;
+
 		const uint32_t bpm = bpmOf();
 		paulaAdvance((DSP_RATE * 5 / 2 + bpm / 2) / bpm); // the DSP frames of a tick: 2.5 / BPM seconds
 		tickReplayer();
@@ -418,9 +439,15 @@ static void controls(void)
 	}
 
 	if (pressed(BTN_LCDR1) && moduleCount)
-		loadModule((moduleAt + moduleCount - 1) % moduleCount);
+	{
+		if (loadModule((moduleAt + moduleCount - 1) % moduleCount))
+			playSong();
+	}
 	if (pressed(BTN_LCDR2) && moduleCount)
-		loadModule((moduleAt + 1) % moduleCount);
+	{
+		if (loadModule((moduleAt + 1) % moduleCount))
+			playSong();
+	}
 	if (pressed(BTN_LCDR3))
 		setSample(editor.currSample - 1);
 	if (pressed(BTN_LCDR4))
@@ -534,8 +561,8 @@ int pt_entry(const PfHost *h)
 	videoOwn();
 	uiSides();
 	setStatusMessage("ALL RIGHT", DO_CARRY);
-	loadModule(0);
-	playSong();
+	if (loadModule(0))
+		playSong();
 
 	host->status("PROTRACKER: HOLD EXIT TO QUIT");
 	uint32_t vblank = stamp();

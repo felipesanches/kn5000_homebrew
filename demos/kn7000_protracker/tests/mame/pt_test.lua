@@ -6,7 +6,7 @@
 --   * PT.BIN loads the first module of MODS.TXT, sends its samples to the DSP and plays it;
 --   * each second to $PT_OUT/events.txt: the converter's text, the DSP's state (KN7APP.BIN's dsp: state, fail,
 --     ready, the voice commands sent), and the replayer's (PT.BIN's song: position, pattern, row, speed, BPM;
---     editor.songPlaying); a snapshot every 4 s;
+--     editor.songPlaying; the status line); a snapshot every 4 s;
 --   * then LCDR 2 (the next module) every $PT_EACH seconds (default 20) until $PT_MODULES modules (default 2) have
 --     played; then STOP (LCDL 3), and the end.
 -- The sound is in $PT_OUT/sound.wav (-wavwrite): tests/mame/sound_report.py says when it is silent.
@@ -25,7 +25,7 @@ for line in io.lines(SYMS) do
   local a, n = line:match("^(%x+) %a (%S+)$")
   if a then SYM[n] = tonumber(a, 16) end
 end
-local DSP, SONG, EDITOR = SYM["_dsp"], SYM["_song"], SYM["_editor"]
+local DSP, SONG, EDITOR, UI = SYM["_dsp"], SYM["_song"], SYM["_editor"], SYM["_ui"]
 
 local function now() return M.time:as_double() end
 local ev = assert(io.open(OUT .. "/events.txt", "w"))
@@ -43,8 +43,8 @@ local function wait(s) local t = now() + s; while now() < t do coroutine.yield()
 local function wait_until(cond, s) local t = now() + s; while now() < t do if cond() then return true end; coroutine.yield() end; return cond() end
 local function press(tag, mask) local f = field(tag, mask); f:set_value(1); wait(0.3); f:set_value(0) end
 
--- module_t (pt2_structs.h, PT2_KN7) as mn10300-elf-gcc lays it out (offsetof, 2026-10-27): speed 0x18, row 0x1C,
--- header.name 0x1E, currRow 0xAEC, currBPM 0xAF4, currPos 0xAF8, currPattern 0xAFA; editor_t: songPlaying 0x2E,
+-- module_t (pt2_structs.h, PT2_KN7) as mn10300-elf-gcc lays it out (tests/mame/offsets.c): speed 0x10, row 0x14,
+-- header.name 0x16, currRow 0xAE4, currBPM 0xAEC, currPos 0xAF0, currPattern 0xAF2; editor_t: songPlaying 0x2E,
 -- currMode 0x2170
 local function state()
   local d = DSP and string.format("dsp state %d fail %d ready %d flushes %d busy %d bank %d ms",
@@ -53,9 +53,16 @@ local function state()
   local s = "song ?"
   if SONG and sp:read_u32(SONG) ~= 0 then
     local m = sp:read_u32(SONG)
-    s = string.format("song %q pos %d patt %d row %d speed %d bpm %d playing %d", cstr(m + 0x1E, 20),
-      sp:read_u16(m + 0xAF8), sp:read_u16(m + 0xAFA), sp:read_u8(m + 0xAEC), sp:read_u32(m + 0x18),
-      sp:read_u32(m + 0xAF4), EDITOR and sp:read_u8(EDITOR + 0x2E) or -1)
+    s = string.format("song %q pos %d patt %d row %d speed %d bpm %d playing %d", cstr(m + 0x16, 20),
+      sp:read_u16(m + 0xAF0), sp:read_u16(m + 0xAF2), sp:read_u8(m + 0xAE4), sp:read_u32(m + 0x10),
+      sp:read_u32(m + 0xAEC), EDITOR and sp:read_u8(EDITOR + 0x2E) or -1)
+  end
+  if UI then s = s .. string.format(", status %q", cstr(UI, 18)) end  -- ui_t's statusMessage, its first field
+  local L = SYM["_ptLate"]
+  if L then  -- main.c: the ticks run under 1, 2, 5, 10, 20, 50 ms late and later; the latest (ms)
+    local t = {}
+    for i = 0, 6 do t[#t + 1] = tostring(sp:read_u32(L + 4 * i)) end
+    s = s .. string.format(", late %s max %.1f ms", table.concat(t, "/"), sp:read_u32(SYM["_ptLateMax"]) / 2001)
   end
   return d .. "; " .. s
 end
