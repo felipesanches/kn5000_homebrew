@@ -176,8 +176,8 @@ In MAME, the published overlay emulator, program 893 (`tests/mame/run_pt.sh`, `p
 - **The saved module** (`tests/mame/check_saved.py`, `tests/results/saved-PTNEW01-vs-MOD2.txt`): taken off the card
   after the session, PTNEW01.MOD differs from MOD2.MOD in exactly those edits. Its sample data are the same byte for
   byte, libopenmpt plays it, and MODS.TXT lists it.
-- **The firmware leaves the panel alone** (`PT_RISK=1`, `tests/results/events-risk-after.txt`): after the fix, none of
-  the 22 switch frames reached the firmware.
+- **The firmware leaves the panel alone** (`PT_RISK=1`, `tests/results/events-risk-after-10.txt` to `-12.txt`): after
+  the fix, none of the 66 switch frames in three runs reached the firmware.
 
 Not yet tried: the instrument itself.
 

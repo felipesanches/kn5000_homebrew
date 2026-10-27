@@ -139,17 +139,19 @@ Each control is mapped so that what it does on the KN7000 suggests what it does 
 
 ### Risks to check first (checked in MAME, 2026-10-27)
 
-**Result** (`tests/mame/pt_test.lua` `PT_RISK=1`, `tests/results/events-risk-before.txt` and `-after.txt`):
+**Result** (`tests/mame/pt_test.lua` `PT_RISK=1`, `tests/results/events-risk-before.txt` and `events-risk-after-10.txt` to `-12.txt`):
 - **Before:** TRANSPOSE did nothing to the keybed's notes, but R1/R2 OCTAVE moved them an octave. PANEL MEMORY 1
   recalled a registration: that moved them too, and it reloaded the effects DSP over the mixer, so the music stopped.
 - **The fix, in the platform (KN7APP.BIN `entry.c`):** the firmware's main task decodes the panel's frames from its
   receive ring. KN7APP now reads every switch frame there first, keeps the real state for the program
   (`PfHost::panel`), and clears the switches in the frame, so the firmware sees no change. CONTRAST is left to the
   firmware. This is how the Pinball port already takes the TEMPO/PROGRAM wheel's frames.
-  - It reads the ring on each converter call, waiting for a frame's second byte.
+  - It reads the ring on each converter call, and again before every return from one, waiting for a frame's second
+    byte (the main task decodes the ring as soon as a call returns).
   - It also reads the ring from the program's own task at every replayer tick (ABI 11 `panelScan`).
-- **After:** all 22 switch frames were taken before the firmware decoded them. No control reached the firmware, and
-  the music played on. Program 893 only, as for the wheel.
+- **After:** in three runs, all 66 switch frames were taken before the firmware decoded them. No control reached the
+  firmware, and the music played on. Two earlier versions each let a press through in MAME: one returned on a frame's
+  first byte, and one returned from its rest without a last look at the ring. Program 893 only, as for the wheel.
 
 What the checks were:
 
@@ -231,7 +233,7 @@ What stays as it is: the replayer, the loader, Paula on the DSP, the sample bank
 - the manual is `manual/protracker-kn7000-manual.pdf`.
 
 Left for the instrument itself: the feel of the auto-repeat and the wheel, and whether every control does only what
-the port asks there. In MAME the platform takes 22 of 22 switch frames first; how many it takes on the unit is not known
+the port asks there. In MAME the platform takes 66 of 66 switch frames first (three runs); how many it takes on the unit is not known
 yet. Not done:
 - the pitch-bend wheel;
 - NEXT BANK, which only switches one bank of 8 macros;

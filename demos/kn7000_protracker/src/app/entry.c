@@ -252,38 +252,34 @@ void wheel_scan(void) {
   }
 }
 
-/* A frame is two bytes and the panel sends them one after the other: when the first has come, the call waits up to
- * FRAME_WAIT_MS for the second, so that panel_scan sees the frame before the main task decodes it. Then the call goes
- * on resting: the main task decodes the ring only between converter calls, and a frame that comes in while it is out
- * of the call reaches the firmware first (in MAME, returning at every frame let SET through). The ring (92 bytes)
- * still gets decoded at least every REST_MS, or at once when it is half full. */
+/* A frame is two bytes and the panel sends them one after the other. The main task decodes the ring as soon as a
+ * converter call returns, so every way out of the call takes the ring's frames first (scan_whole): when a frame's
+ * first byte has come, it waits up to FRAME_WAIT_MS for the second. In MAME, returning on a first byte let a third of
+ * the switch frames through; returning at the end of the rest without a last look let PANEL MEMORY 1 through. */
 #define FRAME_WAIT_MS 6
-#define RING_HALF (PANEL_RING_LEN / 2)
+
+static void scan_whole(void) {
+  const u32 t1 = now_ms();
+  for (;;) {
+    wheel_scan();
+    if (wheel_at == *(volatile u16*)PANEL_RX_WR || now_ms() - t1 >= FRAME_WAIT_MS) return;
+    fw_call(fw.dly, 1, 0, 0, 0);  /* (half a frame: its second byte is on its way) */
+  }
+}
 
 static void rest(void) {
   if (fw.build != 893 || !fw.dly || !fw.ms) return;
   ++rest_calls;
   const u32 t0 = now_ms();
   while (now_ms() - t0 < REST_MS) {
-    const u32 rd = *(volatile u16*)PANEL_RX_RD, wr = *(volatile u16*)PANEL_RX_WR;
-    if (rd != wr) {
-      const u32 t1 = now_ms();
-      for (;;) {
-        wheel_scan();
-        if (wheel_at == *(volatile u16*)PANEL_RX_WR || now_ms() - t1 >= FRAME_WAIT_MS) break;
-        fw_call(fw.dly, 1, 0, 0, 0);  /* (half a frame: its second byte is on its way) */
-      }
-      if ((wr + PANEL_RING_LEN - rd) % PANEL_RING_LEN >= RING_HALF) {
-        ++rest_early;
-        return;
-      }
-    }
-    if (file_pending() || bank_want >= 0 || task_done || quit_req) {
+    if (*(volatile u16*)PANEL_RX_RD != *(volatile u16*)PANEL_RX_WR || file_pending() || bank_want >= 0 || task_done ||
+        quit_req) {
       ++rest_early;
-      return;
+      break;
     }
     fw_call(fw.dly, REST_TICKS, 0, 0, 0);
   }
+  scan_whole();  /* (the bytes that came meanwhile, before the main task decodes them) */
 }
 
 static int answer(const char* text) {
@@ -334,6 +330,7 @@ int cnv_entry(void) {
       wheel_scan();
       led_service();
       if (!file_serve() && !bank_serve()) rest();
+      else scan_whole();  /* (a file or the bank took the call: the ring's frames before the main task's) */
       break;
     case S_FAILED:
       if (fw.panel ? button(BTN_EXIT) : ++fail_calls >= FAIL_CALLS) quit_req = 1;
