@@ -21,6 +21,7 @@ local NAME = os.getenv("PT_NAME") or "ProTracker 2.3D"
 local EACH = tonumber(os.getenv("PT_EACH") or "") or 20
 local MODULES = tonumber(os.getenv("PT_MODULES") or "") or 2
 local EDIT = os.getenv("PT_EDIT") == "1"
+local EDIT2 = os.getenv("PT_EDIT") == "2"  -- the editor (PLAN-EDITING.md): every step checked in PT.BIN's memory
 local RISK = os.getenv("PT_RISK") == "1"  -- does the firmware still act on TRANSPOSE, OCTAVE ... (PLAN-EDITING.md, "Risks")
 local menuV, V_NPROG, ORDER, PR_NAME = 0x502C0000, 0x502C0034, 0x502C3800, 0x40   -- the menu's (kn7menu menu.inc)
 
@@ -80,6 +81,10 @@ local function state()
   if UI then s = s .. string.format(", status %q", cstr(UI, 18)) end  -- ui_t's statusMessage, its first field
   if SYM["_panel_frames"] then  -- entry.c: switch frames kept from the firmware; of them, decoded by it first
     s = s .. string.format(", panel frames %d late %d", sp:read_u32(SYM["_panel_frames"]), sp:read_u32(SYM["_panel_late"]))
+    local nl = sp:read_u32(SYM["_panel_late"])
+    for i = 0, (nl < 8 and nl or 8) - 1 do  -- which: ADDR=DATA (DATA 00 is a release: harmless)
+      s = s .. string.format(" %02X=%02X", sp:read_u8(SYM["_panel_late_log"] + 2 * i), sp:read_u8(SYM["_panel_late_log"] + 2 * i + 1))
+    end
   end
   local L = SYM["_ptLate"]
   if L then  -- main.c: the ticks run under 1, 2, 5, 10, 20, 50 ms late and later; the latest (ms)
@@ -109,6 +114,116 @@ local co = coroutine.create(function()
     E("RUN")
     local t0 = now()
     local played = 1
+    if EDIT2 then
+      local CUR = SYM["_cursor"]
+      local fails = 0
+      local function CHECK(what, ok, got) E("CHECK %s %s%s", ok and "ok  " or "FAIL", what, got and (" (" .. tostring(got) .. ")") or ""); if not ok then fails = fails + 1 end end
+      local function m() return sp:read_u32(SONG) end
+      local function row() return sp:read_u8(m() + 0xAE4) end
+      local function cell(r, c)  -- period, sample, command, param of row r, channel c of the edited pattern
+        local patt = sp:read_u32(m() + 0x954 + 4 * sp:read_u16(m() + 0xAF2))
+        local a = patt + (r * 4 + c) * 6
+        return sp:read_u16(a + 4), sp:read_u8(a + 1), sp:read_u8(a + 2), sp:read_u8(a)
+      end
+      local function mode() return sp:read_u8(EDITOR + 0x2170) end
+      local function tap(tag, mask) press(tag, mask); wait(0.4) end
+      local function keys(list) for _, k in ipairs(list) do KEY[k]:set_value(1) end; wait(0.4); for _, k in ipairs(list) do KEY[k]:set_value(0) end; wait(0.5) end
+      wait_until(function() return SONG and sp:read_u32(SONG) ~= 0 and EDITOR and sp:read_u8(EDITOR + 0x2E) == 1 end, 60)
+      wait(3)
+      E("playing: %s", state()); M.video:snapshot()
+      tap("CPL_SEG0", 0x10)                                    -- START/STOP: stop
+      tap("CPR_SEG0", 0x08)                                    -- EASY REC: the edit mode
+      CHECK("EASY REC: edit mode", mode() == 1, mode())
+      tap("CPL_SEG4", 0x01)                                    -- VARIATION 3: row 32
+      CHECK("VARIATION 3: row 32", row() == 32, row())
+      tap("CPC_SEG8", 0x40)                                    -- MUTE UP 6: the cursor to channel 1
+      local s0 = sp:read_u8(EDITOR + 0x2160)
+      keys({ "C3" })                                           -- a note
+      local p, sm = cell(32, 0)
+      CHECK("C3 into row 32: C-2 (428) and the sample", p == 428 and sm == s0 + 1, p .. "/" .. sm)
+      CHECK("the cursor on by the edit skip", row() == 33, row())
+      tap("CPC_SEG11", 0x08)                                   -- MUTE DOWN 16: the edit skip 1 -> 0
+      CHECK("MUTE DOWN 16: skip 0", sp:read_u8(EDITOR + 0x2184) == 0, sp:read_u8(EDITOR + 0x2184))
+      for _ = 1, 3 do tap("CPR_SEG1", 0x02) end               -- PART SELECT RIGHT 1 x3: the command column
+      CHECK("PART SELECT RIGHT 1 x3: the command column", sp:read_u8(CUR + 1) == 3, sp:read_u8(CUR + 1))
+      tap("CPR_SEG0", 0x20)                                    -- SYNTH: C
+      tap("CPR_SEG1", 0x02)
+      tap("CPR_SEG0", 0x10)                                    -- STRINGS & VOCAL: 4
+      tap("CPR_SEG1", 0x02)
+      tap("CPR_SEG4", 0x10)                                    -- PIANO: 0
+      local _, _, c, q = cell(33, 0)
+      CHECK("SYNTH, STRINGS, PIANO: C40 in row 33", c == 0xC and q == 0x40, string.format("%X%02X", c, q))
+      tap("CPR_SEG6", 0x08)                                    -- SOUND EXPLORER: delete the effect
+      _, _, c, q = cell(33, 0)
+      CHECK("SOUND EXPLORER: the effect deleted", c == 0 and q == 0, string.format("%X%02X", c, q))
+      tap("CPL_SEG6", 0x08)                                    -- PADS BANK: undo
+      _, _, c, q = cell(33, 0)
+      CHECK("PADS BANK: undone", c == 0xC and q == 0x40, string.format("%X%02X", c, q))
+      tap("CPR_SEG7", 0x40); tap("CPR_SEG0", 0x02)             -- SET, PANEL MEMORY 1: store C40
+      CHECK("SET, PANEL MEMORY 1: macro 1 = C40", sp:read_u16(EDITOR + 0x218E) == 0xC40, string.format("%X", sp:read_u16(EDITOR + 0x218E)))
+      tap("CPL_SEG4", 0x01)                                    -- VARIATION 3: row 32
+      tap("CPC_SEG8", 0x40)                                    -- the cursor to channel 1, the note column
+      tap("CPR_SEG3", 0x01)                                    -- TRANSPOSE +
+      p = cell(32, 0)
+      CHECK("TRANSPOSE +: C#2 (404)", p == 404, p)
+      tap("CPR_SEG7", 0x02)                                    -- R1/R2 OCTAVE -
+      p = cell(32, 0)
+      CHECK("R1/R2 OCTAVE -: C#1 (808)", p == 808, p)
+      tap("CPL_SEG3", 0x10)                                    -- FILL IN 1: insert a row
+      local p32, p33 = cell(32, 0), cell(33, 0)
+      CHECK("FILL IN 1: row 32 empty, C#1 now in row 33", p32 == 0 and p33 == 808, p32 .. "/" .. p33)
+      tap("CPL_SEG3", 0x04)                                    -- FILL IN 2: delete the row
+      p = cell(32, 0)
+      CHECK("FILL IN 2: C#1 back in row 32", p == 808, p)
+      tap("CPL_SEG4", 0x80)                                    -- PAD 2: copy the track
+      tap("CPC_SEG9", 0x04)                                    -- MUTE UP 8: the cursor to channel 2
+      CHECK("MUTE UP 8: channel 2", sp:read_u8(CUR + 3) == 1, sp:read_u8(CUR + 3))
+      tap("CPL_SEG4", 0x20)                                    -- PAD 3: paste the track
+      local a1, b1, c1, d1 = cell(33, 0)
+      local a2, b2, c2, d2 = cell(33, 1)
+      CHECK("PAD 2, PAD 3: the track copied to channel 2", a1 == a2 and b1 == b2 and c1 == c2 and d1 == d2 and c2 == 0xC, string.format("%d %d %X%02X", a2, b2, c2, d2))
+      tap("CPC_SEG8", 0x40)                                    -- back to channel 1
+      tap("CPL_SEG2", 0x08)                                    -- BALLAD: sample 3
+      CHECK("BALLAD: sample 3", sp:read_u8(EDITOR + 0x2160) == 2, sp:read_u8(EDITOR + 0x2160) + 1)
+      tap("CPL_SEG7", 0x08)                                    -- AUTO PLAY CHORD OFF/ON: chord entry
+      tap("CPL_SEG4", 0x10)                                    -- VARIATION 1: row 0
+      keys({ "C3", "E3", "G3" })                               -- a chord
+      local n1, s1 = cell(0, 0)
+      local n2 = cell(0, 1)
+      local n3 = cell(0, 2)
+      CHECK("C3 E3 G3 as a chord: C-2 E-2 G-2 across channels 1-3, sample 3", n1 == 428 and n2 == 339 and n3 == 285 and s1 == 3, n1 .. " " .. n2 .. " " .. n3 .. " s" .. s1)
+      local len0 = sp:read_u16(m() + 0x12C)
+      tap("CPC_SEG5", 0x40)                                    -- MUTE UP 2: PATT of this position +1
+      tap("CPC_SEG8", 0x01)                                    -- MUTE UP 3: LEN + 1
+      CHECK("MUTE UP 3: the song one position longer", sp:read_u16(m() + 0x12C) == len0 + 1, sp:read_u16(m() + 0x12C))
+      tap("CPR_SEG4", 0x02)                                    -- CONDUCTOR RIGHT 2: insert a position
+      CHECK("CONDUCTOR RIGHT 2: a position inserted", sp:read_u16(m() + 0x12C) == len0 + 2, sp:read_u16(m() + 0x12C))
+      local hold = field("CPC_SEG11", 0x40); hold:set_value(1); wait(0.3)
+      tap("CPR_SEG4", 0x02)                                    -- SHIFT + CONDUCTOR RIGHT 2: delete it
+      hold:set_value(0); wait(0.3)
+      CHECK("SHIFT + CONDUCTOR RIGHT 2: deleted", sp:read_u16(m() + 0x12C) == len0 + 1, sp:read_u16(m() + 0x12C))
+      M.video:snapshot()
+      tap("CPC_SEG5", 0x02); wait(1); M.video:snapshot()       -- HELP
+      for _ = 1, 4 do tap("CPC_SEG11", 0x20); wait(1); M.video:snapshot() end  -- PAGE DOWN: its pages
+      tap("CPC_SEG11", 0x80); wait(1)                          -- EXIT: back
+      tap("CPR_SEG7", 0x01); wait(1)                           -- LCDR 3: the Disk Op.
+      M.video:snapshot()
+      tap("CPL_SEG0", 0x04); wait(1)                           -- LCDL 5: SAVE AS NEW
+      M.video:snapshot()
+      tap("CPL_SEG0", 0x10)                                    -- START/STOP: yes
+      wait_until(function() return cstr(UI, 18):find("SAVED") ~= nil end, 60)
+      E("saved: %s", state())
+      CHECK("SAVE AS NEW: the module saved", cstr(UI, 18):find("MODULE SAVED") ~= nil, cstr(UI, 18))
+      tap("CPC_SEG11", 0x80); wait(0.5)                        -- EXIT: the Disk Op. closed
+      tap("CPC_SEG11", 0x80); wait(0.5)                        -- EXIT: the edit mode off
+      CHECK("EXIT: the edit mode off", mode() == 0, mode())
+      M.video:snapshot()
+      E("CHECKS: %d failed", fails)
+      E("end")
+      ev:close()
+      M:exit()
+      return
+    end
     if RISK then
       wait_until(function() return SONG and sp:read_u32(SONG) ~= 0 and EDITOR and sp:read_u8(EDITOR + 0x2E) == 1 end, 60)
       wait(4)

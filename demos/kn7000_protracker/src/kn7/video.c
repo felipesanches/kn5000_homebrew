@@ -156,9 +156,12 @@ static void present(const pixel_t *now8, pixel_t *was8, int w, int x0, void (*se
 	}
 }
 
-void videoPresent(void (*service)(void))
+void videoPresent(void (*service)(void), bool sides)
 {
 	present(video.frameBuffer, shown, SCREEN_W, PT_LEFT, service);
-	present(side[0], sideShown[0], SIDE_W, 0, service);
-	present(side[1], sideShown[1], SIDE_W, PT_LEFT + SCREEN_W, service);
+	if (sides)
+	{
+		present(side[0], sideShown[0], SIDE_W, 0, service);
+		present(side[1], sideShown[1], SIDE_W, PT_LEFT + SCREEN_W, service);
+	}
 }

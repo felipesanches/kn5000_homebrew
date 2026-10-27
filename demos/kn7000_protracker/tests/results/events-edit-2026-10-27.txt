@@ -1,0 +1,29 @@
+   57.43 menu: up, 1 programs, "ProTracker 2.3D" at 0
+   59.08 RUN
+   74.35 playing: dsp state 2 fail 0 ready 1 flushes 141 busy 0 bank 463 ms; song "adrenaline" pos 0 patt 6 row 37 speed 4 bpm 125 playing 1, status "ALL RIGHT", panel frames 0 late 0, late 107/12/9/13/11/0/0 max 20.0 ms
+   75.82 CHECK ok   EASY REC: edit mode (1)
+   76.55 CHECK ok   VARIATION 3: row 32 (32)
+   78.22 CHECK ok   C3 into row 32: C-2 (428) and the sample (428/1)
+   78.22 CHECK ok   the cursor on by the edit skip (33)
+   78.93 CHECK ok   MUTE DOWN 16: skip 0 (0)
+   81.12 CHECK ok   PART SELECT RIGHT 1 x3: the command column (3)
+   84.75 CHECK ok   SYNTH, STRINGS, PIANO: C40 in row 33 (C40)
+   85.48 CHECK ok   SOUND EXPLORER: the effect deleted (000)
+   86.22 CHECK ok   PADS BANK: undone (C40)
+   87.65 CHECK ok   SET, PANEL MEMORY 1: macro 1 = C40 (C40)
+   89.85 CHECK ok   TRANSPOSE +: C#2 (404) (404)
+   90.57 CHECK ok   R1/R2 OCTAVE -: C#1 (808) (808)
+   91.28 CHECK ok   FILL IN 1: row 32 empty, C#1 now in row 33 (0/808)
+   92.02 CHECK ok   FILL IN 2: C#1 back in row 32 (808)
+   93.48 CHECK ok   MUTE UP 8: channel 2 (1)
+   94.20 CHECK ok   PAD 2, PAD 3: the track copied to channel 2 (0 0 C40)
+   95.65 CHECK ok   BALLAD: sample 3 (3)
+   98.05 CHECK ok   C3 E3 G3 as a chord: C-2 E-2 G-2 across channels 1-3, sample 3 (428 339 285 s3)
+   99.50 CHECK ok   MUTE UP 3: the song one position longer (16)
+  100.22 CHECK ok   CONDUCTOR RIGHT 2: a position inserted (17)
+  101.55 CHECK ok   SHIFT + CONDUCTOR RIGHT 2: deleted (16)
+  116.20 saved: dsp state 2 fail 0 ready 1 flushes 147 busy 0 bank 463 ms; song "adrenaline" pos 0 patt 7 row 0 speed 4 bpm 125 playing 0, status "MODULE SAVED !", panel frames 88 late 1, late 108/12/9/13/11/0/0 max 20.0 ms
+  116.20 CHECK ok   SAVE AS NEW: the module saved (MODULE SAVED !)
+  118.68 CHECK ok   EXIT: the edit mode off (0)
+  118.68 CHECKS: 0 failed
+  118.68 end

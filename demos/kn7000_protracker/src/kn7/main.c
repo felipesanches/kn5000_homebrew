@@ -10,16 +10,8 @@
  *   * time: the replayer ticks by the kernel's millisecond counter and timer 4 (2,001 counts a millisecond), 50 times
  *     a second at 125 BPM as the CIA does it; Paula's changes go to the DSP after each tick (paula.c). The screen is
  *     drawn between ticks; between its parts, and every 8 rows of its writes to the LCD, the ticks that are due run;
- *   * the controls (the soft keys' labels beside the screen, ui.c):
- *       LCDL 1-5   PLAY (song), PATTERN (play it), STOP, EDIT, the scopes or the spectrum analyzer
- *       LCDR 1-5   the module before, after (in MODS.TXT; it plays at once), the sample before, after, every channel
- *                  muted or none
- *       START/STOP play the song / stop (ProTracker's right Amiga key and space)
- *       PAGE UP/DOWN  the song position (while playing: the replayer goes there) or, in the edit mode, the row
- *       the TEMPO/PROGRAM wheel  the row (stopped), or the sample (playing)
- *       MUTE UP 1-4  channel 1-4 muted or not; MUTE DOWN 1-4: the cursor to channel 1-4
- *       the keybed the current sample on the cursor's channel (edit.c); in the edit mode, into the pattern
- *       EXIT held  the end (KN7APP.BIN) */
+ *   * the controls: controls.c, as PLAN-EDITING.md maps them; the screen's side columns: sides.c.
+ *     EXIT held: the end (KN7APP.BIN) */
 #include <errno.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -41,7 +33,6 @@ void sinkVisualizerBars(void);                               /* ui.c */
 void updateSpectrumAnalyzer(uint8_t vol, uint16_t period);  /* ui.c */
 void controlsInit(void);                                     /* controls.c */
 void controlsUpdate(void);
-void uiDrawSides(void);                                      /* sides.c */
 bool controlsHelp(int *page);
 void setDefaultPalette(void);                                /* pt2_palette.c */
 
@@ -184,7 +175,7 @@ void showProgress(const char *what)
 {
 	uiMessage(what);
 	uiUpdate();
-	videoPresent(NULL);
+	videoPresent(NULL, uiDrawSides(true));
 }
 
 /* ---- the replayer's clock ------------------------------------------------------------------------------------- */
@@ -315,13 +306,13 @@ int pt_entry(const PfHost *h)
 			if (now - vblank >= TICKS_PER_MS * 200)
 				vblank = now;
 			int helpPage;
-			if (!controlsHelp(&helpPage))
+			const bool help = controlsHelp(&helpPage);
+			if (!help)
 			{
 				sinkVisualizerBars();
 				uiUpdate();
 			}
-			uiDrawSides();
-			videoPresent(service);
+			videoPresent(service, uiDrawSides(help));
 		}
 
 		host->yield(1);

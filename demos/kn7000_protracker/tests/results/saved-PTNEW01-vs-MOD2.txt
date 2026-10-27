@@ -1,0 +1,52 @@
+song length 15 -> 16
+position 0: pattern 6 -> 7
+pattern  6 row  0 channel 1: period 190 sample 6 effect C1A -> period 428 sample 3 effect C1A
+pattern  6 row  0 channel 2: period 190 sample 9 effect 911 -> period 339 sample 3 effect C1A
+pattern  6 row  0 channel 3: period 480 sample 15 effect C00 -> period 285 sample 3 effect C00
+pattern  6 row  1 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect 204
+pattern  6 row  2 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 204
+pattern  6 row  3 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect 203
+pattern  6 row  4 channel 2: period 190 sample 9 effect 90A -> period 0 sample 0 effect A02
+pattern  6 row  5 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect A03
+pattern  6 row  6 channel 2: period 0 sample 0 effect 000 -> period 190 sample 6 effect C10
+pattern  6 row  7 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect 204
+pattern  6 row  8 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 204
+pattern  6 row  9 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 203
+pattern  6 row 10 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect A02
+pattern  6 row 11 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect A03
+pattern  6 row 12 channel 2: period 190 sample 9 effect 90A -> period 190 sample 6 effect C0A
+pattern  6 row 13 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect 204
+pattern  6 row 14 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect 204
+pattern  6 row 15 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect 203
+pattern  6 row 16 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect A02
+pattern  6 row 17 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect A03
+pattern  6 row 18 channel 2: period 0 sample 0 effect 000 -> period 190 sample 6 effect C04
+pattern  6 row 19 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect 204
+pattern  6 row 20 channel 2: period 190 sample 9 effect 904 -> period 0 sample 0 effect 204
+pattern  6 row 21 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect 203
+pattern  6 row 22 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect A02
+pattern  6 row 23 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect A03
+pattern  6 row 24 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 000
+pattern  6 row 25 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 000
+pattern  6 row 26 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 000
+pattern  6 row 28 channel 2: period 190 sample 9 effect 90A -> period 0 sample 0 effect 000
+pattern  6 row 32 channel 1: period 0 sample 0 effect 000 -> period 808 sample 1 effect 000
+pattern  6 row 32 channel 2: period 190 sample 9 effect 911 -> period 808 sample 1 effect 000
+pattern  6 row 33 channel 1: period 0 sample 0 effect 000 -> period 0 sample 0 effect C40
+pattern  6 row 33 channel 2: period 0 sample 0 effect 000 -> period 0 sample 0 effect C40
+pattern  6 row 34 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 000
+pattern  6 row 36 channel 2: period 190 sample 9 effect 90A -> period 0 sample 0 effect 000
+pattern  6 row 40 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 000
+pattern  6 row 41 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 000
+pattern  6 row 42 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 000
+pattern  6 row 44 channel 2: period 190 sample 9 effect 90A -> period 0 sample 0 effect 000
+pattern  6 row 48 channel 2: period 190 sample 9 effect 911 -> period 428 sample 2 effect C2A
+pattern  6 row 52 channel 2: period 190 sample 9 effect 904 -> period 0 sample 0 effect 000
+pattern  6 row 54 channel 2: period 0 sample 0 effect 000 -> period 428 sample 2 effect 000
+pattern  6 row 56 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 000
+pattern  6 row 57 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 000
+pattern  6 row 58 channel 2: period 190 sample 9 effect 911 -> period 0 sample 0 effect 000
+pattern  6 row 60 channel 2: period 190 sample 9 effect 90A -> period 214 sample 1 effect C2A
+pattern  6 row 62 channel 2: period 0 sample 0 effect 000 -> period 214 sample 1 effect 000
+sample data: the same (43046 bytes)
+libopenmpt: plays it

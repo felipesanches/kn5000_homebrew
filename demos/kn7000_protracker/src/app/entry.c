@@ -203,6 +203,7 @@ static int wheel_on;
 #define FW_KEEP_BITS 0x0C        /* ... CONTRAST UP and DOWN stay the firmware's */
 u8 panel_real[0x40];
 u32 panel_frames, panel_late;  /* switch frames seen; of them, those the firmware had decoded first */
+u8 panel_late_log[16];         /* the last 8 of those: ADDR, DATA (a press the firmware saw, or a harmless release) */
 static int panel_copied;
 
 void wheel_scan(void) {
@@ -232,8 +233,13 @@ void wheel_scan(void) {
       panel_real[idx] = data;
       ++panel_frames;
       const u32 ahead = (wheel_at + PANEL_RING_LEN - rd) % PANEL_RING_LEN, filled = (wr + PANEL_RING_LEN - rd) % PANEL_RING_LEN;
-      if (ahead < filled) ring[next] = (u8)(idx == FW_KEEP_SEG ? data & FW_KEEP_BITS : 0);
-      else ++panel_late;
+      if (ahead < filled) {
+        ring[next] = (u8)(idx == FW_KEEP_SEG ? data & FW_KEEP_BITS : 0);
+      } else {
+        panel_late_log[(panel_late % 8) * 2] = addr;
+        panel_late_log[(panel_late % 8) * 2 + 1] = data;
+        ++panel_late;
+      }
     } else if (addr == 0x17) {
       wheel_steps += (signed char)ring[next];
       ++wheel_frames;
@@ -247,24 +253,30 @@ void wheel_scan(void) {
 }
 
 /* A frame is two bytes and the panel sends them one after the other: when the first has come, the call waits up to
- * FRAME_WAIT_MS for the second, so that panel_scan sees the frame before the main task decodes it (returning on the
- * first byte let the firmware decode a third of the switch frames first, in MAME). */
+ * FRAME_WAIT_MS for the second, so that panel_scan sees the frame before the main task decodes it. Then the call goes
+ * on resting: the main task decodes the ring only between converter calls, and a frame that comes in while it is out
+ * of the call reaches the firmware first (in MAME, returning at every frame let SET through). The ring (92 bytes)
+ * still gets decoded at least every REST_MS, or at once when it is half full. */
 #define FRAME_WAIT_MS 6
+#define RING_HALF (PANEL_RING_LEN / 2)
 
 static void rest(void) {
   if (fw.build != 893 || !fw.dly || !fw.ms) return;
   ++rest_calls;
   const u32 t0 = now_ms();
   while (now_ms() - t0 < REST_MS) {
-    if (*(volatile u16*)PANEL_RX_RD != *(volatile u16*)PANEL_RX_WR) {
+    const u32 rd = *(volatile u16*)PANEL_RX_RD, wr = *(volatile u16*)PANEL_RX_WR;
+    if (rd != wr) {
       const u32 t1 = now_ms();
       for (;;) {
-        wheel_scan();  /* (the bytes that ended the rest, before the main task decodes them) */
+        wheel_scan();
         if (wheel_at == *(volatile u16*)PANEL_RX_WR || now_ms() - t1 >= FRAME_WAIT_MS) break;
         fw_call(fw.dly, 1, 0, 0, 0);  /* (half a frame: its second byte is on its way) */
       }
-      ++rest_early;
-      return;
+      if ((wr + PANEL_RING_LEN - rd) % PANEL_RING_LEN >= RING_HALF) {
+        ++rest_early;
+        return;
+      }
     }
     if (file_pending() || bank_want >= 0 || task_done || quit_req) {
       ++rest_early;

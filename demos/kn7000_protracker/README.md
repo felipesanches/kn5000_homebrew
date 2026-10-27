@@ -30,32 +30,34 @@ Contents: [The card](#the-card) · [Playing](#playing) · [How it works](#how-it
 
 Without `MODS.TXT` the program looks for the six Pinball Fantasies modules by name.
 
-## Playing
+## Playing and editing
+
+**The user manual is `manual/protracker-kn7000-manual.pdf`** (built from its HTML by `manual/build.sh`). It covers
+every control, the screen, tutorials and ProTracker's effects. `PLAN-EDITING.md` says why each control does what it
+does.
 
 DISK MENU, STYLE CONVERT, `KN7LOAD.CNV`, OK; then the program menu's "ProTracker 2.3D" row, RUN. The first module of
-`MODS.TXT` is loaded and plays. ProTracker's screen is in the middle of the LCD; the labels beside it name the soft
-keys left and right of the display.
+`MODS.TXT` loads and plays. In short:
+- **Playing:** START/STOP plays and stops; SYNCHRO & BREAK plays the pattern; LCDR 1/2 step through the modules.
+- **The edit mode:** EASY REC. Notes come from the keybed (C2 is ProTracker's C-1). The SOUND GROUP is a hex keypad,
+  0-7 above and 8-F below. The RHYTHM GROUP chooses samples 1-16.
+- **Moving:** TEMPO/PROGRAM moves through the rows; PART SELECT through the columns.
+- **Editing:** FILL IN inserts and deletes rows; TRANSPOSE and OCTAVE transpose; the PERFORMANCE PADS cut, copy and
+  paste; PADS BANK undoes; PANEL MEMORY holds the effect macros.
+- **The MUTE pairs under the LCD:**
+  - 1-4 change POS, PATT, LEN and BPM;
+  - 5-12, two under each channel's track, mute it, solo it, or take the cursor there;
+  - 13-16 change SAMPLE, VOLUME, FINETUNE and the edit skip.
+- **Saving:** in the Disk Op. (LCDR 3), SAVE, or SAVE AS NEW (`PTNEWnn.MOD`, added to `MODS.TXT`).
+- **Help and SHIFT:** HELP shows five pages of help; DISPLAY HOLD is SHIFT.
+- **Leaving:** EXIT, held 1.5 s.
 
-| control                | what it does (ProTracker's own key)                                                                |
-|------------------------|----------------------------------------------------------------------------------------------------|
-| LCDL 1                 | PLAY: the song from the current position (right Amiga)                                             |
-| LCDL 2                 | PATTERN: the current pattern, over and over (right Alt)                                            |
-| LCDL 3                 | STOP                                                                                               |
-| LCDL 4                 | EDIT: stop, and the edit mode on or off (space)                                                    |
-| LCDL 5                 | the quadrascope or the spectrum analyzer (clicking the visualizer)                                 |
-| LCDR 1, LCDR 2         | the module before, the module after, in `MODS.TXT`, which then plays (Disk Op., then PLAY)         |
-| LCDR 3, LCDR 4         | the sample before, the sample after                                                                |
-| LCDR 5                 | every channel muted, or none                                                                       |
-| START/STOP             | PLAY, or STOP while playing                                                                        |
-| PAGE UP, PAGE DOWN     | the song position back, on (while the song plays the replayer goes there); in the edit mode: a row |
-| TEMPO/PROGRAM wheel    | the row (stopped), the sample (playing)                                                            |
-| MUTE UP 1-4            | channel 1-4 muted or not (the mute buttons at the top right)                                       |
-| MUTE DOWN 1-4          | the cursor to channel 1-4                                                                          |
-| the keybed             | the current sample at that note, on the cursor's channel; in the edit mode, into the pattern too   |
-| EXIT, held 1.5 s       | the end; then the firmware's message, EXIT, and NO at "Continue Next?"                             |
+The side columns of the LCD show the song's positions (left) and the 31 samples (right), the soft keys' tags, and the
+values the MUTE pairs change.
 
-The keybed's C2 is ProTracker's C-1, and its three octaves are ProTracker's three. Keys above and below fold into them
-by octaves. The instrument's own sound for the keys is off while ProTracker runs.
+While the program runs, the platform keeps every panel switch from the firmware (`src/app/entry.c`, PLAN-EDITING.md
+"Risks"). Without that, PANEL MEMORY recalled a registration and reloaded the DSP over the mixer, and R1/R2 OCTAVE
+moved the keybed's notes.
 
 ## How it works
 
@@ -157,13 +159,35 @@ In MAME, the published overlay emulator, program 893 (`tests/mame/run_pt.sh`, `p
     song plays takes it from position 2 to 3; LCDR 1 loads the module before and plays it (`events-pt-mame11.txt`).
 - **Its own consistency:** the sample coder matches `dsp_bank.py` word for word on all six modules (`tests/bank/`).
 
-Not yet tried: the instrument itself; in MAME, PAGE UP, the wheel, MUTE DOWN.
+- **The editor** (`PT_EDIT=2`, `tests/results/events-edit-2026-10-27.txt`): 24 of 24 checks pass. Each step was
+  made with the panel and the keybed, then read back from PT.BIN's memory:
+  - the edit mode, the rows (VARIATION) and the columns (PART SELECT);
+  - a note from the keybed, the edit skip (MUTE 16), and hex digits (SYNTH, STRINGS, PIANO: C40);
+  - delete (SOUND EXPLORER), then undo (PADS BANK);
+  - storing a macro (SET, PANEL MEMORY 1);
+  - TRANSPOSE (C#2) and OCTAVE (C#1);
+  - inserting and deleting rows (FILL IN 1 and 2);
+  - copying and pasting a track (PADS 2 and 3);
+  - choosing a sample (RHYTHM GROUP);
+  - a chord across channels 1-3 (AUTO PLAY CHORD);
+  - the song's length, and inserting and deleting a position (MUTE 3, CONDUCTOR RIGHT 2);
+  - HELP's five pages;
+  - SAVE AS NEW, then EXIT.
+- **The saved module** (`tests/mame/check_saved.py`, `tests/results/saved-PTNEW01-vs-MOD2.txt`): taken off the card
+  after the session, PTNEW01.MOD differs from MOD2.MOD in exactly those edits. Its sample data are the same byte for
+  byte, libopenmpt plays it, and MODS.TXT lists it.
+- **The firmware leaves the panel alone** (`PT_RISK=1`, `tests/results/events-risk-after.txt`): after the fix, none of
+  the 22 switch frames reached the firmware.
+
+Not yet tried: the instrument itself.
 
 ## Files
 
 | path                | what                                                                                          |
 |---------------------|-----------------------------------------------------------------------------------------------|
 | `PROVENANCE.md`     | where the copied sources come from, and their licences                                        |
+| `PLAN-EDITING.md`   | the plan for editing: every panel control mapped, the screen, the changes, the checks         |
+| `manual/`           | the user manual: its HTML, its pictures, `build.sh`, and the PDF                              |
 | `src/pt2/`          | pt2-clone's files the port uses, changed only behind `PT2_KN7`                                |
 | `src/kn7/`          | the KN7000 side of PT.BIN: main, Paula, the sample bank, the LCD, the screen, the keybed      |
 | `src/kn7/shim/`     | stand-ins for the pt2-clone headers of the parts left out                                     |

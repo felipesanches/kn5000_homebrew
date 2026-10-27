@@ -26,8 +26,8 @@ int controlsPage(void);
 
 #define LINE 7                  /* a text line: 5 rows of glyph, 2 between */
 #define LIST_TOP 2
-#define LIST_BOTTOM 206         /* the lists end above the columns' parameters */
-#define PARAM_TOP 208
+#define LIST_BOTTOM 212         /* the lists end above the columns' parameters */
+#define PARAM_TOP 214           /* the MUTE columns' parameters: the bottom 26 lines, above their pairs */
 #define TAG_W 50                /* the soft keys' tags */
 
 static pixel_t cBack, cPanel, cPanelHi, cPanelLo, cText, cList, cMark, cWhite, cAccent;
@@ -92,7 +92,7 @@ static void tags(canvas_t c, int first, int x)
 		const char *t = controlsTag(first + i);
 		if (!t[0])
 			continue;
-		const int y = 48 * i + 18;
+		const int y = i < 4 ? 48 * i + 18 : 200;  // (beside its key; the fifth just above the parameters)
 		box(c, x, y, TAG_W, 11, cPanel);
 		text(c, x + (TAG_W - 8 * (int)strlen(t)) / 2, y + 3, t, cText);
 	}
@@ -116,10 +116,10 @@ static void params(canvas_t c, int firstCol)
 		else
 			fmtDec(val, v, 0, false, false);
 		const int x = 40 * k;
-		box(c, x, PARAM_TOP, 40, 32, cPanel);
+		box(c, x, PARAM_TOP, 40, LCD_H - PARAM_TOP, cPanel);
 		const char *name = songFieldName(field);
-		text(c, x + (40 - 8 * (int)strlen(name)) / 2, PARAM_TOP + 6, name, cText);
-		text(c, x + (40 - 8 * (int)strlen(val)) / 2, PARAM_TOP + 18, val, cText);
+		text(c, x + (40 - 8 * (int)strlen(name)) / 2, PARAM_TOP + 4, name, cText);
+		text(c, x + (40 - 8 * (int)strlen(val)) / 2, PARAM_TOP + 15, val, cText);
 	}
 }
 
@@ -369,11 +369,11 @@ static void helpPage(canvas_t l, canvas_t m, canvas_t r, int page)
 	{
 		const char *s = kHelp[page][i];
 		const bool heading = s[0] == '|';
-		wide(l, m, r, 4, 4 + i * 9, heading ? s + 1 : s, heading ? cAccent : cWhite);
+		wide(l, m, r, 8, 4 + i * 9, heading ? s + 1 : s, heading ? cAccent : cWhite);  // (x a multiple of 8: no letter straddles 160 or 480)
 	}
 }
 
-void uiDrawSides(void)
+bool uiDrawSides(bool now)
 {
 	static bool init;
 	if (!init)
@@ -382,12 +382,18 @@ void uiDrawSides(void)
 		init = true;
 	}
 
+	// ten times a second is enough for what they show (or at once, now)
+	static int frames;
+	if (!now && ++frames < 5)
+		return false;
+	frames = 0;
+
 	canvas_t l = { videoSide(0), SIDE_W }, r = { videoSide(1), SIDE_W }, m = { video.frameBuffer, SCREEN_W };
 	int page;
 	if (controlsHelp(&page))
 	{
 		helpPage(l, m, r, page);
-		return;
+		return true;
 	}
 
 	fill(l, 0, 0, SIDE_W, LCD_H, cBack);
@@ -408,4 +414,5 @@ void uiDrawSides(void)
 		params(r, 12);
 	}
 	question(l, r);
+	return true;
 }

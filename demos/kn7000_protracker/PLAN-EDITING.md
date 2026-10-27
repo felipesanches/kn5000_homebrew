@@ -225,6 +225,18 @@ What stays as it is: the replayer, the loader, Paula on the DSP, the sample bank
 
 ## 5. Order of work
 
+**Status (2026-10-27): steps 1-6 are done and checked in MAME** (README.md, "What was checked"):
+- the editor session passes 24 of 24 checks, and its saved module has exactly its edits;
+- the firmware leaves the panel alone;
+- the manual is `manual/protracker-kn7000-manual.pdf`.
+
+Left for the instrument itself: the feel of the auto-repeat and the wheel, and whether every control does only what
+the port asks there. In MAME the platform takes 22 of 22 switch frames first; how many it takes on the unit is not known
+yet. Not done:
+- the pitch-bend wheel;
+- NEXT BANK, which only switches one bank of 8 macros;
+- pattern-wide transpose (the track is the widest).
+
 1. The panel layer and the control map (1, 2), with the cursor and hex entry (3): editing is possible.
 2. Delete, insert, transpose, buffers, undo, macros (4-6): editing is effective.
 3. The song and the sample (7, 8, 11); saving and the Disk Op. (9, 10): editing is kept.

@@ -48,7 +48,7 @@ void videoInit(void);               /* the frame buffer (video.frameBuffer) and 
 void videoOwn(void);                /* the LCD controller at 8 bits a pixel, showing our frame, all of it drawn again */
 /* Writes to the LCD the pixels of the frame buffer that changed since the last call; `service` is called every 8 rows
  * (the music goes on). */
-void videoPresent(void (*service)(void));
+void videoPresent(void (*service)(void), bool sides);  /* sides: the side columns too */
 #define SIDE_W 160             /* the columns left and right of ProTracker's screen */
 pixel_t* videoSide(int k);          /* their buffers (0 left, 1 right), SIDE_W x LCD_H, written by videoPresent */
 
@@ -57,5 +57,6 @@ extern void (*uiService)(void);  /* called between the screen's parts (main.c: t
 void uiInit(void);
 void uiFullRedraw(void);     /* the tracker frame and everything on it, at the next uiUpdate */
 void uiUpdate(void);         /* what changed, into the frame buffer (pt2-clone's renderFrame for the main screen) */
-void uiDrawSides(void);      /* sides.c: the columns beside the screen (or HELP over the whole LCD) */
+bool uiDrawSides(bool now);  /* sides.c: the columns beside the screen (or HELP over the whole LCD), ten times a
+                                second (now: at once); true when it drew */
 void uiMessage(const char* s);  /* the status line (pt2-clone's setStatusMessage) */

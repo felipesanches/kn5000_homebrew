@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ProTracker on the Technics KN7000 - User Manual</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 18mm 15mm; }
+  :root { --ink: #1b1b1f; --mute: #5d5d66; --line: #c9c9d1; --panel: #e9e9ee; --accent: #b0003a;
+          --play: #2e7d32; --rows: #1565c0; --entry: #6a1b9a; --edit: #c62828; --song: #ef6c00; --sample: #00838f;
+          --macro: #5d4037; --file: #37474f; --soft: #455a64; --left: #9e9e9e; }
+  html { font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif; font-size: 10pt; color: var(--ink); }
+  body { margin: 0; line-height: 1.42; }
+  h1 { font-size: 26pt; margin: 0 0 4mm; letter-spacing: -0.5px; }
+  h2 { font-size: 15pt; margin: 9mm 0 3mm; padding-bottom: 1.5mm; border-bottom: 2px solid var(--ink); break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 6mm 0 2mm; break-after: avoid; }
+  p, li { orphans: 3; widows: 3; }
+  .chapter { break-before: page; }
+  .cover { height: 245mm; display: flex; flex-direction: column; justify-content: center; }
+  .cover .sub { font-size: 13pt; color: var(--mute); margin-bottom: 10mm; }
+  .cover img { width: 100%; border: 1px solid #000; image-rendering: pixelated; }
+  .cover .meta { margin-top: 8mm; color: var(--mute); font-size: 9pt; }
+  figure { margin: 4mm 0; break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid #000; image-rendering: pixelated; }
+  figcaption { font-size: 8.5pt; color: var(--mute); margin-top: 1.5mm; }
+  table { border-collapse: collapse; width: 100%; margin: 2mm 0 4mm; break-inside: auto; }
+  table.small { break-inside: avoid; }
+  figure.screen img { width: 80%; display: block; margin: 0 auto; }
+  th, td { border: 1px solid var(--line); padding: 1.2mm 2mm; vertical-align: top; text-align: left; }
+  th { background: var(--panel); font-weight: bold; }
+  tr { break-inside: avoid; }
+  td.k { white-space: nowrap; font-weight: bold; }
+  code, .key { font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; }
+  .key { border: 1px solid #888; border-radius: 2px; padding: 0 1.2mm; background: #f6f6f8; white-space: nowrap; }
+  .note { border-left: 3px solid var(--accent); background: #fbf2f5; padding: 2mm 3mm; margin: 3mm 0; break-inside: avoid; }
+  .tip { border-left: 3px solid var(--play); background: #f1f8f1; padding: 2mm 3mm; margin: 3mm 0; break-inside: avoid; }
+  ol.steps li { margin-bottom: 1.4mm; }
+  .legend span { display: inline-block; margin: 0 3mm 1.5mm 0; font-size: 8.5pt; }
+  .legend i { display: inline-block; width: 3.2mm; height: 3.2mm; vertical-align: -0.5mm; margin-right: 1mm; border: 1px solid #0003; }
+  svg text { font-family: "DejaVu Sans", Arial, sans-serif; }
+  .two { columns: 2; column-gap: 7mm; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc li { margin: 0.8mm 0; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <h1>ProTracker on the Technics KN7000</h1>
+  <div class="sub">User manual: playing and editing Amiga modules on the KN7000's own panel, keybed and screen</div>
+  <img src="img/play.png" alt="ProTracker's main screen on the KN7000's LCD">
+  <div class="meta">
+    Version of 27 October 2026, for the program in <code>kn5000_homebrew/demos/kn7000_protracker</code> (folder
+    <code>PROTRACK\</code> on the card). A port of pt2-clone by Olav Sørensen (8bitbubsy), the faithful C version of
+    ProTracker 2.3D (BSD 3-Clause). The KN7000 side and this manual: GPLv3 or later.
+  </div>
+</section>
+
+<section class="chapter">
+<h2>Contents</h2>
+<ol class="toc">
+  <li><a href="#about">What this is</a></li>
+  <li><a href="#start">Starting and leaving</a></li>
+  <li><a href="#screen">The screen</a></li>
+  <li><a href="#panel">The panel at a glance</a></li>
+  <li><a href="#play">Playing modules</a></li>
+  <li><a href="#edit">Editing a pattern</a></li>
+  <li><a href="#song">Arranging the song</a></li>
+  <li><a href="#samples">Samples</a></li>
+  <li><a href="#files">Loading and saving</a></li>
+  <li><a href="#tutorial">A first session, step by step</a></li>
+  <li><a href="#reference">Every control</a></li>
+  <li><a href="#effects">ProTracker's effects</a></li>
+  <li><a href="#differences">What differs from the Amiga</a></li>
+  <li><a href="#trouble">If something goes wrong</a></li>
+</ol>
+
+<h2 id="about">1. What this is</h2>
+<p>ProTracker is the Amiga's classic music tracker. A song (a <em>module</em>, a <code>.MOD</code> file) is a list of
+<em>positions</em>. Each position plays a <em>pattern</em> of 64 rows, and each row has four channels. A cell of a channel
+holds a note, the number of the sample it plays (1-31), and an effect: a command digit and a two-digit parameter, all in
+hexadecimal. The cursor moves through the cells, and the keyboard enters notes and digits. On the Amiga that keyboard
+is a computer keyboard and a mouse.</p>
+<p>On the KN7000 the same program runs on the instrument. Its replayer plays the four channels through the instrument's
+effects processor (DSP), and its screen is drawn on the LCD. The KN7000 has no computer keyboard and no mouse, so
+<strong>the panel and the keybed do their work</strong>. The keybed plays and enters notes. The panel's buttons were
+chosen so that what each one does on the KN7000 suggests what it does in ProTracker: the sequencer's buttons are the
+song, the SOUND GROUP is a keypad of hex digits, PANEL MEMORY stores and recalls effects, and so on (<a href="#panel">section 4</a>).</p>
+<p>Every module the Amiga's ProTracker makes or plays with four channels and 31 samples works: ProTracker, NoiseTracker
+and Soundtracker modules. The examples in this manual use the music of <em>Pinball Fantasies</em>.</p>
+
+<h2 id="start">2. Starting and leaving</h2>
+<h3>What goes on the SD card</h3>
+<p>The folder <code>PROTRACK\</code> at the card's root holds the program and your modules:</p>
+<table class="small">
+  <tr><th>file</th><th>what</th></tr>
+  <tr><td><code>KN7APP.BIN</code>, <code>PT.BIN</code></td><td>the program</td></tr>
+  <tr><td><code>MANIFEST.TXT</code></td><td>the name the program menu shows: "ProTracker 2.3D"</td></tr>
+  <tr><td><code>MODS.TXT</code></td><td>the modules, one file name a line, in the order the module buttons step through them</td></tr>
+  <tr><td><code>*.MOD</code></td><td>the modules, with 8.3 names (<code>TABLE1.MOD</code>, <code>PTNEW01.MOD</code>)</td></tr>
+</table>
+<p>To add a module, copy it into <code>PROTRACK\</code> and add its name as a line of <code>MODS.TXT</code>. The program
+cannot list a folder by itself. When it saves a new module it adds the name to <code>MODS.TXT</code> for you.</p>
+<h3>Starting</h3>
+<ol class="steps">
+  <li>Insert the KN7LOAD floppy and the SD card.</li>
+  <li>Press <span class="key">DISK MENU</span>, then <span class="key">STYLE CONVERT</span> (left button 3), then
+      <span class="key">OK</span> on <code>KN7LOAD.CNV</code>.</li>
+  <li>In the program menu, select "ProTracker 2.3D" with the left buttons and press <span class="key">RUN</span>.</li>
+  <li>The first module of <code>MODS.TXT</code> loads and plays. Its samples are sent to the DSP first: this takes
+      between half a second and two seconds, and the status line says <code>SENDING SAMPLES..</code>.</li>
+</ol>
+<h3>Leaving</h3>
+<p>Hold <span class="key">EXIT</span> for 1.5 seconds. The instrument shows its message, then "Continue Next?": answer
+<span class="key">NO</span> (right button 4) to go back to the instrument. A brief press of EXIT is ProTracker's Esc
+instead (<a href="#reference">section 11</a>).</p>
+<div class="note"><strong>Save before leaving.</strong> Edits live in the instrument's memory only until you save them
+(<a href="#files">section 9</a>). Leaving, or loading another module, loses unsaved edits (loading asks first).</div>
+</section>
+
+<section class="chapter">
+<h2 id="screen">3. The screen</h2>
+<figure class="screen">
+  <img src="img/play.png" alt="The main screen while a module plays">
+  <figcaption>Playing: ProTracker's screen in the middle; the song's positions on the left, the samples on the right;
+  the soft keys' tags at the outer edges; at the bottom, the values the MUTE buttons below change.</figcaption>
+</figure>
+<p>The LCD is 640 dots wide and ProTracker's screen 320, so ProTracker sits in the middle, as it looks on the Amiga
+(its pattern shows 13 rows instead of 15: the LCD is 240 lines high, the Amiga's screen 255). The 160 dots either side
+show what ProTracker hides on the Amiga behind other screens:</p>
+<ul>
+  <li><strong>The soft keys' tags.</strong> Beside each of the five buttons left and right of the LCD, the word for what
+      it does now. They change with the page (main, Disk Op., options) and become YES and NO during a question.</li>
+  <li><strong>The positions (left).</strong> The song's positions and the pattern each plays, the current one boxed:
+      ProTracker's position editor, always in view. <span class="key">BANK VIEW</span> shows the effect macros here
+      instead.</li>
+  <li><strong>The samples (right).</strong> All 31 sample names, the current one boxed; empty samples dimmed. In the
+      Disk Op. this column lists the modules instead.</li>
+  <li><strong>The values (bottom).</strong> Four boxes on each side, each above one of the 16 MUTE UP/DOWN pairs under
+      the LCD: the four leftmost pairs and the four rightmost change the value shown right above them
+      (<a href="#panel">section 4</a>).</li>
+</ul>
+<figure class="screen">
+  <img src="img/edit.png" alt="The edit mode">
+  <figcaption>The edit mode: the red cursor on the middle row, here on channel 1's note. A chord from the keybed went
+  into row 0 across channels 1-3 (C-2, E-2, G-2, sample 03).</figcaption>
+</figure>
+<p>ProTracker's own screen works as on the Amiga: <code>POS</code>, <code>PATTERN</code> and <code>LENGTH</code> at
+the top left, the current sample's number, volume, length and loop below them, the quadrascope (or spectrum
+analyzer) at the top right, the song's and the sample's names, the status line, the tempo (BPM), and the pattern with
+its VU meters. Its buttons (PLAY, DISK OP. and the rest) are drawn but not pressed: the panel does that.</p>
+</section>
+
+<section class="chapter">
+<h2 id="panel">4. The panel at a glance</h2>
+<p>The panel's sections each take one of ProTracker's jobs. The two drawings show the left and right halves of the
+panel; the colours are the jobs:</p>
+<div class="legend">
+  <span><i style="background:var(--play)"></i>playing</span>
+  <span><i style="background:var(--rows)"></i>moving</span>
+  <span><i style="background:var(--entry)"></i>entering</span>
+  <span><i style="background:var(--edit)"></i>editing</span>
+  <span><i style="background:var(--song)"></i>the song</span>
+  <span><i style="background:var(--sample)"></i>samples</span>
+  <span><i style="background:var(--macro)"></i>effect macros</span>
+  <span><i style="background:var(--file)"></i>files, pages</span>
+  <span><i style="background:var(--left)"></i>left to the instrument</span>
+</div>
+
+<figure>
+<svg viewBox="0 0 720 300" width="100%">
+  <rect x="0" y="0" width="720" height="300" fill="#2b2b30" rx="6"/>
+  <text x="10" y="18" fill="#fff" font-size="12" font-weight="bold">LEFT OF THE LCD</text>
+  <!-- sliders -->
+  <g font-size="8" fill="#fff">
+    <rect x="12" y="32" width="70" height="60" fill="var(--left)" rx="3"/><text x="16" y="46">VOLUME</text><text x="16" y="58">SLIDERS</text><text x="16" y="80" font-size="7">the instrument's</text>
+    <rect x="12" y="100" width="70" height="38" fill="var(--left)" rx="3"/><text x="16" y="114">DEMO</text><text x="16" y="128" font-size="7">-</text>
+    <rect x="12" y="146" width="70" height="60" fill="var(--entry)" rx="3"/><text x="16" y="160">PITCH BEND /</text><text x="16" y="172">MODULATION</text><text x="16" y="186" font-size="7">mod wheel: the</text><text x="16" y="196" font-size="7">effect parameter</text>
+  </g>
+  <!-- APC / SA -->
+  <g font-size="7.5" fill="#fff">
+    <rect x="92" y="32" width="58" height="26" fill="var(--entry)" rx="3"/><text x="95" y="43">APC MODE</text><text x="95" y="53">MULTI</text>
+    <rect x="152" y="32" width="58" height="26" fill="var(--entry)" rx="3"/><text x="155" y="43">APC ON/OFF</text><text x="155" y="53">CHORD ENTRY</text>
+    <rect x="92" y="62" width="58" height="26" fill="var(--play)" rx="3"/><text x="95" y="73">S.ARR. SET</text><text x="95" y="83">METRO CH.</text>
+    <rect x="152" y="62" width="58" height="26" fill="var(--play)" rx="3"/><text x="155" y="73">S.A. ON/OFF</text><text x="155" y="83">METRONOME</text>
+    <rect x="92" y="92" width="118" height="20" fill="var(--left)" rx="3"/><text x="95" y="105">MUSIC STYLIST: -</text>
+  </g>
+  <!-- rhythm group -->
+  <g font-size="7.5" fill="#fff">
+    <rect x="220" y="28" width="292" height="84" fill="var(--sample)" rx="4"/>
+    <text x="226" y="40" font-weight="bold">RHYTHM GROUP = SAMPLES 1-16 (SHIFT: 17-31)</text>
+  </g>
+  <g font-size="8" fill="#003b40">
+    <rect x="226" y="46" width="32" height="26" fill="#fff" rx="3"/><text x="236" y="63">1</text>
+    <rect x="261" y="46" width="32" height="26" fill="#fff" rx="3"/><text x="271" y="63">2</text>
+    <rect x="296" y="46" width="32" height="26" fill="#fff" rx="3"/><text x="306" y="63">3</text>
+    <rect x="331" y="46" width="32" height="26" fill="#fff" rx="3"/><text x="341" y="63">4</text>
+    <rect x="366" y="46" width="32" height="26" fill="#fff" rx="3"/><text x="376" y="63">5</text>
+    <rect x="401" y="46" width="32" height="26" fill="#fff" rx="3"/><text x="411" y="63">6</text>
+    <rect x="436" y="46" width="32" height="26" fill="#fff" rx="3"/><text x="446" y="63">7</text>
+    <rect x="471" y="46" width="32" height="26" fill="#fff" rx="3"/><text x="481" y="63">8</text>
+    <rect x="226" y="78" width="32" height="26" fill="#fff" rx="3"/><text x="236" y="95">9</text>
+    <rect x="261" y="78" width="32" height="26" fill="#fff" rx="3"/><text x="268" y="95">10</text>
+    <rect x="296" y="78" width="32" height="26" fill="#fff" rx="3"/><text x="303" y="95">11</text>
+    <rect x="331" y="78" width="32" height="26" fill="#fff" rx="3"/><text x="338" y="95">12</text>
+    <rect x="366" y="78" width="32" height="26" fill="#fff" rx="3"/><text x="373" y="95">13</text>
+    <rect x="401" y="78" width="32" height="26" fill="#fff" rx="3"/><text x="408" y="95">14</text>
+    <rect x="436" y="78" width="32" height="26" fill="#fff" rx="3"/><text x="443" y="95">15</text>
+    <rect x="471" y="78" width="32" height="26" fill="#fff" rx="3"/><text x="478" y="95">16</text>
+  </g>
+  <!-- transport row -->
+  <g font-size="7" fill="#fff">
+    <rect x="92" y="122" width="62" height="26" fill="var(--left)" rx="3"/><text x="95" y="133">MUSIC STYLE</text><text x="95" y="143">ARRANGER: -</text>
+    <rect x="158" y="122" width="62" height="26" fill="var(--play)" rx="3"/><text x="161" y="133">ONE TOUCH</text><text x="161" y="143">STEP PLAY</text>
+    <rect x="224" y="122" width="56" height="26" fill="var(--left)" rx="3"/><text x="227" y="133">SPLIT</text><text x="227" y="143">POINT: -</text>
+    <rect x="284" y="122" width="56" height="26" fill="var(--sample)" rx="3"/><text x="287" y="133">FADE IN</text><text x="287" y="143">VOLUME +</text>
+    <rect x="344" y="122" width="56" height="26" fill="var(--sample)" rx="3"/><text x="347" y="133">FADE OUT</text><text x="347" y="143">VOLUME -</text>
+    <rect x="404" y="122" width="52" height="26" fill="var(--play)" rx="3"/><text x="407" y="133">TAP</text><text x="407" y="143">TEMPO</text>
+    <rect x="460" y="122" width="52" height="26" fill="var(--play)" rx="3"/><text x="463" y="133">SYNCHRO</text><text x="463" y="143">PATTERN</text>
+  </g>
+  <g font-size="7" fill="#fff">
+    <rect x="92" y="156" width="164" height="36" fill="var(--rows)" rx="3"/><text x="96" y="168">VARIATION 1  2  3  4</text><text x="96" y="179">ROW 0, 16, 32, 48</text><text x="96" y="189">SHIFT: STORE THE ROW</text>
+    <rect x="260" y="156" width="80" height="36" fill="var(--edit)" rx="3"/><text x="264" y="168">FILL IN 1  2</text><text x="264" y="179">INSERT  DELETE</text><text x="264" y="189">A ROW</text>
+    <rect x="344" y="156" width="88" height="36" fill="var(--rows)" rx="3"/><text x="348" y="168">INTRO & ENDING</text><text x="348" y="179">1: SONG START</text><text x="348" y="189">2: ROW 63</text>
+    <rect x="436" y="156" width="76" height="36" fill="var(--play)" rx="3"/><text x="440" y="168">START/STOP</text><text x="440" y="179">PLAY THE SONG</text><text x="440" y="189">OR STOP</text>
+  </g>
+  <!-- pads -->
+  <g font-size="7.5" fill="#fff">
+    <rect x="92" y="202" width="300" height="88" fill="var(--edit)" rx="4"/>
+    <text x="98" y="214" font-weight="bold">PERFORMANCE PADS = CUT, COPY, PASTE</text>
+  </g>
+  <g font-size="7.5" fill="#5a0000">
+    <rect x="98" y="220" width="56" height="28" fill="#fff" rx="3"/><text x="102" y="232">1 CUT</text><text x="102" y="243">TRACK</text>
+    <rect x="160" y="220" width="56" height="28" fill="#fff" rx="3"/><text x="164" y="232">2 COPY</text><text x="164" y="243">TRACK</text>
+    <rect x="222" y="220" width="56" height="28" fill="#fff" rx="3"/><text x="226" y="232">3 PASTE</text><text x="226" y="243">TRACK</text>
+    <rect x="98" y="254" width="56" height="28" fill="#fff" rx="3"/><text x="102" y="266">4 CUT</text><text x="102" y="277">PATTERN</text>
+    <rect x="160" y="254" width="56" height="28" fill="#fff" rx="3"/><text x="164" y="266">5 COPY</text><text x="164" y="277">PATTERN</text>
+    <rect x="222" y="254" width="56" height="28" fill="#fff" rx="3"/><text x="226" y="266">6 PASTE</text><text x="226" y="277">PATTERN</text>
+    <rect x="290" y="220" width="96" height="18" fill="#fff" rx="3"/><text x="294" y="232">AUTO SETTING: -</text>
+    <rect x="290" y="242" width="96" height="18" fill="#fff" rx="3"/><text x="294" y="254">BANK: UNDO</text>
+    <rect x="290" y="264" width="96" height="18" fill="#fff" rx="3"/><text x="294" y="276">STOP: STOP</text>
+  </g>
+  <g font-size="8" fill="#fff">
+    <rect x="530" y="28" width="180" height="262" fill="#444" rx="4"/>
+    <text x="538" y="44" font-weight="bold">THE KEYBED</text>
+    <text x="538" y="62">C2 = ProTracker's C-1;</text>
+    <text x="538" y="74">three octaves, the keys</text>
+    <text x="538" y="86">above and below fold in.</text>
+    <text x="538" y="106">A key plays the current</text>
+    <text x="538" y="118">sample on the cursor's</text>
+    <text x="538" y="130">channel; in the edit mode</text>
+    <text x="538" y="142">it also goes into the</text>
+    <text x="538" y="154">pattern.</text>
+    <text x="538" y="176">CHORD ENTRY: a chord goes</text>
+    <text x="538" y="188">across the channels.</text>
+    <text x="538" y="208">SUSTAIN PEDAL: a rest</text>
+    <text x="538" y="220">(the cursor moves on).</text>
+    <text x="538" y="242">VELOCITY (option): as a</text>
+    <text x="538" y="254">Cxx volume command.</text>
+  </g>
+</svg>
+<figcaption>The left half of the panel. "-": does nothing in ProTracker.</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 720 360" width="100%">
+  <rect x="0" y="0" width="720" height="360" fill="#2b2b30" rx="6"/>
+  <text x="10" y="18" fill="#fff" font-size="12" font-weight="bold">THE LCD AND RIGHT OF IT</text>
+  <!-- LCD -->
+  <rect x="40" y="28" width="300" height="120" fill="#000" stroke="#888"/>
+  <rect x="40" y="28" width="75" height="120" fill="#101018"/><rect x="265" y="28" width="75" height="120" fill="#101018"/>
+  <text x="120" y="80" fill="#9ab" font-size="9">ProTracker</text><text x="44" y="40" fill="#9ab" font-size="7">positions</text><text x="268" y="40" fill="#9ab" font-size="7">samples</text>
+  <g font-size="6.5" fill="#fff">
+    <rect x="8" y="34" width="30" height="16" fill="var(--soft)" rx="2"/><text x="10" y="45">PLAY</text>
+    <rect x="8" y="56" width="30" height="16" fill="var(--soft)" rx="2"/><text x="10" y="67">PATTRN</text>
+    <rect x="8" y="78" width="30" height="16" fill="var(--soft)" rx="2"/><text x="10" y="89">STOP</text>
+    <rect x="8" y="100" width="30" height="16" fill="var(--soft)" rx="2"/><text x="10" y="111">EDIT</text>
+    <rect x="8" y="122" width="30" height="16" fill="var(--soft)" rx="2"/><text x="10" y="133">RECORD</text>
+    <rect x="342" y="34" width="34" height="16" fill="var(--soft)" rx="2"/><text x="344" y="45">PREV</text>
+    <rect x="342" y="56" width="34" height="16" fill="var(--soft)" rx="2"/><text x="344" y="67">NEXT</text>
+    <rect x="342" y="78" width="34" height="16" fill="var(--soft)" rx="2"/><text x="344" y="89">DISKOP</text>
+    <rect x="342" y="100" width="34" height="16" fill="var(--soft)" rx="2"/><text x="344" y="111">SAVE</text>
+    <rect x="342" y="122" width="34" height="16" fill="var(--soft)" rx="2"/><text x="344" y="133">CLEAR</text>
+  </g>
+  <!-- MUTE pairs -->
+  <g font-size="6" fill="#fff">
+    <rect x="40" y="152" width="75" height="40" fill="var(--song)" rx="2"/><text x="43" y="162">MUTE 1-4: UP/DOWN</text><text x="43" y="173">POS PATT LEN BPM</text><text x="43" y="184" font-size="5.2">SHIFT: EDP PATT LEN SPD</text>
+    <rect x="117" y="152" width="146" height="40" fill="var(--play)" rx="2"/><text x="120" y="162" font-size="5.6">MUTE 5-12: TWO A CHANNEL, UNDER ITS TRACK</text><text x="120" y="173">5,7,9,11: UP HEARD, DOWN MUTED</text><text x="120" y="184">6,8,10,12: UP CURSOR THERE, DOWN SOLO</text>
+    <rect x="265" y="152" width="75" height="40" fill="var(--sample)" rx="2"/><text x="268" y="162">MUTE 13-16: UP/DOWN</text><text x="268" y="173">SMP VOL FTU SKIP</text><text x="268" y="184" font-size="5.2">SHIFT: REP RPL MSP MCH</text>
+  </g>
+  <g font-size="7" fill="#fff">
+    <rect x="8" y="200" width="66" height="30" fill="var(--file)" rx="3"/><text x="11" y="212">OTHER PARTS</text><text x="11" y="223">SCOPE/SPECTRUM</text>
+    <rect x="8" y="234" width="66" height="22" fill="var(--file)" rx="3"/><text x="11" y="248">HELP: HELP</text>
+    <rect x="8" y="260" width="66" height="22" fill="var(--left)" rx="3"/><text x="11" y="274">CONTRAST</text>
+    <rect x="290" y="200" width="50" height="38" fill="var(--rows)" rx="3"/><text x="293" y="212">PAGE</text><text x="293" y="223">UP/DOWN</text><text x="293" y="234">16 ROWS</text>
+    <rect x="290" y="242" width="50" height="26" fill="var(--file)" rx="3"/><text x="293" y="253">DISPLAY</text><text x="293" y="263">HOLD=SHIFT</text>
+    <rect x="290" y="272" width="50" height="26" fill="var(--file)" rx="3"/><text x="293" y="283">EXIT: BACK</text><text x="293" y="293">HELD: END</text>
+  </g>
+  <!-- wheel etc -->
+  <g font-size="7" fill="#fff">
+    <circle cx="420" cy="80" r="40" fill="var(--rows)"/><text x="392" y="70">TEMPO/</text><text x="392" y="80">PROGRAM:</text><text x="392" y="90">THE ROW</text>
+    <text x="384" y="134" font-size="6">playing: the tempo</text><text x="384" y="142" font-size="6">SHIFT: the value</text>
+    <rect x="470" y="40" width="64" height="20" fill="var(--edit)" rx="3"/><text x="473" y="53">TRANSPOSE -/+</text>
+    <rect x="470" y="64" width="64" height="20" fill="var(--edit)" rx="3"/><text x="473" y="77">OCTAVE -/+</text>
+    <text x="470" y="96" font-size="6">note (SHIFT: track)</text>
+    <rect x="540" y="40" width="80" height="44" fill="var(--rows)" rx="3"/><text x="543" y="52">PART SELECT</text><text x="543" y="63">LEFT: CURSOR LEFT</text><text x="543" y="73">RIGHT 2: CHANNEL</text><text x="543" y="82">RIGHT 1: RIGHT</text>
+    <rect x="540" y="88" width="84" height="50" fill="var(--song)" rx="3"/><text x="543" y="100">CONDUCTOR</text><text x="543" y="111">L/R1: EDIT PATT -/+</text><text x="543" y="121">R2: INSERT POS.</text><text x="543" y="132">SHIFT+R2: DELETE</text>
+    <rect x="470" y="104" width="64" height="28" fill="var(--play)" rx="3"/><text x="473" y="116">SOLO: SOLO</text><text x="473" y="127">TECHNI-CH.: -</text>
+  </g>
+  <!-- sound group -->
+  <g font-size="7.5" fill="#fff">
+    <rect x="380" y="152" width="330" height="80" fill="var(--entry)" rx="4"/>
+    <text x="386" y="164" font-weight="bold">SOUND GROUP = HEX KEYPAD</text>
+  </g>
+  <g font-size="8" fill="#3a0050">
+    <rect x="386" y="170" width="30" height="24" fill="#fff" rx="3"/><text x="398" y="186">0</text>
+    <rect x="419" y="170" width="30" height="24" fill="#fff" rx="3"/><text x="431" y="186">1</text>
+    <rect x="452" y="170" width="30" height="24" fill="#fff" rx="3"/><text x="464" y="186">2</text>
+    <rect x="485" y="170" width="30" height="24" fill="#fff" rx="3"/><text x="497" y="186">3</text>
+    <rect x="518" y="170" width="30" height="24" fill="#fff" rx="3"/><text x="530" y="186">4</text>
+    <rect x="551" y="170" width="30" height="24" fill="#fff" rx="3"/><text x="563" y="186">5</text>
+    <rect x="584" y="170" width="30" height="24" fill="#fff" rx="3"/><text x="596" y="186">6</text>
+    <rect x="617" y="170" width="30" height="24" fill="#fff" rx="3"/><text x="629" y="186">7</text>
+    <rect x="652" y="170" width="52" height="24" fill="#ffd" rx="3"/><text x="655" y="186" font-size="6.5">DEL FIELD</text>
+    <rect x="386" y="200" width="30" height="24" fill="#fff" rx="3"/><text x="398" y="216">8</text>
+    <rect x="419" y="200" width="30" height="24" fill="#fff" rx="3"/><text x="431" y="216">9</text>
+    <rect x="452" y="200" width="30" height="24" fill="#fff" rx="3"/><text x="464" y="216">A</text>
+    <rect x="485" y="200" width="30" height="24" fill="#fff" rx="3"/><text x="497" y="216">B</text>
+    <rect x="518" y="200" width="30" height="24" fill="#fff" rx="3"/><text x="530" y="216">C</text>
+    <rect x="551" y="200" width="30" height="24" fill="#fff" rx="3"/><text x="563" y="216">D</text>
+    <rect x="584" y="200" width="30" height="24" fill="#fff" rx="3"/><text x="596" y="216">E</text>
+    <rect x="617" y="200" width="30" height="24" fill="#fff" rx="3"/><text x="629" y="216">F</text>
+    <rect x="652" y="200" width="52" height="24" fill="#ffd" rx="3"/><text x="655" y="216" font-size="6.5">DEL CELL</text>
+  </g>
+  <!-- effects / sequencer / pm -->
+  <g font-size="7" fill="#fff">
+    <rect x="380" y="240" width="110" height="42" fill="var(--left)" rx="3"/><text x="383" y="252">PART / GLOBAL EFFECT:</text><text x="383" y="263">-  (MULTI: MULTI MODE)</text>
+    <rect x="496" y="240" width="96" height="42" fill="var(--play)" rx="3"/><text x="499" y="252">SEQUENCER</text><text x="499" y="263">PLAY: PLAY SONG</text><text x="499" y="274">EASY REC: EDIT/REC</text>
+    <rect x="598" y="240" width="112" height="42" fill="var(--file)" rx="3"/><text x="601" y="252">DISK, SD: DISK OP.</text><text x="601" y="263">PROGRAM MENUS: -</text><text x="601" y="274">CUSTOMIZE: OPTIONS</text>
+    <rect x="380" y="288" width="330" height="62" fill="var(--macro)" rx="4"/>
+    <text x="386" y="302" font-weight="bold">PANEL MEMORY = EFFECT MACROS</text>
+    <text x="386" y="316">1-8: put macro n into the cell (the command and its parameter)</text>
+    <text x="386" y="328">SET, then 1-8: store the cell's effect as macro n</text>
+    <text x="386" y="340">BANK VIEW: show the macros (left column)    NEXT BANK: -</text>
+  </g>
+</svg>
+<figcaption>The LCD, its soft keys and the MUTE pairs, and the right half of the panel.</figcaption>
+</figure>
+<div class="tip"><strong>SHIFT.</strong> Hold <span class="key">DISPLAY HOLD</span> and press another control for its
+second function (the TEMPO/PROGRAM wheel's LED blinks while it is held). The values at the bottom of the LCD change to
+show what the MUTE pairs do with SHIFT.</div>
+</section>
+
+<section class="chapter">
+<h2 id="play">5. Playing modules</h2>
+<table>
+  <tr><th>to</th><th>press</th><th>ProTracker's</th></tr>
+  <tr><td>play the song from the current position</td><td><span class="key">START/STOP</span>, <span class="key">SEQUENCER PLAY</span> or <span class="key">LCDL 1</span></td><td>right Amiga key</td></tr>
+  <tr><td>play the current pattern over and over</td><td><span class="key">SYNCHRO &amp; BREAK</span> or <span class="key">LCDL 2</span></td><td>right Alt</td></tr>
+  <tr><td>stop</td><td><span class="key">START/STOP</span>, <span class="key">PADS STOP</span> or <span class="key">LCDL 3</span></td><td>space</td></tr>
+  <tr><td>the next or previous module</td><td><span class="key">LCDR 2</span>, <span class="key">LCDR 1</span></td><td>Disk Op.</td></tr>
+  <tr><td>change the tempo while playing</td><td>turn <span class="key">TEMPO/PROGRAM</span>, or <span class="key">TAP TEMPO</span> four times on the beat</td><td>the BPM arrows</td></tr>
+  <tr><td>go to another position while playing</td><td><span class="key">MUTE UP 1</span> / <span class="key">MUTE DOWN 1</span> (POS)</td><td>the POS arrows</td></tr>
+  <tr><td>mute or hear a channel</td><td><span class="key">MUTE DOWN</span> / <span class="key">MUTE UP</span> 5, 7, 9, 11 (under channels 1-4)</td><td>the mute buttons</td></tr>
+  <tr><td>solo a channel</td><td><span class="key">MUTE DOWN</span> 6, 8, 10, 12, or <span class="key">SOLO</span> for the cursor's</td><td>right-click a mute button</td></tr>
+  <tr><td>scope or spectrum</td><td><span class="key">OTHER PARTS/TG</span></td><td>click the visualizer</td></tr>
+</table>
+<p>The keybed always plays: a key sounds the current sample on the cursor's channel, at its note. While a song plays,
+that channel's own notes take over again at the next note.</p>
+
+<h2 id="edit">6. Editing a pattern</h2>
+<h3>The edit mode</h3>
+<p>Press <span class="key">EASY REC</span> (or <span class="key">LCDL 4</span>). Playing stops, and the red cursor
+appears on the middle row. Press EASY REC again, or EXIT briefly, to leave the edit mode. While a pattern is playing,
+EASY REC starts the <em>record</em> mode instead (LCDL 5 too): the pattern plays over and over and what you enter goes
+into it at the row being played.</p>
+<h3>Moving the cursor</h3>
+<table>
+  <tr><th>to move</th><th>press</th></tr>
+  <tr><td>a row up or down</td><td>turn <span class="key">TEMPO/PROGRAM</span></td></tr>
+  <tr><td>16 rows</td><td><span class="key">PAGE UP</span>, <span class="key">PAGE DOWN</span></td></tr>
+  <tr><td>to row 0, 16, 32, 48</td><td><span class="key">VARIATION 1</span>-<span class="key">4</span> (SHIFT + VARIATION stores the current row in that button)</td></tr>
+  <tr><td>to row 63</td><td><span class="key">INTRO &amp; ENDING 2</span></td></tr>
+  <tr><td>a column left or right</td><td><span class="key">PART SELECT LEFT</span>, <span class="key">PART SELECT RIGHT 1</span></td></tr>
+  <tr><td>to the next channel</td><td><span class="key">PART SELECT RIGHT 2</span></td></tr>
+  <tr><td>to channel 1-4</td><td><span class="key">MUTE UP</span> 6, 8, 10, 12 (the pair under that channel)</td></tr>
+</table>
+<p>Each channel has six columns, as in ProTracker: the note, the sample number's two digits, the effect's command and
+its parameter's two digits.</p>
+<h3>Entering</h3>
+<ul>
+  <li><strong>Notes:</strong> play the keybed. The note and the current sample's number go into the cell under the
+      cursor, and the cursor moves down by the <em>edit skip</em> (shown as SKP; MUTE 16 changes it, 0 to 9).</li>
+  <li><strong>Digits:</strong> on a sample or effect column, press the SOUND GROUP button for the digit: the top row is
+      0-7, the bottom row 8-F. The cursor moves down by the edit skip, as ProTracker's does. Set the skip to 0 to type a
+      whole effect in one row.</li>
+  <li><strong>Chords:</strong> turn <span class="key">AUTO PLAY CHORD OFF/ON</span> on and play a chord: its notes go
+      into the cursor's channel and the ones to its right, on the same row.</li>
+  <li><strong>MULTI:</strong> <span class="key">AUTO PLAY CHORD MODE</span> or <span class="key">MULTI</span>: each note
+      you play goes into the next channel, so a melody can be spread over the channels as you play.</li>
+  <li><strong>Rests:</strong> the sustain pedal moves the cursor on without a note.</li>
+  <li><strong>The modulation wheel</strong> sets the effect parameter under the cursor (when the cursor is on one), 00 to
+      FE: handy for volumes (Cxx) and slides.</li>
+  <li><strong>SHIFT + TEMPO/PROGRAM</strong> changes the value under the cursor a step at a time: the note a semitone,
+      a digit by one.</li>
+</ul>
+<figure>
+  <img src="img/help3.png" alt="The HELP page with the hex keypad">
+  <figcaption>HELP, page 3: the SOUND GROUP's digits. HELP shows five pages of these reminders on the instrument.</figcaption>
+</figure>
+<h3>Changing what is there</h3>
+<table>
+  <tr><th>to</th><th>press</th><th>ProTracker's</th></tr>
+  <tr><td>delete the note (on the note column) or the effect (elsewhere)</td><td><span class="key">SOUND EXPLORER</span></td><td>Del</td></tr>
+  <tr><td>delete the whole cell</td><td><span class="key">EW EXPANSION</span> (or SHIFT + SOUND EXPLORER)</td><td>Shift+Del</td></tr>
+  <tr><td>insert an empty row at the cursor (the track's rows below move down)</td><td><span class="key">FILL IN 1</span> (SHIFT: all four tracks)</td><td>Shift+Return</td></tr>
+  <tr><td>delete the row at the cursor (the rows below move up)</td><td><span class="key">FILL IN 2</span> (SHIFT: all four tracks)</td><td>Backspace</td></tr>
+  <tr><td>transpose the note a semitone</td><td><span class="key">TRANSPOSE -</span>/<span class="key">+</span> (SHIFT: the whole track)</td><td>Edit Op. 1</td></tr>
+  <tr><td>transpose the note an octave</td><td><span class="key">R1/R2 OCTAVE -</span>/<span class="key">+</span> (SHIFT: the whole track)</td><td>Edit Op. 1</td></tr>
+  <tr><td>cut, copy, paste the track</td><td><span class="key">PAD 1</span>, <span class="key">PAD 2</span>, <span class="key">PAD 3</span></td><td>Shift+F3, F4, F5</td></tr>
+  <tr><td>cut, copy, paste the pattern</td><td><span class="key">PAD 4</span>, <span class="key">PAD 5</span>, <span class="key">PAD 6</span></td><td>Alt+F3, F4, F5</td></tr>
+  <tr><td>undo the last change</td><td><span class="key">PADS BANK</span> (again: redo)</td><td>(pt2-clone's undo)</td></tr>
+  <tr><td>put an effect macro into the cell</td><td><span class="key">PANEL MEMORY 1</span>-<span class="key">8</span></td><td>Alt+1-0</td></tr>
+  <tr><td>store the cell's effect as a macro</td><td><span class="key">SET</span>, then <span class="key">PANEL MEMORY 1</span>-<span class="key">8</span></td><td>Ctrl+1-0</td></tr>
+  <tr><td>see the macros</td><td><span class="key">BANK VIEW</span></td><td></td></tr>
+  <tr><td>play one row and move on</td><td><span class="key">ONE TOUCH PLAY</span></td><td>Return</td></tr>
+</table>
+</section>
+
+<section class="chapter">
+<h2 id="song">7. Arranging the song</h2>
+<p>The song is the list of positions shown in the left column. Each line is a position and the pattern it plays.</p>
+<table>
+  <tr><th>to</th><th>press</th></tr>
+  <tr><td>go to another position</td><td><span class="key">MUTE UP 1</span> / <span class="key">MUTE DOWN 1</span> (POS)</td></tr>
+  <tr><td>change the pattern this position plays</td><td><span class="key">MUTE UP 2</span> / <span class="key">MUTE DOWN 2</span> (PATT)</td></tr>
+  <tr><td>make the song longer or shorter</td><td><span class="key">MUTE UP 3</span> / <span class="key">MUTE DOWN 3</span> (LEN)</td></tr>
+  <tr><td>insert a position (a copy of this one, after it)</td><td><span class="key">CONDUCTOR RIGHT 2</span></td></tr>
+  <tr><td>delete this position</td><td>SHIFT + <span class="key">CONDUCTOR RIGHT 2</span></td></tr>
+  <tr><td>edit another pattern without changing the song</td><td><span class="key">CONDUCTOR LEFT</span> / <span class="key">CONDUCTOR RIGHT 1</span> (the pattern number at the screen's bottom left)</td></tr>
+  <tr><td>go to the song's start</td><td><span class="key">INTRO &amp; ENDING 1</span></td></tr>
+  <tr><td>the tempo</td><td><span class="key">MUTE UP 4</span> / <span class="key">MUTE DOWN 4</span> (BPM), TAP TEMPO, or the wheel while playing</td></tr>
+</table>
+<p>As in ProTracker, the tempo and speed are not stored in the module's header: a song sets them with the F command in
+its first row (for example F06 for speed 6, F7D for 125 BPM). To keep a tempo, enter it as an Fxx effect.</p>
+
+<h2 id="samples">8. Samples</h2>
+<p>The current sample is the one notes play and enter. Choose it with the <span class="key">RHYTHM GROUP</span>: its
+top row is samples 1-8 and its bottom row 9-16; with SHIFT, 17-31. Or step through them with
+<span class="key">MUTE UP 13</span> / <span class="key">MUTE DOWN 13</span> (SMP). The right column lists all 31.</p>
+<table>
+  <tr><th>value</th><th>pair</th><th>with SHIFT</th></tr>
+  <tr><td>SMP, the sample</td><td>MUTE 13</td><td>REP, the loop's start (hex, bytes)</td></tr>
+  <tr><td>VOL, the sample's volume (0-64); also FADE IN / FADE OUT</td><td>MUTE 14</td><td>RPL, the loop's length (hex, bytes)</td></tr>
+  <tr><td>FTU, its finetune (-8 to +7)</td><td>MUTE 15</td><td>MSP, the metronome's speed (rows a beat)</td></tr>
+  <tr><td>SKP, the edit skip (0-9)</td><td>MUTE 16</td><td>MCH, the metronome's channel (0: off)</td></tr>
+</table>
+<p>The samples' sounds themselves cannot be edited or recorded on the KN7000: there is no sample editor. The
+metronome (<span class="key">SOUND ARRANGER OFF/ON</span>, and <span class="key">SET</span> for the cursor's channel)
+plays sample 1F every few rows, as ProTracker's does.</p>
+
+<h2 id="files">9. Loading and saving</h2>
+<figure>
+  <img src="img/diskop.png" alt="The Disk Op.">
+  <figcaption>The Disk Op. (LCDR 3, DISK or SD): the modules in the right column; the soft keys change to UP, DOWN,
+  LOAD, SAVE, SV.NEW and BACK.</figcaption>
+</figure>
+<ul>
+  <li><strong>Load:</strong> open the Disk Op., choose with the wheel (or UP/DOWN, PAGE UP/DOWN), press LOAD. Or step
+      with LCDR 1 / LCDR 2 from the main page. If the module in hand has unsaved edits, you are asked first.</li>
+  <li><strong>Save:</strong> LCDR 4 (or SAVE in the Disk Op.) writes the module over its own file, after asking.</li>
+  <li><strong>Save as new:</strong> SV.NEW in the Disk Op. writes <code>PTNEW01.MOD</code> (or the next free number) and
+      adds it to <code>MODS.TXT</code>. Your original stays as it was.</li>
+  <li><strong>Clear:</strong> LCDR 5 empties the song (its patterns and positions), after asking; the samples stay.</li>
+</ul>
+<figure>
+  <img src="img/question.png" alt="A question">
+  <figcaption>A question. <span class="key">START/STOP</span>, <span class="key">SET</span> or LCDR 5 (YES) answer yes;
+  <span class="key">EXIT</span> or LCDL 5 (NO) answer no.</figcaption>
+</figure>
+<p>Modules are saved as ProTracker 2.3D saves them ("M.K.", 31 samples), so they play in ProTracker, in every other
+tracker, and in pt2-clone on a computer.</p>
+</section>
+
+<section class="chapter">
+<h2 id="tutorial">10. A first session, step by step</h2>
+<p>This makes a short four-bar beat from scratch inside a module, using its samples.</p>
+<ol class="steps">
+  <li>Start ProTracker. The first module plays; press <span class="key">START/STOP</span> to stop it.</li>
+  <li>Press <span class="key">LCDR 3</span> (DISKOP), choose a module with the wheel, press <span class="key">LCDL 3</span>
+      (LOAD). Press START/STOP to stop it again.</li>
+  <li>Choose an empty pattern to work in: <span class="key">CONDUCTOR RIGHT 1</span> until the bottom-left number shows a
+      pattern the song does not use (the left column shows which ones it uses).</li>
+  <li>Press <span class="key">EASY REC</span>: the edit mode.</li>
+  <li>Choose the bass drum's sample with the RHYTHM GROUP (watch the right column), then <span class="key">VARIATION 1</span>
+      (row 0). Set the edit skip to 4 with <span class="key">MUTE UP 16</span>.</li>
+  <li>Play C3 on the keybed four times: a kick on rows 0, 4, 8 and 12. Keep going down the pattern with more notes, or
+      with the sustain pedal for empty beats.</li>
+  <li>Press <span class="key">PART SELECT RIGHT 2</span> (channel 2), choose the snare's sample, <span class="key">VARIATION 1</span>,
+      and enter it on the off-beats.</li>
+  <li>Hear it: <span class="key">SYNCHRO &amp; BREAK</span> plays the pattern over and over. Press it again any time;
+      START/STOP stops.</li>
+  <li>An effect: back in the edit mode, set the edit skip to 0 (<span class="key">MUTE DOWN 16</span>), move the
+      cursor right three times to the command column, and press <span class="key">SYNTH</span> (C),
+      <span class="key">PART SELECT RIGHT 1</span>, <span class="key">STRINGS &amp; VOCAL</span> (4),
+      <span class="key">PART SELECT RIGHT 1</span>, <span class="key">PIANO</span> (0): C40, volume 40.</li>
+  <li>Keep it as a macro: <span class="key">SET</span>, <span class="key">PANEL MEMORY 1</span>. Now PANEL MEMORY 1 puts
+      C40 into any cell.</li>
+  <li>Put the pattern in the song: go to the last position with MUTE 1 (POS), press
+      <span class="key">CONDUCTOR RIGHT 2</span> (a copy of it now follows it), MUTE UP 1 to go to that copy, and set
+      its pattern to yours with MUTE 2 (PATT).</li>
+  <li>Save: <span class="key">LCDR 3</span>, then <span class="key">LCDL 5</span> (SV.NEW), then START/STOP. The status
+      line says <code>MODULE SAVED !</code>.</li>
+</ol>
+
+<h2 id="reference">11. Every control</h2>
+<table>
+  <tr><th>control</th><th>does</th><th>with SHIFT</th></tr>
+  <tr><td class="k">LCDL 1-5 (main)</td><td>PLAY, PATTERN, STOP, EDIT, RECORD</td><td></td></tr>
+  <tr><td class="k">LCDR 1-5 (main)</td><td>previous module, next module, Disk Op., SAVE, CLEAR</td><td></td></tr>
+  <tr><td class="k">MUTE 1-4</td><td>POS, PATT, LEN, BPM up/down</td><td>edited pattern, PATT, LEN, speed</td></tr>
+  <tr><td class="k">MUTE 5, 7, 9, 11</td><td>channel 1-4: UP heard, DOWN muted</td><td></td></tr>
+  <tr><td class="k">MUTE 6, 8, 10, 12</td><td>channel 1-4: UP the cursor there, DOWN solo</td><td></td></tr>
+  <tr><td class="k">MUTE 13-16</td><td>SAMPLE, VOLUME, FINETUNE, edit skip up/down</td><td>REPEAT, REPLEN, metronome speed, channel</td></tr>
+  <tr><td class="k">PAGE UP/DOWN</td><td>16 rows (Disk Op.: 16 modules; HELP: pages)</td><td></td></tr>
+  <tr><td class="k">DISPLAY HOLD</td><td>SHIFT</td><td></td></tr>
+  <tr><td class="k">EXIT</td><td>briefly: back (page, macros, edit mode); held 1.5 s: the end</td><td></td></tr>
+  <tr><td class="k">HELP</td><td>five pages of help (PAGE UP/DOWN, the wheel); again or EXIT: back</td><td></td></tr>
+  <tr><td class="k">OTHER PARTS/TG</td><td>quadrascope or spectrum analyzer</td><td></td></tr>
+  <tr><td class="k">TEMPO/PROGRAM</td><td>the row; while playing, the tempo; in the Disk Op., the module</td><td>the value under the cursor</td></tr>
+  <tr><td class="k">TRANSPOSE -/+</td><td>the note a semitone</td><td>the track a semitone</td></tr>
+  <tr><td class="k">R1/R2 OCTAVE -/+</td><td>the note an octave</td><td>the track an octave</td></tr>
+  <tr><td class="k">PART SELECT</td><td>LEFT: cursor left; RIGHT 1: cursor right; RIGHT 2: next channel</td><td></td></tr>
+  <tr><td class="k">CONDUCTOR</td><td>LEFT/RIGHT 1: the edited pattern; RIGHT 2: insert a position</td><td>RIGHT 2: delete the position</td></tr>
+  <tr><td class="k">SOLO</td><td>solo the cursor's channel (again: all heard)</td><td></td></tr>
+  <tr><td class="k">SOUND GROUP</td><td>hex digits 0-7 (top), 8-F (bottom)</td><td></td></tr>
+  <tr><td class="k">SOUND EXPLORER</td><td>delete the note or the effect</td><td>delete the cell</td></tr>
+  <tr><td class="k">EW EXPANSION</td><td>delete the cell</td><td></td></tr>
+  <tr><td class="k">RHYTHM GROUP</td><td>samples 1-16</td><td>samples 17-31</td></tr>
+  <tr><td class="k">AUTO PLAY CHORD</td><td>OFF/ON: chord entry; MODE: MULTI</td><td></td></tr>
+  <tr><td class="k">MULTI</td><td>MULTI</td><td></td></tr>
+  <tr><td class="k">SOUND ARRANGER</td><td>OFF/ON: metronome; SET: on the cursor's channel</td><td></td></tr>
+  <tr><td class="k">ONE TOUCH PLAY</td><td>play one row and move on</td><td></td></tr>
+  <tr><td class="k">FADE IN / OUT</td><td>the sample's volume up / down</td><td></td></tr>
+  <tr><td class="k">TAP TEMPO</td><td>the tempo from taps, a tap a beat</td><td></td></tr>
+  <tr><td class="k">SYNCHRO &amp; BREAK</td><td>play the pattern over and over</td><td></td></tr>
+  <tr><td class="k">VARIATION 1-4</td><td>row 0, 16, 32, 48</td><td>store the current row there</td></tr>
+  <tr><td class="k">FILL IN 1 / 2</td><td>insert / delete a row in the track</td><td>in the pattern</td></tr>
+  <tr><td class="k">INTRO &amp; ENDING 1 / 2</td><td>the song's start / row 63</td><td></td></tr>
+  <tr><td class="k">START/STOP</td><td>play the song, or stop; a question: yes</td><td></td></tr>
+  <tr><td class="k">PADS 1-6</td><td>cut, copy, paste the track (1-3) and the pattern (4-6)</td><td></td></tr>
+  <tr><td class="k">PADS BANK / STOP</td><td>undo / stop</td><td></td></tr>
+  <tr><td class="k">SEQUENCER PLAY / EASY REC</td><td>play the song / the edit mode (playing: record)</td><td></td></tr>
+  <tr><td class="k">DISK, SD</td><td>the Disk Op.</td><td></td></tr>
+  <tr><td class="k">CUSTOMIZE</td><td>options: blank zeroes, dots, sharps or flats, velocity as Cxx, the scope</td><td></td></tr>
+  <tr><td class="k">PANEL MEMORY 1-8</td><td>the effect macro into the cell (after SET: store)</td><td></td></tr>
+  <tr><td class="k">SET</td><td>store a macro (then 1-8); a question: yes</td><td></td></tr>
+  <tr><td class="k">BANK VIEW</td><td>show the macros</td><td></td></tr>
+  <tr><td class="k">keybed</td><td>notes (C2 = C-1); chords with chord entry</td><td></td></tr>
+  <tr><td class="k">sustain pedal</td><td>a rest</td><td></td></tr>
+  <tr><td class="k">modulation wheel</td><td>the effect parameter under the cursor</td><td></td></tr>
+  <tr><td class="k">left to the instrument</td><td colspan="2">the volume sliders, CONTRAST; nothing: DEMO, MUSIC STYLIST,
+      MUSIC STYLE ARRANGER, SPLIT POINT, TECHNI-CHORD, PROGRAM MENUS, CUSTOM PANEL, FAVORITES, NEXT BANK, PADS AUTO
+      SETTING, the PART and GLOBAL EFFECT buttons (but MULTI), the pitch-bend wheel</td></tr>
+</table>
+<p>While ProTracker runs, the instrument's own functions behind these buttons are kept from the instrument: pressing
+PANEL MEMORY 1 puts an effect into a cell and does not recall a registration.</p>
+</section>
+
+<section class="chapter">
+<h2 id="effects">12. ProTracker's effects</h2>
+<p>An effect is a command digit and a two-digit parameter (x and y are its digits, xx both). Effects work on the
+channel they are in, at that row.</p>
+<div class="two">
+<table>
+  <tr><th>effect</th><th>what it does</th></tr>
+  <tr><td><code>0xy</code></td><td>arpeggio: the note, +x, +y semitones in turn</td></tr>
+  <tr><td><code>1xx</code></td><td>slide the pitch up</td></tr>
+  <tr><td><code>2xx</code></td><td>slide the pitch down</td></tr>
+  <tr><td><code>3xx</code></td><td>slide to the note (portamento)</td></tr>
+  <tr><td><code>4xy</code></td><td>vibrato: speed x, depth y</td></tr>
+  <tr><td><code>5xy</code></td><td>3 (go on) and volume slide</td></tr>
+  <tr><td><code>6xy</code></td><td>4 (go on) and volume slide</td></tr>
+  <tr><td><code>7xy</code></td><td>tremolo: speed x, depth y</td></tr>
+  <tr><td><code>9xx</code></td><td>start the sample xx00 bytes in</td></tr>
+  <tr><td><code>Axy</code></td><td>volume slide: up x or down y</td></tr>
+  <tr><td><code>Bxx</code></td><td>jump to position xx</td></tr>
+  <tr><td><code>Cxx</code></td><td>volume xx (00-40)</td></tr>
+  <tr><td><code>Dxy</code></td><td>to the next position, row xy (decimal)</td></tr>
+  <tr><td><code>Fxx</code></td><td>speed (01-1F) or tempo in BPM (20-FF)</td></tr>
+</table>
+<table>
+  <tr><th>effect</th><th>what it does</th></tr>
+  <tr><td><code>E0x</code></td><td>the Amiga's filter (not heard here)</td></tr>
+  <tr><td><code>E1x</code></td><td>fine slide up</td></tr>
+  <tr><td><code>E2x</code></td><td>fine slide down</td></tr>
+  <tr><td><code>E3x</code></td><td>glissando on/off</td></tr>
+  <tr><td><code>E4x</code></td><td>vibrato waveform</td></tr>
+  <tr><td><code>E5x</code></td><td>finetune</td></tr>
+  <tr><td><code>E6x</code></td><td>loop: E60 marks, E6x plays x times</td></tr>
+  <tr><td><code>E7x</code></td><td>tremolo waveform</td></tr>
+  <tr><td><code>E9x</code></td><td>retrigger every x ticks</td></tr>
+  <tr><td><code>EAx</code></td><td>fine volume up</td></tr>
+  <tr><td><code>EBx</code></td><td>fine volume down</td></tr>
+  <tr><td><code>ECx</code></td><td>cut the note after x ticks</td></tr>
+  <tr><td><code>EDx</code></td><td>delay the note x ticks</td></tr>
+  <tr><td><code>EEx</code></td><td>delay the pattern x rows</td></tr>
+  <tr><td><code>EFx</code></td><td>invert loop (not heard here)</td></tr>
+</table>
+</div>
+
+<h2 id="differences">13. What differs from the Amiga</h2>
+<ul>
+  <li>The pattern shows 13 rows (the LCD has 240 lines); the VU meters are a little shorter.</li>
+  <li>The sound is mono and unfiltered: the Amiga's left/right channels and its filters (E0x) are not there.</li>
+  <li>A sample loop that starts on an odd word may begin up to three samples early, once.</li>
+  <li>A loop changed while a sample plays takes over up to a tick late.</li>
+  <li>EFx changes only ProTracker's copy of the sample, not what the DSP plays.</li>
+  <li>There is no sample editor, no sampling, no MOD2WAV, and packed (PowerPacker, XPK) modules do not load.</li>
+  <li>Modules are listed by <code>MODS.TXT</code>, not by reading the folder.</li>
+</ul>
+
+<h2 id="trouble">14. If something goes wrong</h2>
+<table class="small">
+  <tr><th>what you see</th><th>what to do</th></tr>
+  <tr><td><code>CAN'T FIND FILE !</code></td><td>the module named in MODS.TXT is not in PROTRACK\: check the name (8.3, as on the card).</td></tr>
+  <tr><td><code>NOT A MOD FILE !</code>, <code>UNSUPPORTED MOD !</code></td><td>not a 4-channel module, or a packed one.</td></tr>
+  <tr><td><code>NO DSP: SILENT !</code>, <code>DSP NOT READY !</code></td><td>the effects DSP could not be used: the program runs silent. Leave and start again.</td></tr>
+  <tr><td><code>NOT IN EDIT MODE</code></td><td>press EASY REC first.</td></tr>
+  <tr><td><code>MODULE TOO BIG !</code></td><td>the module does not fit in memory for saving (more than 376 KB).</td></tr>
+  <tr><td><code>LIST IS FULL !</code></td><td>MODS.TXT has 64 modules, or PTNEW99.MOD exists: remove some names.</td></tr>
+  <tr><td>a button does nothing</td><td>check the page (the tags) and whether SHIFT is held; HELP lists everything.</td></tr>
+</table>
+<p>Modules up to 376 KB load, with up to 268 KB of samples.</p>
+</section>
+
+</body>
+</html>
