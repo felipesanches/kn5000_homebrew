@@ -8,7 +8,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "pt2_header.h"
+#ifndef PT2_KN7
 #include "pt2_hpc.h"
+#endif
 #include "pt2_paula.h"
 
 // for .WAV sample loading/saving
@@ -87,6 +89,12 @@ typedef struct module_t
 {
 	bool loaded, modified;
 	int8_t *sampleData;
+#ifdef PT2_KN7
+	// KN7000: the samples packed, each from a multiple of KN7_SAMPLE_ALIGN bytes after KN7_SAMPLE_ALIGN zero bytes (the
+	// null sample), as the effects DSP's SDRAM holds them (kn7/bank.c); and the patterns in one block
+	uint32_t sampleBytes;
+	note_t *patternBlock;
+#endif
 
 	volatile int32_t tick, speed;
 
@@ -106,6 +114,7 @@ typedef struct module_t
 	uint32_t rowsCounter, rowsInTotal;
 } module_t;
 
+#ifndef PT2_KN7
 typedef struct keyb_t
 {
 	bool repeatKey, delayKey;
@@ -141,6 +150,15 @@ typedef struct video_t
 	SDL_Renderer *renderer;
 	SDL_Texture  *texture;
 } video_t;
+#else
+// KN7000: 8 bits a pixel, each the index of a colour in the LCD controller's look-up table (kn7/video.c); a
+// palette entry is its own index
+typedef struct video_t
+{
+	pixel_t *frameBuffer;
+	uint32_t palette[PALETTE_NUM], paletteRGB[PALETTE_NUM];
+} video_t;
+#endif
 
 typedef struct editor_t
 {
@@ -153,8 +171,10 @@ typedef struct editor_t
 	volatile int32_t *samplePosDisp, *chordLengthDisp;
 
 	char mixText[16+1];
+#ifndef PT2_KN7
 	char *entryNameTmp, *currPath, *dropTempFileName;
 	UNICHAR *fileNameTmpU, *currPathU, *modulesPathU, *samplesPathU;
+#endif
 
 	bool errorMsgActive, errorMsgBlock, multiFlag, metroFlag, keypadToggle8CFlag, normalizeFiltersFlag;
 	bool sampleAllFlag, halveSampleFlag, newOldFlag, pat2SmpHQ, mixFlag;
@@ -181,13 +201,16 @@ typedef struct editor_t
 
 	note_t trackBuffer[MOD_ROWS], cmdsBuffer[MOD_ROWS], blockBuffer[MOD_ROWS];
 	note_t patternBuffer[MOD_ROWS * PAULA_VOICES], undoBuffer[MOD_ROWS * PAULA_VOICES];
+#ifndef PT2_KN7
 	SDL_Thread *mod2WavThread, *pat2SmpThread;
+#endif
 
 #ifdef __APPLE__
 	bool macCmdQIssued;
 #endif
 } editor_t;
 
+#ifndef PT2_KN7
 typedef struct diskop_t
 {
 	volatile bool cached, isFilling, forceStopReading;
@@ -197,11 +220,12 @@ typedef struct diskop_t
 	SDL_Keycode lastEntryJumpKey;
 	SDL_Thread *fillThread;
 } diskop_t;
+#endif
 
 typedef struct cursor_t
 {
 	uint8_t lastPos, pos, mode, channel;
-	uint32_t bgBuffer[11 * 14];
+	pixel_t bgBuffer[11 * 14];
 } cursor_t;
 
 typedef struct ui_t
@@ -264,11 +288,13 @@ typedef struct textEdit_t
 	int32_t scrollOffset, *numPtr32, tmpDisp32;
 } textEdit_t;
 
+#ifndef PT2_KN7
 extern keyb_t keyb;
 extern mouse_t mouse;
+extern diskop_t diskop;
+#endif
 extern video_t video;
 extern editor_t editor;
-extern diskop_t diskop;
 extern cursor_t cursor;
 extern ui_t ui;
 extern textEdit_t textEdit;

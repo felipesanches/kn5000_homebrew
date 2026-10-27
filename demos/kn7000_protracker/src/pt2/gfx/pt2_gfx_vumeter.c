@@ -10,4 +10,8 @@ uint16_t vuMeterColors[48] =
 	0x4F0,0x4F0,0x3F0,0x3F0,0x2F0,0x1F0,0x0F0,0x0E0
 };
 
+#ifdef PT2_KN7
+pixel_t vuMeterBMP[480];
+#else
 uint32_t vuMeterBMP[480];
+#endif

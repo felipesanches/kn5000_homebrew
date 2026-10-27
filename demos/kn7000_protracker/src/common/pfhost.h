@@ -1,17 +1,19 @@
 /* (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
  * Licensed under the terms of the GNU General Public License v3 or later
  *
- * pfhost.h -- between KN7APP.BIN (the platform: firmware search, files, task, panel, keybed, DSP) and a table
- * program PFn.BIN (Encore's engine with one table's rules, the picture and the sound). KN7APP.BIN loads the
- * table program at GAME_BASE, checks its header, clears its bss, runs its constructors and calls its entry on
- * the game task, with a PfHost. The table program returns when the player leaves the table. */
+ * pfhost.h -- between KN7APP.BIN (the platform: firmware search, files, task, panel, keybed, DSP) and the program it
+ * runs, PT.BIN (ProTracker). The Pinball Fantasies port's interface (Pinball kn7000/src/common/pfhost.h), with ABI 10
+ * added: the program codes its own sample bank in RAM and the platform sends it to the DSP (dspSend). KN7APP.BIN loads
+ * the program at GAME_BASE, checks its header, clears its bss, runs its constructors and calls its entry on the game
+ * task, with a PfHost. The program returns when the player leaves it. */
 #ifndef PF_PFHOST_H
 #define PF_PFHOST_H
 #include "kn7.h"
 
-#define PFHOST_ABI 9
+#define PFHOST_ABI 10
 #define PFGAME_MAGIC 0x4D474650u  /* "PFGM" */
 #define PFHOST_MAGIC 0x54534850u  /* "PHST" */
+#define PT_PROGRAM 0x50  /* PfGameHeader::table of PT.BIN */
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,18 +82,27 @@ typedef struct PfHost {
   const u8* font;
   /* ABI 9: the TEMPO/PROGRAM wheel's LED blinking (1) while the game wants the wheel, or as the firmware had it (0) */
   void (*wheelLed)(int blink);
+  /* ABI 10: a sample bank from RAM into the DSP's SDRAM, from its word dspBase. `records`: the bank coded as
+   * Another World's tools/dsp_bank.py codes it (blocks of u32 n and n DM words, the first two the block's first SDRAM
+   * word from dspBase and its words), `bytes` of them; `words`: the SDRAM words the bank fills; `sum`: dsp_bank.checksum
+   * of them; `id`: names the bank (the DSP keeps it in its marker, and a bank with the same id already there and
+   * checked is not sent again). Waits while the converter calls send it: 1 when it is in SDRAM and checked, 2 when not
+   * (no sound). Nothing may play meanwhile. */
+  int (*dspSend)(const u32* records, u32 bytes, u32 words, u32 sum, u32 id);
+  u32 dspBase;    /* the bank's first SDRAM word: a voice's base is dspBase + the sample's word in the bank */
+  u32 dspMaxWords; /* the SDRAM words a bank may fill */
 } PfHost;
 
-/* The header at the start of PFn.BIN (GAME_BASE). */
+/* The header at the start of PT.BIN (GAME_BASE). */
 typedef struct PfGameHeader {
   u32 magic;                  /* PFGAME_MAGIC */
   u32 abi;                    /* PFHOST_ABI */
   u32 size;                   /* bytes in the file */
-  u32 table;                  /* 0 to 3: which table's rules it carries */
+  u32 table;                  /* PT_PROGRAM: (the Pinball port's table number) */
   u32 bssLo, bssHi;           /* cleared before the entry */
   u32 initLo, initHi;         /* the constructors: void (*)(void), run in order */
   u32 end;                    /* the first byte past everything it uses (image and bss) */
-  int (*entry)(const PfHost* host);  /* runs the table; returns when the player leaves it */
+  int (*entry)(const PfHost* host);  /* runs the program; returns when the player leaves it */
   u32 crc;                    /* CRC-32 of the file from offset 0x40 to its end (mkgame.py) */
   u32 reserved[5];
 } PfGameHeader;

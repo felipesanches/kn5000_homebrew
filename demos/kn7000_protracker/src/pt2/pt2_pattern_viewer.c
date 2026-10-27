@@ -5,8 +5,14 @@
 #include "pt2_config.h"
 #include "pt2_visuals.h"
 
+#ifdef PT2_KN7
+// the KN7000's LCD has 240 lines, not 255: 13 rows, the middle one with 6 above and below it (pt2_header.h SCREEN_H)
+#define MIDDLE_ROW 6
+#define VISIBLE_ROWS 13
+#else
 #define MIDDLE_ROW 7
 #define VISIBLE_ROWS 15
+#endif
 
 static const char emptyDottedEffect[4] = { 0x02, 0x02, 0x02, 0x00 };
 static const char emptyDottedSample[3] = { 0x02, 0x02, 0x00 };

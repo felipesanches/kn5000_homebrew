@@ -15,7 +15,7 @@ void charOut(uint32_t xPos, uint32_t yPos, char ch, uint32_t color)
 		h++;
 	
 	const uint8_t *srcPtr = &fontBMP[(ch & 0x7F) << 3];
-	uint32_t *dstPtr = &video.frameBuffer[(yPos * SCREEN_W) + xPos];
+	pixel_t *dstPtr = &video.frameBuffer[(yPos * SCREEN_W) + xPos];
 
 	for (int32_t y = 0; y < h; y++)
 	{
@@ -40,7 +40,7 @@ void charOut2(uint32_t xPos, uint32_t yPos, char ch) // for static GUI text
 		h++;
 	
 	const uint8_t *srcPtr = &fontBMP[(ch & 0x7F) << 3];
-	uint32_t *dstPtr = &video.frameBuffer[(yPos * SCREEN_W) + xPos];
+	pixel_t *dstPtr = &video.frameBuffer[(yPos * SCREEN_W) + xPos];
 
 	const uint32_t fgColor = video.palette[PAL_BORDER];
 	const uint32_t bgColor = video.palette[PAL_GENBKG2];
@@ -73,7 +73,7 @@ void charOutBg(uint32_t xPos, uint32_t yPos, char ch, uint32_t fgColor, uint32_t
 		h++;
 
 	const uint8_t *srcPtr = &fontBMP[(ch & 0x7F) << 3];
-	uint32_t *dstPtr = &video.frameBuffer[(yPos * SCREEN_W) + xPos];
+	pixel_t *dstPtr = &video.frameBuffer[(yPos * SCREEN_W) + xPos];
 
 	colors[0] = bgColor;
 	colors[1] = fgColor;
@@ -98,8 +98,8 @@ void charOutBig(uint32_t xPos, uint32_t yPos, char ch, uint32_t color)
 		h++;
 
 	const uint8_t *srcPtr = &fontBMP[(ch & 0x7F) << 3];
-	uint32_t *dstPtr1 = &video.frameBuffer[(yPos * SCREEN_W) + xPos];
-	uint32_t *dstPtr2 = dstPtr1 + SCREEN_W;
+	pixel_t *dstPtr1 = &video.frameBuffer[(yPos * SCREEN_W) + xPos];
+	pixel_t *dstPtr2 = dstPtr1 + SCREEN_W;
 
 	for (int32_t y = 0; y < h; y++)
 	{
@@ -126,8 +126,8 @@ void charOutBigBg(uint32_t xPos, uint32_t yPos, char ch, uint32_t fgColor, uint3
 		return;
 
 	const uint8_t *srcPtr = &fontBMP[(ch & 0x7F) << 3];
-	uint32_t *dstPtr1 = &video.frameBuffer[(yPos * SCREEN_W) + xPos];
-	uint32_t *dstPtr2 = dstPtr1 + SCREEN_W;
+	pixel_t *dstPtr1 = &video.frameBuffer[(yPos * SCREEN_W) + xPos];
+	pixel_t *dstPtr2 = dstPtr1 + SCREEN_W;
 
 	colors[0] = bgColor;
 	colors[1] = fgColor;

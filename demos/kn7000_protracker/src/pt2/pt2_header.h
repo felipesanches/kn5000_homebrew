@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef PT2_KN7
 #include <SDL2/SDL.h>
+#endif
 #include <stdint.h>
 #include <stdbool.h>
 #ifdef _DEBUG
@@ -13,7 +15,9 @@
 #include <limits.h> // PATH_MAX
 #endif
 #include <stdint.h>
+#ifndef PT2_KN7
 #include "pt2_unicode.h"
+#endif
 #include "pt2_palette.h"
 
 #define PROG_VER_STR "1.92"
@@ -39,7 +43,11 @@
 #define SAMPLE_AREA_WIDTH 314
 
 #define SCREEN_W 320
+#ifdef PT2_KN7
+#define SCREEN_H 240 // the KN7000's LCD has 240 lines: the pattern view shows 13 rows instead of 15 (pt2_pattern_viewer.c)
+#else
 #define SCREEN_H 255
+#endif
 
 #define MIN_AUDIO_FREQUENCY 44100
 #define MAX_AUDIO_FREQUENCY 192000

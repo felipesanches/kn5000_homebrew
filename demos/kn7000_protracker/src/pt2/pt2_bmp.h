@@ -39,6 +39,13 @@ extern const uint8_t tracker128KFixPackedBMP[363];
 extern const uint8_t trackerFramePackedBMP[8337];
 extern const uint8_t samplingBoxPackedBMP[1379];
 
+#ifdef PT2_KN7
+// KN7000: 8 bits a pixel (pt2_kn7.h), the bitmaps the port shows
+extern pixel_t vuMeterBMP[480];
+extern pixel_t patternCursorBMP[154];
+extern uint32_t analyzerColorsRGB24[36];
+extern pixel_t *trackerFrameBMP, *muteButtonsBMP, *spectrumVisualsBMP, *fix128KTrackerBMP;
+#else
 // these are filled/normalized on init, so no const
 extern uint32_t vuMeterBMP[480];
 extern uint32_t loopPinsBMP[512];
@@ -66,6 +73,7 @@ extern uint32_t *samplingBoxBMP;
 extern uint32_t *fix128KTrackerBMP;
 extern uint32_t *fix128KPosBMP;
 extern uint32_t *fix128KChordBMP;
+#endif
 
 bool unpackBMPs(void);
 void createBitmaps(void);

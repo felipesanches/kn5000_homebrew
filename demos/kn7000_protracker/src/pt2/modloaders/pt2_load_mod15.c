@@ -58,6 +58,14 @@ module_t *loadMod15(uint8_t *buffer, uint32_t filesize)
 		s->loopLength = ((p[0] << 8) | p[1]) * 2; p += 2;
 	}
 
+#ifdef PT2_KN7
+	if (!kn7AllocSamples(m))
+	{
+		statusOutOfMemory();
+		goto loadError;
+	}
+#endif
+
 	m->header.songLength = *p++;
 
 	if (m->header.songLength == 0 || m->header.songLength > 128)
@@ -249,6 +257,9 @@ module_t *loadMod15(uint8_t *buffer, uint32_t filesize)
 	return m;
 
 loadError:
+#ifdef PT2_KN7
+	kn7FreeMod(m);
+#else
 	if (m != NULL)
 	{
 		for (int32_t i = 0; i < MAX_PATTERNS; i++)
@@ -262,6 +273,8 @@ loadError:
 
 		free(m);
 	}
+
+#endif
 
 	return NULL;
 }

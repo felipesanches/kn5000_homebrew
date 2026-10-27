@@ -78,6 +78,14 @@ module_t *loadMod31(uint8_t *buffer, uint32_t filesize)
 		}
 	}
 
+#ifdef PT2_KN7
+	if (!kn7AllocSamples(m))
+	{
+		statusOutOfMemory();
+		goto loadError;
+	}
+#endif
+
 	m->header.songLength = *p++;
 	p++; // skip uninteresting field (127 in PT MOds, "restart pos" in PC MODs)
 
@@ -191,6 +199,9 @@ module_t *loadMod31(uint8_t *buffer, uint32_t filesize)
 	return m;
 
 loadError:
+#ifdef PT2_KN7
+	kn7FreeMod(m);
+#else
 	if (m != NULL)
 	{
 		for (int32_t i = 0; i < MAX_PATTERNS; i++)
@@ -204,6 +215,8 @@ loadError:
 
 		free(m);
 	}
+
+#endif
 
 	return NULL;
 }

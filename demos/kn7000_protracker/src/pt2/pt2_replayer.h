@@ -13,6 +13,11 @@ void updatePaulaLoops(void); // used after manipulating Paula sample loop points
 void turnOffVoices(void);
 void initializeModuleChannels(module_t *s);
 module_t *createEmptyMod(void);
+#ifdef PT2_KN7
+#define KN7_SAMPLE_ALIGN 32 // bytes: a sample starts on a whole number of the DSP mixer's COPY_STEP words (8 x 4 bytes)
+bool kn7AllocSamples(module_t *m); // (from the sample headers)
+void kn7FreeMod(module_t *m); // a module the loader gave up on
+#endif
 void setReplayerPosToTrackerPos(void);
 void setPattern(int16_t pattern);
 bool tickReplayer(void);

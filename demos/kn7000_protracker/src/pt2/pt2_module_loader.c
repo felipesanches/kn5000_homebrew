@@ -27,13 +27,35 @@
 #include "pt2_config.h"
 #include "modloaders/pt2_load_mod15.h"
 #include "modloaders/pt2_load_mod31.h"
+#ifndef PT2_KN7
 #include "modloaders/pt2_xpk_unpack.h"
 #include "modloaders/pt2_pp_unpack.h"
+#endif
 #include "pt2_askbox.h"
 #include "pt2_posed.h"
 
 static void fixZeroesInString(char *str, uint32_t maxLength); // converts zeroes to spaces in a string, up until the last zero found
 
+#ifdef PT2_KN7
+/* KN7000: the module read whole from the card into `modBuffer` (main.c); the buffer stays the caller's. PowerPacker
+** and XPK packed modules are not unpacked. */
+module_t *modLoadFromBuffer(uint8_t *modBuffer, uint32_t filesize)
+{
+	module_t *newMod = NULL;
+
+	if (filesize < 1084)
+	{
+		displayErrorMsg("NOT A MOD FILE !");
+		goto loadError;
+	}
+
+	const uint32_t packerID = modBuffer[0] | (modBuffer[1] << 8) | (modBuffer[2] << 16) | ((uint32_t)modBuffer[3] << 24);
+	if (packerID == 0x30325850 || packerID == 0x30325050) // "PX20", "PP20"
+	{
+		displayErrorMsg("PACKED MOD !");
+		goto loadError;
+	}
+#else
 module_t *modLoad(UNICHAR *fileName)
 {
 	uint32_t powerPackerID;
@@ -101,6 +123,8 @@ module_t *modLoad(UNICHAR *fileName)
 		}
 	}
 
+#endif
+
 	// read module is in now in modBuffer, time to load...
 
 	bool isMod31 = detectMod31(modBuffer, filesize);
@@ -109,8 +133,10 @@ module_t *modLoad(UNICHAR *fileName)
 	else
 		newMod = loadMod15(modBuffer, filesize);
 
+#ifndef PT2_KN7
 	free(modBuffer);
 	modBuffer = NULL;
+#endif
 
 	if (newMod == NULL)
 	{
@@ -194,8 +220,10 @@ module_t *modLoad(UNICHAR *fileName)
 	return newMod;
 
 loadError:
+#ifndef PT2_KN7
 	if (modBuffer != NULL)
 		free(modBuffer);
+#endif
 
 	return NULL;
 }
@@ -271,6 +299,7 @@ void setupLoadedMod(void)
 	updateSamplePos();
 }
 
+#ifndef PT2_KN7 // (files from the command line or dropped on the window)
 void loadModFromArg(char *arg)
 {
 	statusAllRight();
@@ -467,3 +496,4 @@ DropExit:
 	free(ansiName);
 	free(fullPathU);
 }
+#endif

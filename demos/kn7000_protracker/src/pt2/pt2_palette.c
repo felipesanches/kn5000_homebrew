@@ -20,4 +20,14 @@ void setDefaultPalette(void)
 	video.palette[PAL_MOUSE_3] = 0xAAAAAA;
 
 	video.palette[PAL_COLORKEY] = 0xC0FFEE;
+
+#ifdef PT2_KN7
+	// KN7000: the colours go into the LCD controller's look-up table, entries 0 to PALETTE_NUM-1 (video.c), and a
+	// pixel holds the entry
+	for (int32_t i = 0; i < PALETTE_NUM; i++)
+	{
+		video.paletteRGB[i] = video.palette[i];
+		video.palette[i] = i;
+	}
+#endif
 }

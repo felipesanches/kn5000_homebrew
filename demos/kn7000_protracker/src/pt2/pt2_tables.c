@@ -247,6 +247,7 @@ const uint32_t tickDuration31fp[(MAX_BPM-MIN_BPM)+1+1] =
 
 // button tables taken from the ptplay project + modified
 
+#ifndef PT2_KN7 // (the mouse's buttons: the KN7000 has no mouse)
 const guiButton_t bTopScreen[] =
 {
 	{  0,  0, 39, 10, PTB_POSED},
@@ -523,3 +524,4 @@ const guiButton_t bSampler[] =
 	{176,244,210,254, PTB_SA_FIXDC},
 	{211,244,245,254, PTB_SA_FILTERS}
 };
+#endif

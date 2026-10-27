@@ -1,7 +1,7 @@
 /* (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
  * Licensed under the terms of the GNU General Public License v3 or later
  *
- * dsp.c -- the tables' music and effects, played by the KN7000's effects DSP (IC306, an ADSP-21065L): the main
+ * dsp.c -- the module's four channels, played by the KN7000's effects DSP (IC306, an ADSP-21065L): the main
  * CPU's side. The DSP's side is Another World's eight-voice sample mixer, unchanged (technics-anotherworld
  * kn7000/tools/dsp_mixer.py; tools/build/dsp_c.py makes dsp_mixer.h from it). This file is that port's src/dsp.s in
  * C, routine for routine, and keeps its rules (its header says why):
@@ -10,11 +10,11 @@
  *     guard;
  *   * the DSP must be as the firmware leaves it before anything is touched; everything uploaded is read back; what
  *     is changed is put back: the two CALL slots (units 0 and 9), MSGR4-7, channel 8's registers.
- * The converter entry (entry.c) runs dsp_prepare, then starts the game task. When a table is chosen, the converter
- * calls send that table's bank (dsp_bank_begin, then dsp_bank_step, a slice of work a call): each table's samples on
- * their own, from the SDRAM bank's first word, so the DSP holds one table's at a time. Choosing the same table again,
- * in this run or a later one, sends nothing: the marker names the table's bank and the DSP's checksum confirms it.
- * The table programs queue voice commands (dsp_set) and send them once a frame (dsp_flush). dsp_quit puts the
+ * The converter entry (entry.c) runs dsp_prepare, then starts the game task. When a module is loaded, the program
+ * codes its samples in RAM (the Pinball port read them coded from the card instead) and the converter calls send them
+ * (dsp_bank_begin, then dsp_bank_step, a slice of work a call), from the SDRAM bank's first word. Loading the same
+ * module again, in this run or a later one, sends nothing: the marker names the bank and the DSP's checksum confirms
+ * it. The program queues voice commands (dsp_set) and sends them once a replayer tick (dsp_flush). dsp_quit puts the
  * firmware's effects back before the conversion ends. */
 #include "app.h"
 #include "dsp_mixer.h"
@@ -41,10 +41,8 @@
 #define STALL_CALLS 40
 #define BANK_MS 400        /* bank work per converter call */
 #define WATCH_MS 5000
-#define MARK_MAGIC 0x33534650u  /* "PFS3", DM 0x9D00: the menu's samples, or theirs and a table's (Another World's is
-                                   "AWS2"; "PFS1" all four tables', "PFS2" one table's alone) */
+#define MARK_MAGIC 0x31535450u  /* "PTS1", DM 0x9D00: a module's samples (Another World's is "AWS2", Pinball's "PFS3") */
 #define BK_REC_MIN 3
-#define BANK_FILE_MAX 0x8000  /* dsp_bank.FILE_MAX */
 #define RB_WORDS 0x50
 
 Dsp dsp;
@@ -262,7 +260,6 @@ static void give_up(u32 why) {
   if (!dsp.fail) dsp.fail = why;
   unhook();
   dsp.ready = 0;
-  dsp.loaded = dsp.sending = -1;
   dsp.state = DS_OFF;
 }
 
@@ -286,10 +283,8 @@ static void mark_write(u32 magic, u32 id) {
 }
 
 
-/* 0: the mixer is loaded and hooked (DS_IDLE: no table's bank yet); else 1 (DS_OFF, why). */
+/* 0: the mixer is loaded and hooked (DS_IDLE: no bank yet); else 1 (DS_OFF, why). */
 int dsp_prepare(void) {
-  dsp.banks = 0;
-  dsp.loaded = dsp.sending = -1;
   u32 why = DF_NOTFOUND;
   if (dsp.found != DFB_ALL) goto fail;
   why = DF_DEAD;
@@ -333,66 +328,43 @@ static void sum_ask(void) {
   dsp.phase = 1;
 }
 
-/* The files to send: the menu's (when `menu`), then the target table's. */
-static void plan(int target, int menu) {
-  dsp.nparts = dsp.part = dsp.file = 0;
-  if (menu) dsp.part_prefix[dsp.nparts] = '0', dsp.part_files[dsp.nparts++] = (u8)dsp.banks->menu.files;
-  if (target != BANK_MENU)
-    dsp.part_prefix[dsp.nparts] = (u8)('1' + target), dsp.part_files[dsp.nparts++] = (u8)dsp.banks->table[target].files;
-  dsp.sent = dsp.phase = 0;
-  dsp.to_send = (menu ? dsp.banks->menu.words : 0) +
-                (target != BANK_MENU ? dsp.banks->table[target].words - dsp.banks->menu.words : 0);
+/* The blocks from their first again (not there, or there but not right). */
+static void resend(void) {
+  dsp.ptr = dsp.rec_lo;
+  dsp.len = dsp.rec_lo + dsp.rec_bytes;
+  dsp.sent = dsp.phase = dsp.done = 0;
+  mark_write(0, 0);  /* not known to be there until the whole is again */
 }
 
-/* `target` (a table 0-3 with the menu's samples, or BANK_MENU) into SDRAM: 1 when it is there and checked already
- * (DS_READY), 0 when dsp_bank_step has work to do (DS_BANK), 2 when it cannot be (no DSP, or the marker unreadable:
- * given up). The marker (DM 0x9D00: "PFS3" and an id) names what SDRAM holds, whole: the menu's samples, or the
- * menu's and a table's. What it claims is checked by the DSP's checksum before it is used; the menu's samples are
- * sent only when they are not there, a table's only when another table's or none are. */
-int dsp_bank_begin(const DspBankTable* banks, int target) {
+/* A bank from RAM (PfHost::dspSend) into SDRAM: `bytes` of coded blocks at `rec` (tools/dsp_bank.py's records),
+ * filling `words` SDRAM words from BANK, whose checksum is `sum`; the marker (DM 0x9D00: MARK_MAGIC and `id`) names
+ * what SDRAM holds. 0 when dsp_bank_step has work to do (DS_BANK), 2 when it cannot be (no DSP, or the marker
+ * unreadable: given up). A bank the marker names already is not sent: the DSP's checksum decides (dsp_bank_step). */
+int dsp_bank_begin(const u32* rec, u32 bytes, u32 words, u32 sum, u32 id) {
   if (dsp.state != DS_IDLE && dsp.state != DS_READY) return 2;
-  if (dsp.state == DS_READY && (dsp.loaded == target || (target == BANK_MENU && dsp.loaded >= 0))) return 1;
-  dsp.banks = banks;
   if (dead_flag() || dsp_readback(DSP_MARK, 2, rbbuf, DMAC_RB_DM) != 2) {
     give_up(DF_VERIFY);
     return 2;
   }
-  int there = -1;  /* what the marker says: a table (with the menu's), BANK_MENU, or nothing */
-  const u32 magic = rbbuf[0] | ((u32)rbbuf[1] << 16), id = rbbuf[2] | ((u32)rbbuf[3] << 16);
-  if (dsp.state == DS_READY && dsp.loaded >= 0) there = dsp.loaded;
-  else if (magic == MARK_MAGIC && id == banks->menu.id) there = BANK_MENU;
-  else if (magic == MARK_MAGIC)
-    for (int t = 0; t < 4; ++t)
-      if (id == banks->table[t].id) there = t;
-  const DspTableBank* tb = target == BANK_MENU ? 0 : &banks->table[target];
-  dsp.want_words = tb ? tb->words : banks->menu.words;
-  dsp.want_sum = tb ? tb->sum : banks->menu.sum;
-  dsp.want_id = tb ? tb->id : banks->menu.id;
+  const u32 magic = rbbuf[0] | ((u32)rbbuf[1] << 16), was = rbbuf[2] | ((u32)rbbuf[3] << 16);
+  dsp.rec_lo = (u32)rec;
+  dsp.rec_bytes = bytes;
+  dsp.want_words = words;
+  dsp.want_sum = sum;
+  dsp.want_id = id;
+  dsp.to_send = words;
   dsp.ready = 0;
-  dsp.loaded = -1;
-  dsp.sending = target;
   dsp.t0 = now_ms();
-  dsp.ptr = dsp.done = dsp.stalls = dsp.buf = dsp.held = 0;
+  dsp.done = dsp.stalls = dsp.buf = dsp.held = dsp.phase = 0;
   dsp.state = DS_BANK;
-  if (there == target || (target == BANK_MENU && there >= 0)) {
-    plan(target, 0);
-    dsp.nparts = 0;
-    dsp.sent = 2;  /* there by the marker: the DSP's checksum decides (dsp_bank_step), nothing is sent */
+  if (magic == MARK_MAGIC && was == id) {
+    dsp.ptr = 0;
+    dsp.sent = 2;  /* there by the marker: the DSP's checksum decides, nothing is sent */
     sum_ask();
-  } else if (there >= 0) {
-    plan(target, 0);  /* the menu's are there: the table's alone */
-    mark_write(MARK_MAGIC, banks->menu.id);
   } else {
-    plan(target, 1);
-    mark_write(0, 0);  /* not known to be there until the whole is again */
+    resend();
   }
   return 0;
-}
-
-u32 dsp_sample(int module, u32 n) {
-  if (!dsp.ready || !dsp.banks || n >= 31 || dsp.loaded < 0) return 0;
-  if (module >= 4) return dsp.banks->menu.addr[module - 4][n];
-  return module == dsp.loaded ? dsp.banks->table[module].addr[n] : 0;
 }
 
 /* 1 when MSGR4 reads 0 (the mixer has finished the last copy) within COPY_POLLS reads. */
@@ -402,11 +374,10 @@ static int copy_idle(void) {
   return 0;
 }
 
-
 /* 0 more to come, 1 the bank is in SDRAM and checked (DS_READY), 2 it failed (given up). BANK_MS of work a call:
- * Another World's BankStep: read the next PFtSn.BIN whole into `scratch`; hand its blocks, one staging buffer while
- * the DSP decodes the other, to the mixer's decoder; after the last, the DSP's checksum against PFBANK.BIN's. */
-int dsp_bank_step(u8* scratch) {
+ * Another World's BankStep, its blocks taken from RAM: hand them, one staging buffer while the DSP decodes the other,
+ * to the mixer's decoder; after the last, the DSP's checksum against the bank's. */
+int dsp_bank_step(void) {
   const u32 t0 = now_ms();
   int moved = 0;
   for (;;) {
@@ -426,8 +397,6 @@ int dsp_bank_step(u8* scratch) {
             dsp.sent = 1;
           }
           dsp.ms = now_ms() - dsp.t0;
-          dsp.loaded = dsp.sending;
-          dsp.sending = -1;
           dsp.ready = 1;
           dsp.state = DS_READY;
           return 1;
@@ -436,32 +405,12 @@ int dsp_bank_step(u8* scratch) {
           give_up(DF_SUM);
           return 2;
         }
-        plan(dsp.sending, 1);  /* found by its marker but not right: all of it sent again */
-        mark_write(0, 0);
+        resend();  /* found by its marker but not right: all of it sent again */
         moved = 1;
       }
-    } else if (!dsp.ptr) {  /* no file in hand: the next, or the checksum after the last */
-      if (dsp.part < dsp.nparts && dsp.file >= dsp.part_files[dsp.part]) {
-        ++dsp.part;  /* (the next part's files) */
-        dsp.file = 0;
-        moved = 1;
-      } else if (dsp.part >= dsp.nparts) {
-        if (copy_idle()) {
-          sum_ask();
-          moved = 1;
-        }
-      } else {
-        static char name[] = "PF1S0.BIN";
-        name[2] = (char)dsp.part_prefix[dsp.part];
-        name[4] = "0123456789ABCDEF"[dsp.file & 15];
-        const s32 n = file_read_now(name, scratch, BANK_FILE_MAX);
-        if (n < 4 * BK_REC_MIN + 4) {
-          give_up(DF_FILE);
-          return 2;
-        }
-        dsp.ptr = (u32)scratch;
-        dsp.len = (u32)scratch + (u32)n;
-        ++dsp.file;
+    } else if (!dsp.ptr) {  /* every block sent: the checksum, once the last is decoded */
+      if (copy_idle()) {
+        sum_ask();
         moved = 1;
       }
     } else {  /* a block in hand: u32 n, then n DM words */

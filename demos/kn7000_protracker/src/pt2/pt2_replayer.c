@@ -133,6 +133,78 @@ void setReplayerPosToTrackerPos(void)
 	song->tick = 0;
 }
 
+#ifdef PT2_KN7
+/* KN7000: no sample data yet (kn7AllocSamples, once the loader knows the samples' lengths); the patterns in one block. */
+module_t *createEmptyMod(void)
+{
+	module_t *m = (module_t *)calloc(1, sizeof (module_t));
+	if (m == NULL)
+		return NULL;
+
+	m->patternBlock = (note_t *)calloc(MAX_PATTERNS, MOD_ROWS * sizeof (note_t) * PAULA_VOICES);
+	if (m->patternBlock == NULL)
+	{
+		free(m);
+		return NULL;
+	}
+
+	for (int32_t i = 0; i < MAX_PATTERNS; i++)
+		m->patterns[i] = m->patternBlock + (i * MOD_ROWS * PAULA_VOICES);
+
+	m->header.songLength = 1;
+
+	moduleSample_t *s = m->samples;
+	for (int32_t i = 0; i < MOD_SAMPLES; i++, s++)
+	{
+		// setup GUI text pointers
+		s->volumeDisp = &s->volume;
+		s->lengthDisp = &s->length;
+		s->loopStartDisp = &s->loopStart;
+		s->loopLengthDisp = &s->loopLength;
+
+		s->loopLength = 2;
+	}
+
+	initializeModuleChannels(m);
+
+	return m;
+}
+
+/* KN7000: the sample data, from the sample headers the loader has read: each sample's room from a multiple of
+** KN7_SAMPLE_ALIGN after the null sample's KN7_SAMPLE_ALIGN zero bytes; s->offset set. The room is the sample's length,
+** or its loop's end when that is further (modLoad lengthens such a sample to its loop's end), at most
+** config.maxSampleLength (pt2-clone gives every sample that much). false: no memory. */
+bool kn7AllocSamples(module_t *m)
+{
+	uint32_t at = KN7_SAMPLE_ALIGN;
+	for (int32_t i = 0; i < MOD_SAMPLES; i++)
+	{
+		moduleSample_t *s = &m->samples[i];
+		int32_t room = s->length;
+		if (s->loopLength > 2 && s->loopStart + s->loopLength > room)
+			room = s->loopStart + s->loopLength;
+		if (room > config.maxSampleLength)
+			room = config.maxSampleLength;
+
+		s->offset = at;
+		at += ((uint32_t)room + KN7_SAMPLE_ALIGN - 1) & ~(uint32_t)(KN7_SAMPLE_ALIGN - 1);
+	}
+
+	m->sampleBytes = at;
+	m->sampleData = (int8_t *)calloc(at, 1);
+	return m->sampleData != NULL;
+}
+
+void kn7FreeMod(module_t *m)
+{
+	if (m == NULL)
+		return;
+
+	free(m->patternBlock);
+	free(m->sampleData);
+	free(m);
+}
+#else
 module_t *createEmptyMod(void)
 {
 	module_t *m = (module_t *)calloc(1, sizeof (module_t));
@@ -191,6 +263,8 @@ error:
 
 	return NULL;
 }
+
+#endif
 
 void modSetSpeed(int32_t speed)
 {
@@ -1822,7 +1896,11 @@ void clearSamples(void)
 		memset(s->text, 0, sizeof (s->text));
 	}
 
+#ifdef PT2_KN7
+	memset(song->sampleData, 0, song->sampleBytes);
+#else
 	memset(song->sampleData, 0, (MOD_SAMPLES + 1) * config.maxSampleLength);
+#endif
 
 	editor.currSample = 0;
 	editor.hiLowInstr = 0;
@@ -1844,11 +1922,15 @@ void modFree(void)
 
 	turnOffVoices();
 
+#ifdef PT2_KN7
+	free(song->patternBlock);
+#else
 	for (int32_t i = 0; i < MAX_PATTERNS; i++)
 	{
 		if (song->patterns[i] != NULL)
 			free(song->patterns[i]);
 	}
+#endif
 
 	if (song->sampleData != NULL)
 		free(song->sampleData);

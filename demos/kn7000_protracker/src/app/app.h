@@ -63,7 +63,6 @@ void game_task(void);
 
 /* game.c */
 void caches_sync(void);  /* the data cache written back, the instruction cache emptied (as program 893 does it) */
-extern int crash_table;
 
 /* crash.c: the crash screen while the game task runs */
 void crash_arm(void);
@@ -82,9 +81,9 @@ extern u32 screen_proc_skipped;
 /* entry.c */
 extern char prefix[24];
 extern u32 calls;  /* converter calls so far */
-int bank_load(int table);
+int bank_send(const u32* rec, u32 bytes, u32 words, u32 sum, u32 id);  /* game task: PfHost::dspSend */
 void wheel_led(int blink);  /* PfHost::wheelLed (entry.c) */
-extern volatile s32 wheel_steps;  /* the TEMPO/PROGRAM wheel's detents so far, signed (entry.c wheel_scan) */  /* game task: the table's sounds into the DSP; 1 there, 2 not (no sound) */
+extern volatile s32 wheel_steps;  /* the TEMPO/PROGRAM wheel's detents so far, signed (entry.c wheel_scan) */
 void set_status(const char* s);
 /* The diagnostic build (`make DIAG=1`, README.md "If it does not start"): the text the converter calls answer, which
  * the firmware shows in its own box, names what comes next. Nothing in the normal build. */
@@ -102,46 +101,24 @@ s32 file_read_now(const char* name, void* dst, u32 max);  /* files.c: on the mai
 #define DFB_DATA 8
 #define DFB_WRITE 0x10
 #define DFB_ALL 0x1F
-enum { DS_NONE, DS_BANK, DS_READY, DS_OFF, DS_IDLE };  /* DS_IDLE: the mixer hooked, no table's bank in hand */
+enum { DS_NONE, DS_BANK, DS_READY, DS_OFF, DS_IDLE };  /* DS_IDLE: the mixer hooked, no bank in hand */
 enum { DF_NOTFOUND = 1, DF_DEAD, DF_NOTDOWN, DF_STATE, DF_SLOT, DF_VERIFY, DF_HOOK, DF_FILE, DF_STALL, DF_RUNDEAD,
        DF_WATCH, DF_RUNTIME, DF_SUM, DF_BANKTAB };
-/* PFBANK.BIN (tools/card/mkbank.py, version 3): the menu's samples from the SDRAM bank's first word, each table's
- * after them */
-typedef struct DspMenuBank {
-  u32 id, words, sum, files;  /* its id (CRC-32), SDRAM words, the DSP's checksum over them, files PF0Sn.BIN */
-  u32 addr[2][31];            /* INTRO.MOD's and MOD2.MOD's samples: the SDRAM word of each one's first byte (0: none) */
-} DspMenuBank;
-typedef struct DspTableBank {
-  u32 id, words, sum, files;  /* the menu's and the table's: id, SDRAM words, checksum; the table's files PFtSn.BIN */
-  u32 addr[31];
-  u32 pad;
-} DspTableBank;
-typedef struct DspBankTable {
-  u32 magic, version, pad[2];
-  DspMenuBank menu;
-  DspTableBank table[4];
-} DspBankTable;
-#define BANK_MENU 4   /* dsp_bank_begin's and bank_load's target: the menu's samples alone */
 typedef struct Dsp {
   u32 found, dwait, regwr, regrd, idxwr, datard, datawr, dead, down;  /* the firmware's routines (dsp_find) */
   u32 state, fail, ready, hooked, u9, sent;
   u32 syscon, dmac0, iiep0, imep0, cep0, dmastat, slot0, slot9, hb0;
-  const DspBankTable* banks;                                   /* PFBANK.BIN */
   u32 want_words, want_sum, want_id;                           /* what dsp_bank_step brings into SDRAM, checked */
-  u8 part_prefix[2], part_files[2];                            /* the files it sends: PF?Sn.BIN, so many, in turn */
-  u32 nparts, part, to_send;                                   /* (and the words they hold) */
-  u32 file, ptr, len, done, stalls, buf, held, phase, t0, ms;  /* the bank's upload */
+  u32 rec_lo, rec_bytes, to_send;                              /* its coded blocks in RAM (and the words they fill) */
+  u32 ptr, len, done, stalls, buf, held, phase, t0, ms;        /* the bank's upload */
   u32 pend, busy, flushes;                                     /* the voices */
   u32 cmds[8 * 5];
-  s32 loaded;   /* in SDRAM and checked (ready): the menu's samples and table n's (0-3), the menu's alone (BANK_MENU), or -1 */
-  s32 sending;  /* the target dsp_bank_step works on, or -1 */
 } Dsp;
 extern Dsp dsp;
 void dsp_find(void);
 int dsp_prepare(void);
-int dsp_bank_begin(const DspBankTable* banks, int target);
-u32 dsp_sample(int module, u32 n);  /* module 0-3 a table's, 4 INTRO.MOD, 5 MOD2.MOD: sample n's SDRAM word, 0 if not there */
-int dsp_bank_step(u8* scratch);
+int dsp_bank_begin(const u32* rec, u32 bytes, u32 words, u32 sum, u32 id);
+int dsp_bank_step(void);
 void dsp_quit(void);
 void dsp_set(u32 voice, const PfVoice* v, u32 how);
 void dsp_flush(void);

@@ -5,12 +5,137 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include "pt2_palette.h"
 #include "pt2_structs.h"
 #include "pt2_helpers.h"
 #include "pt2_bmp.h"
 #include "pt2_tables.h"
 
+#ifdef PT2_KN7
+/* KN7000: the bitmaps as indices into the LCD controller's look-up table (video.c). A packed bitmap's 2-bit pixels are
+** palette entries 0-3, each its own index; the colours made here (the cursor's lighter and darker edges, the VU meters'
+** and the analyzer's shades) get entries of their own from kn7Colour. Only the main screen's bitmaps are unpacked. */
+pixel_t *trackerFrameBMP = NULL, *muteButtonsBMP = NULL, *spectrumVisualsBMP = NULL, *fix128KTrackerBMP = NULL;
+
+pixel_t kn7Colour(uint32_t rgb24); // video.c
+
+static uint32_t shade(uint32_t rgb24, int32_t d)
+{
+	int32_t r = R24(rgb24) + d, g = G24(rgb24) + d, b = B24(rgb24) + d;
+	r = CLAMP(r, 0, 255);
+	g = CLAMP(g, 0, 255);
+	b = CLAMP(b, 0, 255);
+	return RGB24(r, g, b);
+}
+
+void createBitmaps(void)
+{
+	const uint32_t pixel24 = video.paletteRGB[PAL_PATCURSOR];
+	const pixel_t lighter = kn7Colour(shade(pixel24, 0x33)), darker = kn7Colour(shade(pixel24, -0x33));
+	for (int32_t y = 0; y < 14; y++)
+	{
+		for (int32_t x = 0; x < 11; x++)
+		{
+			pixel_t p;
+			if (y < 2) // top two rows have a lighter color
+				p = lighter;
+			else if (y > 11) // bottom two rows have a darker color
+				p = darker;
+			else // sides (same color)
+				p = (x == 0 || x == 10) ? (pixel_t)video.palette[PAL_PATCURSOR] : (pixel_t)video.palette[PAL_COLORKEY];
+
+			patternCursorBMP[(y * 11) + x] = p;
+		}
+	}
+
+	// create spectrum analyzer bar graphics
+	for (int32_t i = 0; i < 36; i++)
+		analyzerColorsRGB24[i] = kn7Colour(RGB12_to_RGB24(analyzerColors[35-i]));
+
+	// create VU-Meter bar graphics: brighter pixels on the left side, darker on the right
+	for (int32_t i = 0; i < 48; i++)
+	{
+		const uint32_t main24 = RGB12_to_RGB24(vuMeterColors[47-i]);
+		const pixel_t bright = kn7Colour(shade(main24, 0x33)), main = kn7Colour(main24), dark = kn7Colour(shade(main24, -0x33));
+		for (int32_t j = 0; j < 10; j++)
+			vuMeterBMP[(i * 10) + j] = (j < 2) ? bright : (j < 8) ? main : dark;
+	}
+}
+
+static pixel_t *unpackBMP(const uint8_t *src, uint32_t packedLen)
+{
+	// RLE decode
+	const int32_t decodedLength = (src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3];
+
+	pixel_t *dst = (pixel_t *)malloc((decodedLength * 4) + 8);
+	uint8_t *tmpBuffer = (uint8_t *)malloc(decodedLength + 128); // some margin is needed, the packer is buggy
+	if (dst == NULL || tmpBuffer == NULL)
+	{
+		free(dst);
+		free(tmpBuffer);
+		return NULL;
+	}
+
+	const uint8_t *packSrc = src + 4; // skip "length" field
+	uint8_t *packDst = tmpBuffer;
+
+	int32_t i = packedLen - 4; // subtract "length" field
+	while (i > 0)
+	{
+		uint8_t byteIn = *packSrc++;
+		if (byteIn == 0xCC) // compactor code
+		{
+			int16_t count  = *packSrc++;
+			byteIn = *packSrc++;
+
+			while (count-- >= 0)
+				*packDst++ = byteIn;
+
+			i -= 2;
+		}
+		else
+		{
+			*packDst++ = byteIn;
+		}
+
+		i--;
+	}
+
+	// 2-bit to 8-bit conversion: the pixel is the palette entry
+	for (i = 0; i < decodedLength; i++)
+	{
+		dst[(i << 2) + 0] = (pixel_t)video.palette[(tmpBuffer[i] & 0xC0) >> 6];
+		dst[(i << 2) + 1] = (pixel_t)video.palette[(tmpBuffer[i] & 0x30) >> 4];
+		dst[(i << 2) + 2] = (pixel_t)video.palette[(tmpBuffer[i] & 0x0C) >> 2];
+		dst[(i << 2) + 3] = (pixel_t)video.palette[(tmpBuffer[i] & 0x03) >> 0];
+	}
+
+	free(tmpBuffer);
+	return dst;
+}
+
+bool unpackBMPs(void)
+{
+	trackerFrameBMP = unpackBMP(trackerFramePackedBMP, sizeof (trackerFramePackedBMP));
+	muteButtonsBMP = unpackBMP(muteButtonsPackedBMP, sizeof (muteButtonsPackedBMP));
+	spectrumVisualsBMP = unpackBMP(spectrumVisualsPackedBMP, sizeof (spectrumVisualsPackedBMP));
+	fix128KTrackerBMP = unpackBMP(tracker128KFixPackedBMP, sizeof (tracker128KFixPackedBMP));
+	if (trackerFrameBMP == NULL || muteButtonsBMP == NULL || spectrumVisualsBMP == NULL || fix128KTrackerBMP == NULL)
+		return false;
+
+	createBitmaps();
+	return true;
+}
+
+void freeBMPs(void)
+{
+	free(trackerFrameBMP);
+	free(muteButtonsBMP);
+	free(spectrumVisualsBMP);
+	free(fix128KTrackerBMP);
+}
+#else
 uint32_t *aboutScreenBMP   = NULL, *diskOpScreenBMP  = NULL, *editOpModeCharsBMP = NULL;
 uint32_t *editOpScreen1BMP = NULL, *editOpScreen2BMP = NULL, *samplerVolumeBMP   = NULL;
 uint32_t *editOpScreen3BMP = NULL, *editOpScreen4BMP = NULL, *spectrumVisualsBMP = NULL;
@@ -286,3 +411,4 @@ bool unpackBMPs(void)
 	createBitmaps();
 	return true;
 }
+#endif

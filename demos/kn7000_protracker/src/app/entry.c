@@ -7,12 +7,13 @@
  * the firmware's user interface on the converter while the main task goes on decoding the panel and passing
  * the keybed's notes to MIDI OUT (Another World's port does the same: README-CNV.md, "How it works"):
  *   * the first calls find the firmware (fwfind.c), one step each, and the firmware's routines for the effects
- *     DSP (dsp.c); then the DSP gets the mixer, and the game task starts (game.c). Without the DSP the game goes on
- *     silent;
- *   * then each call serves the game task's file reads (files.c) and, when a table is chosen, sends that table's
- *     sample bank (PFtSn.BIN) to the DSP, a slice of work a call (bank_load); and watches EXIT: held 1.5 s, the game task
- *     is asked to end at its next yield; once it has, the call answers 0xFE, which hands the instrument back
- *     (the firmware's message, then "Continue Next?": YES loads KN7APP.BIN afresh, NO leaves). */
+ *     DSP (dsp.c); then the DSP gets the mixer, and the program task starts (game.c). Without the DSP the program
+ *     goes on silent;
+ *   * then each call serves the program task's file reads (files.c) and, when a module is loaded, sends its sample
+ *     bank to the DSP, a slice of work a call (bank_send); and watches EXIT: held 1.5 s, the program task is asked to
+ *     end at its next yield; once it has, the call answers 0xFE, which hands the instrument back (the firmware's
+ *     message, then "Continue Next?": YES loads KN7APP.BIN afresh, NO leaves).
+ * (The Pinball Fantasies port's entry.c, with its diagnostic builds and its card-file banks left out.) */
 #include "app.h"
 
 #define QUIT_HOLD_MS 1500
@@ -24,14 +25,13 @@ int cnv_entry(void);
 __attribute__((section(".header"), used)) static const struct {
   u32 magic, abi, size, entry, crc, base, pad[2];
   char name[32];
-} header = {APP_MAGIC, LOADER_ABI, 0, (u32)cnv_entry, 0, APP_BASE, {0, 0}, "PINBALL FANTASIES"};
+} header = {APP_MAGIC, LOADER_ABI, 0, (u32)cnv_entry, 0, APP_BASE, {0, 0}, "PROTRACKER"};
 
-enum { S_FIRST, S_SEARCH, S_DSP, S_RUN = 4, S_FAILED };  /* (3 was the four tables' bank, sent before the menu) */
+enum { S_FIRST, S_SEARCH, S_DSP, S_RUN, S_FAILED };
 static u32 state, step, part, fail_calls, exit_t0, ended;
 u32 calls;
-static DspBankTable bank_table;
 static char fail_text[40];
-static const char* status_text = "LOADING PINBALL FANTASIES";
+static const char* status_text = "LOADING PROTRACKER";
 char prefix[24];
 
 void set_status(const char* s) { status_text = s; }
@@ -52,12 +52,6 @@ static void launch_folder(void) {
   int i = 0;
   for (; i < 16 && RD8(LB_ADDR + LB_PREFIX + i); ++i) prefix[i] = (char)RD8(LB_ADDR + LB_PREFIX + i);
   prefix[i] = 0;
-#ifdef PF_DIAG
-  /* started from its own folder (PFDIAG\): the game's files are in PINBALL\ */
-  const char* own = "PINBALL\\";
-  for (i = 0; own[i]; ++i) prefix[i] = own[i];
-  prefix[i] = 0;
-#endif
 }
 
 static void progress(const char* what, u32 done, u32 of) {
@@ -65,7 +59,7 @@ static void progress(const char* what, u32 done, u32 of) {
   if (what != shown) {  /* (the LCD is slow: the text once) */
     shown = what;
     lcd_fill(0, 0, FB_W, FB_H, 0);
-    lcd_text("PINBALL FANTASIES", 248, 100, 0xFFFF, 0);
+    lcd_text("PROTRACKER", 280, 100, 0xFFFF, 0);
     int n = 0;
     while (what[n]) ++n;
     lcd_text(what, (FB_W - 8 * n) / 2, 120, RGB565(160, 160, 160), 0);
@@ -74,53 +68,30 @@ static void progress(const char* what, u32 done, u32 of) {
   lcd_fill(160, 140, (int)(320 * (unsigned long long)done / (of ? of : 1)), 4, 0xFFFF);
 }
 
-/* The sound, in three calls: the DSP's routines, PFBANK.BIN, then the mixer into the DSP (dsp_prepare). 2 while
- * there is more; 0 when the DSP is ours; 1 without it. */
+/* The sound, in two calls: the DSP's routines, then the mixer into the DSP (dsp_prepare). 2 while there is more; 0
+ * when the DSP is ours; 1 without it. */
 static int dsp_start(u32 n) {
   if (n == 0) {
     dsp_find();
     return 2;
   }
-  if (n == 1) {
-    const s32 got = file_read_now("PFBANK.BIN", &bank_table, sizeof bank_table);
-    if (got != (s32)sizeof bank_table || bank_table.magic != 0x4B424650u /* "PFBK" */ || bank_table.version != 3) {
-      dsp.fail = DF_BANKTAB;
-      return 1;
-    }
-    return 2;
-  }
   return dsp_prepare();
 }
 
-/* A table's bank into the DSP, asked for on the game task (bank_load) and sent by the converter calls (bank_serve). */
+/* A sample bank into the DSP, asked for on the game task (bank_send, PfHost::dspSend) and sent by the converter calls
+ * (bank_serve). */
+static const u32* bank_rec;
+static u32 bank_bytes, bank_words, bank_sum, bank_id;
 static volatile s32 bank_want = -1, bank_result;
 static int bank_begun;
 
-/* On the game task: table t's sounds into the DSP, waiting; 1 when they are there, else 2 (no sound). The LCD shows how
- * far it has got. */
-int bank_load(int t) {
+/* On the game task: waits while the converter calls send the bank; 1 when it is there, else 2 (no sound). */
+int bank_send(const u32* rec, u32 bytes, u32 words, u32 sum, u32 id) {
   if (dsp.state != DS_IDLE && dsp.state != DS_READY) return 2;
-  if (dsp.state == DS_READY && dsp.loaded == t) return 1;
-  bank_want = t;
-  u32 shown = 0xFFFFFFFFu;
-  int checking = -1;
-  while (bank_want >= 0) {
-    if (dsp.state == DS_BANK && dsp.banks) {
-      const int c = dsp.sent == 2;
-      if (c != checking) {
-        checking = c;
-        lcd_fill(0, 196, FB_W, 24, 0);
-        const char* what = c ? "Checking the sounds in the DSP..." : "Sending the sounds to the DSP...";
-        int n = 0;
-        while (what[n]) ++n;
-        lcd_text(what, (FB_W - 8 * n) / 2, 196, RGB565(160, 160, 160), 0);
-        lcd_fill(160, 214, 320, 4, RGB565(48, 48, 48));
-      }
-      const u32 w = dsp.to_send ? (u32)(320ull * (dsp.done < dsp.to_send ? dsp.done : dsp.to_send) / dsp.to_send) : 0;
-      if (w != shown) lcd_fill(160, 214, (int)(shown = w), 4, 0xFFFF);
-    }
-    task_yield(50);
-  }
+  if (words > 0x30000u) return 2;  /* (dsp_mixer.BANK_MAX) */
+  bank_rec = rec, bank_bytes = bytes, bank_words = words, bank_sum = sum, bank_id = id;
+  bank_want = 1;
+  while (bank_want >= 0) task_yield(20);
   return bank_result;
 }
 
@@ -130,9 +101,9 @@ static int bank_serve(void) {
   int r;
   if (!bank_begun) {
     bank_begun = 1;
-    r = dsp_bank_begin(&bank_table, bank_want);
+    r = dsp_bank_begin(bank_rec, bank_bytes, bank_words, bank_sum, bank_id);
   } else {
-    r = dsp_bank_step((u8*)ARENA2_LO);  /* (no table program is loaded while a bank is sent: its RAM is free) */
+    r = dsp_bank_step();
   }
   if (r) {
     bank_result = r;
@@ -141,88 +112,6 @@ static int bank_serve(void) {
   }
   return 1;
 }
-
-#ifdef PF_DIAG
-#define DIAG_HOLD_MS 1000  /* before each of the setup's calls that works: time to read the text */
-static u32 hold_t0, hold_calls;
-static char diag_text[64];
-
-/* The card log, C:\PFDIAG.TXT (PF_HELLO: C:\PFHELLO.TXT), made afresh with each line, so that after a restart its
- * last line is what the unit was doing: "<call> <ms> <text>". Through the loader's service table (no search
- * needed), drive switch, open "wb", one write, close, as the ROM dumper writes its files. */
-#if defined PF_HELLO && defined PF_ALIGN_ENTRY
-#define LOG_NAME "PFHELLOA.TXT"
-#elif defined PF_HELLO
-#define LOG_NAME "PFHELLO.TXT"
-#else
-#define LOG_NAME "PFDIAG.TXT"
-#endif
-static char log_buf[512];  /* (2 KB until 2026-10-27, when KN7APP.BIN grew to 2 KB short of APP_END: the first lines are the ones that matter) */
-static u32 log_len, logged_writes;
-
-static void log_dec(u32 v) {
-  char t[10];
-  int n = 0;
-  do t[n++] = (char)('0' + v % 10); while (v /= 10);
-  while (n && log_len < sizeof log_buf) log_buf[log_len++] = t[--n];
-}
-
-static void diag_log(const char* s) {
-  if (!(RD32(SVC + SV_FOUND) & (FOUND_FILESIG | FOUND_TABLES))) return;
-  const u32 setext = RD32(SVC + SV_SETEXT), resetext = RD32(SVC + SV_RESETEXT), open = RD32(SVC + SV_OPEN),
-            write = RD32(SVC + SV_WRITE), close = RD32(SVC + SV_CLOSE), c = RD32(SVC + SV_MSCOUNT);
-  if (!setext || !resetext || !open || !write || !close) return;
-  if (log_len > sizeof log_buf - 80) return;  /* full: the first lines are the ones that matter */
-  log_dec(calls);
-  log_buf[log_len++] = ' ';
-  log_dec(c ? RD32(c) : 0);
-  log_buf[log_len++] = ' ';
-  while (*s && log_len < sizeof log_buf - 2) log_buf[log_len++] = *s++;
-  log_buf[log_len++] = '\r';
-  log_buf[log_len++] = '\n';
-  fw_call(setext, 1, 0, 0, 0);
-  const s32 h = (s32)(int16_t)fw_call(open, 0, 0, (u32)LOG_NAME, (u32) "wb");
-  if (h >= 0) {
-    fw_call(write, log_len, 0, (u32)log_buf, 0);
-    fw_call(close, 0, 0, 0, 0);
-    ++logged_writes;
-  }
-  fw_call(resetext, 0, 0, 0, 0);
-}
-
-/* 1 while the call is only to keep the text up (the setup only: the game task's file reads are not held). */
-static int diag_hold(void) {
-  const u32 c = RD32(SVC + SV_MSCOUNT);
-  if (!c) return hold_calls++ % 20 != 0;
-  const u32 t = RD32(c) | 1;
-  if (!hold_t0) hold_t0 = t;
-  if (t - hold_t0 < DIAG_HOLD_MS) return 1;
-  hold_t0 = 0;
-  return 0;
-}
-
-/* "PF DIAG <call>: NEXT <what the next call that works does>" */
-static const char* diag_next(void) {
-  static const char* const search[FW_STEPS] = {"PANEL", "CLOCK", "SERVICE TABLE", "TASKS", "EXIT", "MIDI RINGS"};
-  static const char* const dsp_parts[3] = {"DSP SEARCH", "READ PFBANK.BIN", "DSP MIXER, HOOK, TASK"};
-  const char* what = state == S_SEARCH ? search[step < FW_STEPS ? step : 0]
-                     : state == S_DSP  ? dsp_parts[part < 3 ? part : 2]
-                                       : 0;
-  if (!what) return state == S_FAILED ? fail_text : status_text;
-  char* o = diag_text;
-  for (const char* s = "PF DIAG "; *s;) *o++ = *s++;
-  char t[10];
-  int n = 0;
-  u32 v = calls;
-  do t[n++] = (char)('0' + v % 10); while (v /= 10);
-  while (n) *o++ = t[--n];
-  for (const char* s = ": NEXT "; *s;) *o++ = *s++;
-  if (state == S_SEARCH) for (const char* s = "SEARCH "; *s;) *o++ = *s++;
-  while (*what && o < diag_text + sizeof diag_text - 1) *o++ = *what++;
-  *o = 0;
-  return diag_text;
-}
-#endif
 
 /* EXIT held for QUIT_HOLD_MS: the game task is asked to end (the firmware ignores EXIT while we answer 5). */
 static void watch_exit(void) {
@@ -241,11 +130,6 @@ static void watch_exit(void) {
  * bset and bclr (the firmware's tasks change other bits of those bytes). Both banks: the firmware sends the one its
  * panel kind uses (bank A with the tone generators, bank B without), the other is never sent. The bits as the
  * firmware had them go back when the blinking stops, and at the end. */
-#ifdef PF_DIAG
-void wheel_led(int blink) { (void)blink; }  /* (left out of the diagnostic build: KN7APP's room, kn7.h APP_END) */
-#define led_service() ((void)0)
-static int led_want;
-#else
 #define LED_HALF_MS 300
 static volatile int led_want;
 static int led_on, led_lit, led_saved[2];
@@ -278,7 +162,6 @@ static void led_service(void) {
     for (int k = 0; k < 2; ++k) led_bit(k, led_lit);
   }
 }
-#endif
 
 /* While the game task runs, each call waits a while before it answers. Program 893 answers request 5 by changing to
  * its text title again, which repaints the screen and calls again: a loop on the main task as fast as it goes, 33
@@ -355,75 +238,9 @@ static int answer(const char* text) {
   return 0;
 }
 
-#ifdef PF_HELLO
-/* PFHELLO\: a C program started from the menu, with nothing of the game's, to find what restarts the unit. Each step is
- * named for HELLO_HOLD_MS, then done, whole, in one call; each step does again what the one before it did, and one
- * thing more. The name is drawn in a strip at the top of the LCD on every call (the firmware's box does not always
- * show the text we answer: in MAME it kept the menu's) and answered too. The name up when the unit restarts is the
- * step that did it. */
-#define HELLO_HOLD_MS 3000
-#ifdef PF_ALIGN_ENTRY
-#define HELLO "PF HELLO A"  /* PFHELLOA\: the same, with the entry on a 16-byte boundary */
-#else
-#define HELLO "PF HELLO"
-#endif
-static const char* const hello_text[] = {
-    HELLO " 1: C RUNS; NEXT DRIVE SWITCH",
-    HELLO " 2: NEXT DRIVE SWITCH, OPEN, CLOSE",
-    HELLO " 3: NEXT OPEN, WRITE, CLOSE (THE LOG)",
-    HELLO " 4: ALL DONE; ENDING",
-};
-static u32 hello_step, hello_t0;
 
-static int hello_show(void) {
-  const char* t = hello_text[hello_step];
-  lcd_fill(0, 0, FB_W, 21, RGB565(160, 0, 0));
-  lcd_text(t, 8, 4, 0xFFFF, RGB565(160, 0, 0));
-  return answer(t);
-}
-
-static int hello(void) {
-  const u32 c = RD32(SVC + SV_MSCOUNT);
-  const u32 now = (c ? RD32(c) : calls * 50) | 1;
-  if (!hello_t0) hello_t0 = now;
-  if (now - hello_t0 < HELLO_HOLD_MS) return hello_show();
-  hello_t0 = 0;
-  const u32 setext = RD32(SVC + SV_SETEXT), resetext = RD32(SVC + SV_RESETEXT), open = RD32(SVC + SV_OPEN),
-            close = RD32(SVC + SV_CLOSE);
-  switch (hello_step++) {
-    case 0:
-      fw_call(setext, 1, 0, 0, 0);
-      fw_call(resetext, 0, 0, 0, 0);
-      break;
-    case 1: {
-      fw_call(setext, 1, 0, 0, 0);
-      const s32 h = (s32)(int16_t)fw_call(open, 0, 0, (u32)LOG_NAME, (u32) "wb");
-      if (h >= 0) fw_call(close, 0, 0, 0, 0);
-      fw_call(resetext, 0, 0, 0, 0);
-      break;
-    }
-    case 2:
-      diag_log(HELLO " 3: OPEN, WRITE, CLOSE");
-      break;
-    default:
-      diag_log(HELLO " 4: ENDING");
-      *(volatile u8*)MAILBOX = RQ_END;
-      calls = hello_step = 0;
-      log_len = 0;
-      return 0;
-  }
-  return hello_show();
-}
-#endif
-
-#ifdef PF_ALIGN_ENTRY
-__attribute__((aligned(16)))  /* (every program that has run on the unit starts on a word boundary; ours did not) */
-#endif
 int cnv_entry(void) {
   ++calls;
-#ifdef PF_HELLO
-  return hello();
-#endif
   if (ended) {  /* "Continue Next?" YES without a reload (the loader always reloads): start again */
     ended = 0;
     quit_req = 0;
@@ -431,49 +248,29 @@ int cnv_entry(void) {
     state = S_FIRST;
     step = part = 0;
   }
-#ifdef PF_DIAG
-  static const char* logged_status;
-  if (state != S_FIRST && state < S_RUN) {
-    if (diag_hold()) return answer(diag_next());
-    diag_log(diag_next());  /* the step this call does */
-  }
-  if (state == S_RUN && status_text != logged_status) diag_log(logged_status = status_text);
-#endif
   switch (state) {
     case S_FIRST:
-#ifdef PF_DIAG
-      diag_log("PF DIAG: ENTERED; NEXT LAUNCH BLOCK");
-#endif
       lcdc_save();
       launch_folder();
       state = S_SEARCH;
-#ifdef PF_DIAG
-      diag_log("PF DIAG: NEXT LCD");
-#endif
       progress("Looking for the firmware's routines...", 0, FW_STEPS);
-#ifdef PF_DIAG
-      diag_log("PF DIAG: LCD DRAWN");
-      break;  /* the launch block alone in the first call */
-#endif
       /* fall through */
     case S_SEARCH:
       if (fw_step((int)step)) {
-        fail("PINBALL: UNKNOWN FIRMWARE, STEP ", (int)step);
+        fail("PROTRACKER: UNKNOWN FIRMWARE, STEP ", (int)step);
         break;
       }
       progress("Looking for the firmware's routines...", ++step, FW_STEPS);
       if (step < FW_STEPS) break;
       notes_init();
-#ifndef PF_DIAG
       fw_find_dial();
-#endif
       state = S_DSP;
       break;
     case S_DSP: {
       const int r = dsp_start(part++);
       if (r == 2) break;
       state = S_RUN;  /* (r 1, no DSP: the game is silent; DSP.fail says why) */
-      if (task_start()) fail("PINBALL: NO TASK SLOT", -1);
+      if (task_start()) fail("PROTRACKER: NO TASK SLOT", -1);
       break;
     }
     case S_RUN:
@@ -485,15 +282,8 @@ int cnv_entry(void) {
       if (fw.panel ? button(BTN_EXIT) : ++fail_calls >= FAIL_CALLS) quit_req = 1;
       break;
   }
-#ifdef PF_DIAG
-  if (state == S_FAILED && status_text != fail_text) diag_log(status_text = fail_text);
-#endif
   if (state != S_FAILED) watch_exit();
   if (quit_req && task_done) {
-#ifdef PF_DIAG
-    diag_log("PF DIAG: QUIT");
-    log_len = 0;
-#endif
     led_want = 0;
     led_service();  /* the wheel's LED as the firmware had it */
     crash_disarm();  /* the firmware's NMI stub back */
@@ -504,9 +294,5 @@ int cnv_entry(void) {
     ended = 1;
     return 0;
   }
-#ifdef PF_DIAG
-  return answer(diag_next());
-#else
   return answer(state == S_FAILED ? fail_text : status_text);
-#endif
 }

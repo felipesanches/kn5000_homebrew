@@ -38,6 +38,7 @@ extern uint16_t vuMeterColors[48];
 #define SAMPLER_BUTTONS 25
 // -----------------------------------------------
 
+#ifndef PT2_KN7
 extern const guiButton_t bTopScreen[];
 extern const guiButton_t bMidScreen[];
 extern const guiButton_t bBotScreen[];
@@ -48,3 +49,4 @@ extern const guiButton_t bEditOp2[];
 extern const guiButton_t bEditOp3[];
 extern const guiButton_t bEditOp4[];
 extern const guiButton_t bSampler[];
+#endif
