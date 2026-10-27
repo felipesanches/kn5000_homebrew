@@ -124,7 +124,7 @@ void videoPresent(void (*service)(void))
 	uint32_t *was = (uint32_t *)shown;
 	for (int y = 0; y < SCREEN_H; y++)
 	{
-		if (service && (y & 15) == 15)
+		if (service && (y & 7) == 7)
 			service();
 
 		volatile uint16_t *dst = (volatile uint16_t *)(FB_BASE + FRAME + (uint32_t)y * PITCH + PT_LEFT);

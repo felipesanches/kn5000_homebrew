@@ -41,14 +41,15 @@ typedef uint8_t pixel_t;
 pixel_t kn7Colour(uint32_t rgb24);  /* the look-up table's entry for a colour (made the first time) */
 void videoInit(void);               /* the frame buffer (video.frameBuffer) and the colours */
 void videoOwn(void);                /* the LCD controller at 8 bits a pixel, showing our frame, all of it drawn again */
-/* Writes to the LCD the pixels of the frame buffer that changed since the last call; `service` is called every few
- * rows (the music goes on). */
+/* Writes to the LCD the pixels of the frame buffer that changed since the last call; `service` is called every 8 rows
+ * (the music goes on). */
 void videoPresent(void (*service)(void));
 /* The 160-pixel columns left and right of ProTracker's screen: text in the 8 x 13 font, straight to the LCD. */
 void sideText(int x, int y, const char* s, pixel_t fg, pixel_t bg);
 void sideFill(int x, int y, int w, int h, pixel_t c);
 
 /* ---- ui.c: ProTracker's main screen ------------------------------------------------------------------------ */
+extern void (*uiService)(void);  /* called between the screen's parts (main.c: the ticks that are due) */
 void uiInit(void);
 void uiFullRedraw(void);     /* the tracker frame and everything on it, at the next uiUpdate */
 void uiUpdate(void);         /* what changed, into the frame buffer (pt2-clone's renderFrame for the main screen) */

@@ -9,7 +9,7 @@
  *     there is no MODS.TXT); loaded whole, parsed by pt2-clone's loader, their samples sent to the DSP (bank.c);
  *   * time: the replayer ticks by the kernel's millisecond counter and timer 4 (2,001 counts a millisecond), 50 times
  *     a second at 125 BPM as the CIA does it; Paula's changes go to the DSP after each tick (paula.c). The screen is
- *     drawn between ticks, and its writes to the LCD stop every few rows for the ticks that are due;
+ *     drawn between ticks; between its parts, and every 8 rows of its writes to the LCD, the ticks that are due run;
  *   * the controls (the soft keys' labels beside the screen, ui.c):
  *       LCDL 1-5   PLAY (song), PATTERN (play it), STOP, EDIT, the scopes or the spectrum analyzer
  *       LCDR 1-5   the module before, after (in MODS.TXT; it plays at once), the sample before, after, every channel
@@ -165,6 +165,15 @@ static uint32_t stamp(void)
 	return a * TICKS_PER_MS + (2000u - c);
 }
 
+/* ---- the replayer's clock: the first tick of a song played (again) is due at once ------------------------------ */
+static uint32_t nextTick;
+static bool ticking;
+
+static void restartClock(void)
+{
+	ticking = false; // (a module's load takes seconds: its ticks are not to be caught up)
+}
+
 /* ---- the modules ------------------------------------------------------------------------------------------------ */
 #define MAX_MODULES 64
 static char names[MAX_MODULES][13];
@@ -238,6 +247,7 @@ static bool loadModule(int index)
 	}
 
 	paulaSetBank(host->dspBase, false);
+	restartClock();
 	moduleAt = index;
 	const char *name = names[index];
 	PfPiece piece = { scratch, scratchBytes };
@@ -267,9 +277,6 @@ static bool loadModule(int index)
 	return true;
 }
 
-/* ---- the replayer's clock ------------------------------------------------------------------------------------- */
-static uint32_t nextTick;
-static bool ticking;
 
 static uint32_t bpmOf(void)
 {
@@ -358,6 +365,7 @@ static bool pressed(uint32_t b)
 
 static void playSong(void)
 {
+	restartClock();
 	editor.playMode = PLAY_MODE_NORMAL;
 	modPlay(DONT_SET_PATTERN, song->currPos, DONT_SET_ROW);
 	editor.currMode = MODE_PLAY;
@@ -366,6 +374,7 @@ static void playSong(void)
 
 static void playPatternNow(void)
 {
+	restartClock();
 	editor.playMode = PLAY_MODE_PATTERN;
 	modPlay(song->currPattern, DONT_SET_ORDER, DONT_SET_ROW);
 	editor.currMode = MODE_PLAY;
@@ -401,6 +410,7 @@ static void movePos(int d)
 
 	if (editor.songPlaying && editor.playMode == PLAY_MODE_NORMAL)
 	{
+		restartClock();
 		modPlay(DONT_SET_PATTERN, (int16_t)pos, 0); // the replayer goes there
 		return;
 	}
@@ -552,6 +562,7 @@ int pt_entry(const PfHost *h)
 	editor.editMoveAdd = 1;
 	editor.currMode = MODE_IDLE;
 	uiInit();
+	uiService = service;
 	host->wheelLed(0);
 	host->keybedSound(0); // the keybed plays ProTracker's samples, not the instrument's sounds
 	paulaReset();

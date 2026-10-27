@@ -13,6 +13,7 @@ own folders (the sound, the snapshots) are scratch; what the README quotes is he
 | `compare-2026-10-27.txt`  | `tests/mame/compare_render.py`: the PC render against libopenmpt, and pt-mame4-6 against the PC render |
 | `screen-2026-10-27.png`   | a snapshot of the first session (pt-mame1), INTRO.MOD playing                                          |
 | `events-pt-mame8.txt`     | `MODS="MOD2.MOD INTRO.MOD" PT_EDIT=1`: the spectrum analyzer, a mute button, the edit mode, three keys |
+| `events-pt-mame11.txt`    | `MODS="MOD2.MOD INTRO.MOD" PT_EDIT=1` with the rest of the controls, after the clock fixes             |
 | `edit-2026-10-27.png`     | pt-mame8: the edit mode after C3, E3, G3 (rows 55-57 of channel 1)                                     |
 | `spectrum-2026-10-27.png` | pt-mame8: the pattern playing, the spectrum analyzer                                                   |
 

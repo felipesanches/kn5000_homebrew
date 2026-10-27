@@ -1,0 +1,13 @@
+   57.43 menu: up, 1 programs, "ProTracker 2.3D" at 0
+   59.08 RUN
+   81.22 playing: dsp state 2 fail 0 ready 1 flushes 403 busy 0 bank 461 ms; song "adrenaline" pos 1 patt 5 row 61 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 446/27/22/6/0/0/0 max 8.7 ms
+   83.55 LCDL 5 (spectrum)
+   85.87 MUTE UP 1: dsp state 2 fail 0 ready 1 flushes 529 busy 0 bank 461 ms; song "adrenaline" pos 2 patt 7 row 55 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 608/59/42/18/6/0/0 max 14.8 ms
+   89.85 STOP, EDIT, channel 1 unmuted: dsp state 2 fail 0 ready 1 flushes 532 busy 0 bank 461 ms; song "adrenaline" pos 2 patt 7 row 55 speed 4 bpm 125 playing 0, status "ALL RIGHT", late 608/59/43/19/6/0/0 max 14.8 ms
+   92.95 keys C3 E3 G3: row 55 period 428 sample 1 cmd A10; row 56 period 339 sample 1 cmd 482; row 57 period 285 sample 1 cmd 400; dsp state 2 fail 0 ready 1 flushes 535 busy 0 bank 461 ms; song "adrenaline" pos 2 patt 7 row 58 speed 4 bpm 125 playing 0, status "ALL RIGHT", late 608/59/43/19/6/0/0 max 14.8 ms
+   97.28 LCDL 2 (pattern): dsp state 2 fail 0 ready 1 flushes 651 busy 0 bank 461 ms; song "adrenaline" pos 2 patt 7 row 53 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 765/84/61/29/12/0/0 max 16.5 ms
+   99.78 LCDR 4, 4, 3: sample 0 -> 2 -> 1
+  102.45 LCDR 5, 5: muted 1 1 1 1 -> 0 0 0 0
+  106.12 LCDL 1, PAGE DOWN: position 2 -> 3; dsp state 2 fail 0 ready 1 flushes 862 busy 0 bank 461 ms; song "adrenaline" pos 3 patt 8 row 15 speed 4 bpm 125 playing 1, status "ALL RIGHT", late 1093/132/87/53/28/0/0 max 19.0 ms
+  116.45 LCDR 1 (the module before): dsp state 2 fail 0 ready 1 flushes 955 busy 0 bank 2072 ms; song "Steelchambers2" pos 0 patt 5 row 34 speed 5 bpm 125 playing 1, status "ALL RIGHT", late 1240/147/95/56/29/0/0 max 19.0 ms
+  116.45 end

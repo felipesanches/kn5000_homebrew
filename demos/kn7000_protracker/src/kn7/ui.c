@@ -520,6 +520,14 @@ static void cursorDraw(void)
 	cursorShown = true;
 }
 
+void (*uiService)(void); /* main.c's: the ticks that are due, between the parts of the screen */
+
+static void service(void)
+{
+	if (uiService)
+		uiService();
+}
+
 void uiInit(void)
 {
 	ui.visualizerMode = VISUAL_QUADRASCOPE;
@@ -536,6 +544,7 @@ void uiUpdate(void)
 	{
 		redrawAll = false;
 		displayMainScreen();
+		service();
 	}
 	else
 	{
@@ -544,8 +553,11 @@ void uiUpdate(void)
 
 	updateSongInfo1();
 	updateSongInfo2();
+	service();
 	updatePatternData();
+	service();
 	updateVisualizer();
+	service();
 	renderVuMeters();
 	cursorDraw();
 }

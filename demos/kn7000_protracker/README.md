@@ -80,8 +80,8 @@ by octaves. The instrument's own sound for the keys is off while ProTracker runs
     (50 a second at 125 BPM, as the CIA timer does it). After each tick, Paula's changes go to the DSP.
   - **The screen** (`ui.c`, `video.c`): pt2-clone draws ProTracker's screen into a 320 x 240 buffer of 8-bit pixels.
     The LCD controller (an S1D13806) shows it at 8 bits a pixel, its look-up table holding ProTracker's 12-bit colours.
-    Only the 16-bit words that changed are written to the LCD, and the writes stop every 16 rows for the ticks that
-    are due.
+    Only the 16-bit words that changed are written to the LCD. The ticks that are due run between the screen's parts
+    and every 8 rows of the writes.
 
 Memory: `PT.BIN` takes about 79 KB with its variables, from `0x502E8000`. The rest is what KN7APP hands it (the
 Pinball port's ARENA1-7, kn7.h):
@@ -132,8 +132,9 @@ In MAME, the published overlay emulator, program 893 (`tests/mame/run_pt.sh`, `p
 - **Loading:** all six modules load, and their samples go to the DSP and are confirmed by its checksum. Sending takes
   2.07 s for INTRO.MOD (190,016 bytes of samples), 0.46 s for MOD2.MOD, and about 1.6 s for each table's.
 - **Timing:** the replayer keeps time. INTRO.MOD at speed 5 plays 10 rows a second, and its positions over 26 s match
-  the song's timeline as ProTracker's sequencing rules give it. 77 % of the ticks run within 1 ms of when they are due,
-  and the latest was 20 ms late.
+  the song's timeline as ProTracker's sequencing rules give it. In the controls' session (`events-pt-mame11.txt`, 1,567
+  ticks, the screen busy with the spectrum analyzer and the edit mode), 79 % of the ticks ran within 1 ms of when they
+  were due and 1.9 % 10 ms or more late, the latest 19 ms.
 - **Sound:** every module is heard (`tests/mame/sound_report.py`). It was compared at two levels
   (`tests/mame/compare_render.py`, `tests/results/compare-2026-10-27.txt`):
   - **What the port should play:** `tests/host/render` builds the port's replayer and Paula for the PC, with a model
@@ -151,10 +152,12 @@ In MAME, the published overlay emulator, program 893 (`tests/mame/run_pt.sh`, `p
   - STOP, then EDIT, shows the edit cursor;
   - the keybed's C3, E3 and G3 play sample 1 and go into the pattern at rows 55-57 as periods 428, 339 and 285
     (ProTracker's C-2, E-2, G-2; `edit-2026-10-27.png`);
-  - LCDL 2 plays the pattern with them.
+  - LCDL 2 plays the pattern with them;
+  - LCDR 4, 4, 3 move the sample from 0 to 2 to 1; LCDR 5 twice mutes every channel, then none; PAGE DOWN while the
+    song plays takes it from position 2 to 3; LCDR 1 loads the module before and plays it (`events-pt-mame11.txt`).
 - **Its own consistency:** the sample coder matches `dsp_bank.py` word for word on all six modules (`tests/bank/`).
 
-Not yet tried: the instrument itself; in MAME, LCDR 1, 3, 4 and 5, PAGE UP/DOWN, the wheel, MUTE DOWN.
+Not yet tried: the instrument itself; in MAME, PAGE UP, the wheel, MUTE DOWN.
 
 ## Files
 

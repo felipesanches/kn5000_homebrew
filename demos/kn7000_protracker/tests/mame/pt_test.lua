@@ -11,7 +11,8 @@
 --     played; then STOP (LCDL 3), and the end.
 -- PT_EDIT=1 instead, once the first module has played 10 s: LCDL 5 (the spectrum analyzer), MUTE UP 1 (channel 1
 -- muted), STOP, EDIT (LCDL 4), the keybed's C3, E3 and G3 (into the pattern on channel 1 from the row shown, read back from
--- PT.BIN's memory and logged), LCDL 2 (the pattern plays), a snapshot after each; then the end.
+-- PT.BIN's memory and logged), LCDL 2 (the pattern plays), a snapshot after each; then LCDR 4, 4, 3 (the sample),
+-- LCDR 5 twice (all muted, none), LCDL 1 and PAGE DOWN (the position), LCDR 1 (the module before), each logged.
 -- The sound is in $PT_OUT/sound.wav (-wavwrite): tests/mame/sound_report.py says when it is silent.
 local M = manager.machine
 local sp = M.devices[":maincpu"].spaces["program"]
@@ -125,6 +126,24 @@ local co = coroutine.create(function()
       M.video:snapshot()
       press("CPL_SEG0", 0x08); wait(4)                  -- LCDL 2: the pattern plays
       E("LCDL 2 (pattern): %s", state()); M.video:snapshot()
+      -- editor_t (tests/mame/offsets.c): currSample 0x2160, muted[4] 0x209D
+      local function smp() return sp:read_u8(EDITOR + 0x2160) end
+      local function muted() local t = {} for c = 0, 3 do t[#t + 1] = sp:read_u8(EDITOR + 0x209D + c) end return table.concat(t, " ") end
+      local s0 = smp()
+      press("CPR_SEG6", 0x01); wait(0.5); press("CPR_SEG6", 0x01); wait(0.5)   -- LCDR 4 twice: sample +2
+      local s2 = smp()
+      press("CPR_SEG7", 0x01); wait(0.5)                                      -- LCDR 3: sample -1
+      E("LCDR 4, 4, 3: sample %d -> %d -> %d", s0, s2, smp())
+      press("CPR_SEG5", 0x01); wait(1)                                        -- LCDR 5: every channel muted
+      local m1 = muted()
+      press("CPR_SEG5", 0x01); wait(1)                                        -- LCDR 5: none
+      E("LCDR 5, 5: muted %s -> %s", m1, muted())
+      press("CPL_SEG0", 0x02); wait(2)                                        -- LCDL 1: PLAY (the song)
+      local p0 = sp:read_u16(sp:read_u32(SONG) + 0xAF0)
+      press("CPC_SEG11", 0x20); wait(1)                                       -- PAGE DOWN: the next position
+      E("LCDL 1, PAGE DOWN: position %d -> %d; %s", p0, sp:read_u16(sp:read_u32(SONG) + 0xAF0), state())
+      press("CPR_SEG5", 0x10); wait(10)                                       -- LCDR 1: the module before
+      E("LCDR 1 (the module before): %s", state()); M.video:snapshot()
       E("end")
       ev:close()
       M:exit()
