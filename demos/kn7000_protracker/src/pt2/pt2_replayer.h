@@ -16,7 +16,10 @@ module_t *createEmptyMod(void);
 #ifdef PT2_KN7
 #define KN7_SAMPLE_ALIGN 32 // bytes: a sample starts on a whole number of the DSP mixer's COPY_STEP words (8 x 4 bytes)
 bool kn7AllocSamples(module_t *m); // (from the sample headers)
-void kn7FreeMod(module_t *m); // a module the loader gave up on
+bool kn7AllocPatterns(module_t *m, int32_t count);
+note_t *kn7PatternForEdit(module_t *m, int32_t pattern); // the pattern, with room of its own (a note is to go in)
+void kn7FreeMod(module_t *m);
+int8_t *kn7SampleArena(uint32_t bytes); // main.c: the block for a module's samples, zeroed; NULL when too small
 #endif
 void setReplayerPosToTrackerPos(void);
 void setPattern(int16_t pattern);

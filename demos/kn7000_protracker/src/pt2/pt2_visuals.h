@@ -25,7 +25,11 @@ void resetFPSCounter(void);
 void beginFPSCounter(void);
 void endFPSCounter(void);
 
+#ifdef PT2_KN7
+void blit32(int32_t x, int32_t y, int32_t w, int32_t h, const pixel_t *src);
+#else
 void blit32(int32_t x, int32_t y, int32_t w, int32_t h, const uint32_t *src);
+#endif
 void putPixel(int32_t x, int32_t y, const uint32_t pixelColor);
 void hLine(int32_t x, int32_t y, int32_t w, const uint32_t pixelColor);
 void vLine(int32_t x, int32_t y, int32_t h, const uint32_t pixelColor);

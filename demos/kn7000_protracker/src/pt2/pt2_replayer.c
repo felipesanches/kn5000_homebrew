@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include "pt2_audio.h"
 #include "pt2_helpers.h"
@@ -134,22 +135,13 @@ void setReplayerPosToTrackerPos(void)
 }
 
 #ifdef PT2_KN7
-/* KN7000: no sample data yet (kn7AllocSamples, once the loader knows the samples' lengths); the patterns in one block. */
+/* KN7000: no sample data and no patterns yet: the loader asks for them (kn7AllocSamples, kn7AllocPatterns) once it
+** knows how much there is. */
 module_t *createEmptyMod(void)
 {
 	module_t *m = (module_t *)calloc(1, sizeof (module_t));
 	if (m == NULL)
 		return NULL;
-
-	m->patternBlock = (note_t *)calloc(MAX_PATTERNS, MOD_ROWS * sizeof (note_t) * PAULA_VOICES);
-	if (m->patternBlock == NULL)
-	{
-		free(m);
-		return NULL;
-	}
-
-	for (int32_t i = 0; i < MAX_PATTERNS; i++)
-		m->patterns[i] = m->patternBlock + (i * MOD_ROWS * PAULA_VOICES);
 
 	m->header.songLength = 1;
 
@@ -173,7 +165,8 @@ module_t *createEmptyMod(void)
 /* KN7000: the sample data, from the sample headers the loader has read: each sample's room from a multiple of
 ** KN7_SAMPLE_ALIGN after the null sample's KN7_SAMPLE_ALIGN zero bytes; s->offset set. The room is the sample's length,
 ** or its loop's end when that is further (modLoad lengthens such a sample to its loop's end), at most
-** config.maxSampleLength (pt2-clone gives every sample that much). false: no memory. */
+** config.maxSampleLength (pt2-clone gives every sample that much). The bytes come from the block the port keeps for
+** samples (main.c kn7SampleArena), zeroed. false: they do not fit. */
 bool kn7AllocSamples(module_t *m)
 {
 	uint32_t at = KN7_SAMPLE_ALIGN;
@@ -191,8 +184,38 @@ bool kn7AllocSamples(module_t *m)
 	}
 
 	m->sampleBytes = at;
-	m->sampleData = (int8_t *)calloc(at, 1);
+	m->sampleData = kn7SampleArena(at);
 	return m->sampleData != NULL;
+}
+
+/* KN7000: patterns 0 to count-1 in one block, zeroed; the others share one empty pattern until a note is written
+** into them (kn7PatternForEdit). false: no memory. */
+static note_t emptyPattern[MOD_ROWS * PAULA_VOICES];
+
+bool kn7AllocPatterns(module_t *m, int32_t count)
+{
+	m->patternBlock = (note_t *)calloc(count, MOD_ROWS * sizeof (note_t) * PAULA_VOICES);
+	if (m->patternBlock == NULL)
+		return false;
+
+	m->patternCount = count;
+	for (int32_t i = 0; i < MAX_PATTERNS; i++)
+		m->patterns[i] = i < count ? m->patternBlock + (i * MOD_ROWS * PAULA_VOICES) : emptyPattern;
+
+	return true;
+}
+
+note_t *kn7PatternForEdit(module_t *m, int32_t pattern)
+{
+	if (m->patterns[pattern] == emptyPattern)
+	{
+		note_t *p = (note_t *)calloc(1, MOD_ROWS * sizeof (note_t) * PAULA_VOICES);
+		if (p == NULL)
+			return NULL;
+		m->patterns[pattern] = p;
+	}
+
+	return m->patterns[pattern];
 }
 
 void kn7FreeMod(module_t *m)
@@ -200,8 +223,15 @@ void kn7FreeMod(module_t *m)
 	if (m == NULL)
 		return;
 
+	for (int32_t i = 0; i < MAX_PATTERNS; i++)
+	{
+		note_t *p = m->patterns[i];
+		if (p != NULL && p != emptyPattern && (m->patternBlock == NULL || p < m->patternBlock ||
+			p >= m->patternBlock + (m->patternCount * MOD_ROWS * PAULA_VOICES)))
+			free(p); // (an empty pattern a note was written into)
+	}
+
 	free(m->patternBlock);
-	free(m->sampleData);
 	free(m);
 }
 #else
@@ -1923,19 +1953,19 @@ void modFree(void)
 	turnOffVoices();
 
 #ifdef PT2_KN7
-	free(song->patternBlock);
+	kn7FreeMod(song); // (its samples are in the port's block for them: not freed)
 #else
 	for (int32_t i = 0; i < MAX_PATTERNS; i++)
 	{
 		if (song->patterns[i] != NULL)
 			free(song->patterns[i]);
 	}
-#endif
 
 	if (song->sampleData != NULL)
 		free(song->sampleData);
 
 	free(song);
+#endif
 	song = NULL;
 
 	if (audioWasntLocked)

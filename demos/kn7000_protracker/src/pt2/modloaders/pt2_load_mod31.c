@@ -114,6 +114,14 @@ module_t *loadMod31(uint8_t *buffer, uint32_t filesize)
 		goto loadError;
 	}
 
+#ifdef PT2_KN7
+	if (!kn7AllocPatterns(m, numPatterns))
+	{
+		statusOutOfMemory();
+		goto loadError;
+	}
+#endif
+
 	p += 4; // skip magic ID (already handled)
 
 	// load pattern data

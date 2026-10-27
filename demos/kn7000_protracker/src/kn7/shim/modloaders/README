@@ -1,0 +1,2 @@
+This directory is on the include path so that the modloaders' "../pt2_config.h" and the like find the shims
+one level up (src/kn7/pt2_kn7.h).
