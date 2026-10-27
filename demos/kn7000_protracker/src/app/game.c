@@ -65,6 +65,8 @@ static PfHost host = {
     .dspBase = DSP_BANK,
     .dspMaxWords = DSP_BANK_MAX,
     .panelScan = wheel_scan,
+    .noteOns = notes_ons,
+    .modWheel = &notes_mod_wheel,
 };
 
 static u32 crc32(const u8* p, u32 n) {

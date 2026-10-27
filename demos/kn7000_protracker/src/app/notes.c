@@ -25,6 +25,23 @@ typedef struct Tracker {
 
 static Tracker kbd, midi;
 u16 notes[128];
+u8 notes_mod_wheel;    /* CC 1, the modulation wheel, as the keybed (or MIDI IN 1) last sent it */
+
+/* The note-ons in the order they came (ABI 11 PfHost::noteOns): a chord, or a key struck twice between two polls, each
+ * on its own. Read by the program's task, written by notes_poll on the same task: no lock. */
+#define ONS 32
+static u8 on_note[ONS], on_vel[ONS];
+static u32 on_wr, on_rd;
+
+u32 notes_ons(u8* note, u8* vel, u32 max) {
+  u32 n = 0;
+  while (on_rd != on_wr && n < max) {
+    note[n] = on_note[on_rd % ONS];
+    vel[n++] = on_vel[on_rd % ONS];
+    ++on_rd;
+  }
+  return n;
+}
 u16 notes_sustain;     /* the channels whose sustain pedal is down, from either ring */
 
 void notes_init(void) {
@@ -72,8 +89,16 @@ static void poll(Tracker* t) {
     const u16 bit = (u16)(1u << (t->status & 0x0F));
     switch (t->status & 0xF0) {
       case 0x90:  /* (velocity 0: a note-off) */
-        if (b) t->mask[t->d1] |= bit;
-        else t->mask[t->d1] &= (u16)~bit;
+        if (b) {
+          t->mask[t->d1] |= bit;
+          if (on_wr - on_rd < ONS) {
+            on_note[on_wr % ONS] = t->d1;
+            on_vel[on_wr % ONS] = b;
+            ++on_wr;
+          }
+        } else {
+          t->mask[t->d1] &= (u16)~bit;
+        }
         break;
       case 0x80:
         t->mask[t->d1] &= (u16)~bit;
@@ -81,6 +106,7 @@ static void poll(Tracker* t) {
       case 0xB0:
         if (t->d1 == 120 || t->d1 >= 123)
           for (int n = 0; n < 128; ++n) t->mask[n] &= (u16)~bit;
+        if (t->d1 == 1) notes_mod_wheel = b;
         if (t->d1 == 64 && b >= 64) t->pedal |= bit;
         else if (t->d1 == 64 || t->d1 == 121) t->pedal &= (u16)~bit;
         break;

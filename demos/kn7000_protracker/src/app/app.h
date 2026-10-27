@@ -43,6 +43,8 @@ void lcdc_restore(void);  /* ... back (a table left, the end, the crash screen) 
 /* notes.c */
 extern u16 notes[128];
 extern u16 notes_sustain;  /* the MIDI channels whose sustain pedal (CC 64) is down */
+extern u8 notes_mod_wheel;  /* CC 1 */
+u32 notes_ons(u8* note, u8* vel, u32 max);  /* PfHost::noteOns */
 void notes_init(void);
 void notes_poll(void);
 void keys_sound(int on);  /* the keybed's own sound on or off (sent by keys_sync, from the game task's yields) */

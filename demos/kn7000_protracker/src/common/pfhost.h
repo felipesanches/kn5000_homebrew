@@ -95,6 +95,10 @@ typedef struct PfHost {
    * into `panel` and the wheel's detents into `wheel`, each frame taken from the firmware before its main task decodes
    * it. The firmware's tasks do not preempt each other, so this never meets the main task halfway through a frame. */
   void (*panelScan)(void);
+  /* ABI 11: the keybed's (and MIDI IN 1's) note-ons since the last call, in order, each with its velocity, at most max;
+   * pollNotes brings them in. And the modulation wheel (CC 1), 0-127. */
+  u32 (*noteOns)(u8* note, u8* velocity, u32 max);
+  const volatile u8* modWheel;
 } PfHost;
 
 /* The header at the start of PT.BIN (GAME_BASE). */
