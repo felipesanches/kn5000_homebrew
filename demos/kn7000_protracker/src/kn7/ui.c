@@ -561,27 +561,3 @@ void uiUpdate(void)
 	renderVuMeters();
 	cursorDraw();
 }
-
-/* ---- the soft keys' labels, beside the screen ---------------------------------------------------------------- */
-static const char *const leftLabels[5] = { "PLAY SONG", "PLAY PATT", "STOP", "EDIT", "SCOPE/SPEC" };
-static const char *const rightLabels[5] = { "PREV MOD", "NEXT MOD", "SAMPLE -", "SAMPLE +", "MUTE ALL" };
-
-void uiSides(void)
-{
-	const pixel_t bg = (pixel_t)video.palette[PAL_BACKGRD];
-	const pixel_t text = kn7Colour(0xFFFFFF), dim = kn7Colour(0x888888), accent = kn7Colour(0xFFDD00);
-	sideFill(0, 0, PT_LEFT, LCD_H, bg);
-	sideFill(PT_LEFT + SCREEN_W, 0, PT_LEFT, LCD_H, bg);
-	for (int i = 0; i < 5; i++)
-	{
-		const int y = 48 * i + 18;
-		sideText(4, y, "<", accent, bg);
-		sideText(16, y, leftLabels[i], text, bg);
-		const int n = (int)strlen(rightLabels[i]);
-		sideText(LCD_W - 16 - 8 * n, y, rightLabels[i], text, bg);
-		sideText(LCD_W - 12, y, ">", accent, bg);
-	}
-
-	sideText(16, 226, "PROTRACKER 2.3D", dim, bg);
-	sideText(LCD_W - 16 - 8 * 17, 226, "HOLD EXIT TO QUIT", dim, bg);
-}

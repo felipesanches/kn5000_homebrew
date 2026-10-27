@@ -38,10 +38,11 @@ PT_CFLAGS := $(CFLAGS_COMMON) -std=gnu11 -fno-strict-aliasing -include src/kn7/p
              -Wno-unused-parameter -Wno-sign-compare
 PT2_C   := src/pt2/pt2_replayer.c src/pt2/pt2_module_loader.c src/pt2/pt2_tables.c src/pt2/pt2_structs.c \
            src/pt2/pt2_textout.c src/pt2/pt2_pattern_viewer.c src/pt2/pt2_bmp.c src/pt2/pt2_palette.c \
-           src/pt2/modloaders/pt2_load_mod31.c src/pt2/modloaders/pt2_load_mod15.c \
+           src/pt2/modloaders/pt2_load_mod31.c src/pt2/modloaders/pt2_load_mod15.c src/pt2/pt2_module_saver.c \
            src/pt2/gfx/pt2_gfx_font.c src/pt2/gfx/pt2_gfx_tracker.c src/pt2/gfx/pt2_gfx_vumeter.c \
            src/pt2/gfx/pt2_gfx_mute_buttons.c src/pt2/gfx/pt2_gfx_patcursor.c src/pt2/gfx/pt2_gfx_spectrum.c
-KN7_C   := src/kn7/main.c src/kn7/paula.c src/kn7/bank.c src/kn7/video.c src/kn7/ui.c src/kn7/edit.c src/kn7/stubs.c
+KN7_C   := src/kn7/main.c src/kn7/paula.c src/kn7/bank.c src/kn7/video.c src/kn7/ui.c src/kn7/edit.c src/kn7/stubs.c \
+           src/kn7/panel.c src/kn7/controls.c src/kn7/song.c src/kn7/disk.c src/kn7/sides.c src/kn7/format.c
 PT_OBJ  := $(PT2_C:src/%.c=$(OUT)/pt/%.o) $(KN7_C:src/%.c=$(OUT)/pt/%.o)
 PT_HDR  := $(wildcard src/pt2/*.h src/kn7/*.h src/kn7/shim/*.h src/common/*.h)
 

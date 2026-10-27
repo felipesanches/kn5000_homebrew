@@ -22,6 +22,7 @@
 static volatile uint8_t *lcdc(uint32_t r) { return (volatile uint8_t *)(0x9CC00000u + r); }
 
 static pixel_t *shown;              /* the screen as written to display memory */
+static pixel_t *side[2], *sideShown[2];  /* the side columns (sides.c draws them), and as written */
 static uint16_t lut[256];           /* the look-up table: 0x0RGB */
 static int lutUsed;
 static bool owned;
@@ -64,6 +65,11 @@ void videoInit(void)
 {
 	video.frameBuffer = (pixel_t *)calloc(SCREEN_W * SCREEN_H, 1);
 	shown = (pixel_t *)malloc(SCREEN_W * SCREEN_H);
+	for (int k = 0; k < 2; k++)
+	{
+		side[k] = (pixel_t *)calloc(SIDE_W * LCD_H, 1);
+		sideShown[k] = (pixel_t *)malloc(SIDE_W * LCD_H);
+	}
 	lutUsed = PALETTE_NUM;
 	for (int i = 0; i < PALETTE_NUM; i++)
 		lut[i] = rgb12(video.paletteRGB[i]);
@@ -102,9 +108,11 @@ void videoOwn(void)
 	volatile uint16_t *p = (volatile uint16_t *)(FB_BASE + FRAME);
 	for (uint32_t i = 0; i < PITCH * LCD_H / 2; i++)
 		p[i] = 0;
-	memset(shown, 0, SCREEN_W * SCREEN_H);
 	for (int i = 0; i < SCREEN_W * SCREEN_H; i++)
 		shown[i] = (pixel_t)~video.frameBuffer[i];
+	for (int k = 0; k < 2; k++)
+		for (int i = 0; i < SIDE_W * LCD_H; i++)
+			sideShown[k][i] = (pixel_t)~side[k][i];
 
 	*lcdc(0x1E0) = 0;
 	for (int i = 0; i < 256; i++)
@@ -118,21 +126,24 @@ void videoOwn(void)
 	owned = true;
 }
 
-void videoPresent(void (*service)(void))
+pixel_t *videoSide(int k) { return side[k]; }
+
+/* the 16-bit words of a w x LCD_H buffer that changed, to display memory from column x0 */
+static void present(const pixel_t *now8, pixel_t *was8, int w, int x0, void (*service)(void))
 {
-	const uint32_t *now = (const uint32_t *)video.frameBuffer;
-	uint32_t *was = (uint32_t *)shown;
-	for (int y = 0; y < SCREEN_H; y++)
+	const uint32_t *now = (const uint32_t *)now8;
+	uint32_t *was = (uint32_t *)was8;
+	for (int y = 0; y < LCD_H; y++)
 	{
 		if (service && (y & 7) == 7)
 			service();
 
-		volatile uint16_t *dst = (volatile uint16_t *)(FB_BASE + FRAME + (uint32_t)y * PITCH + PT_LEFT);
-		const uint32_t *n = now + y * (SCREEN_W / 4);
-		uint32_t *w = was + y * (SCREEN_W / 4);
-		for (int x = 0; x < SCREEN_W / 4; x++)
+		volatile uint16_t *dst = (volatile uint16_t *)(FB_BASE + FRAME + (uint32_t)y * PITCH + (uint32_t)x0);
+		const uint32_t *n = now + y * (w / 4);
+		uint32_t *w32 = was + y * (w / 4);
+		for (int x = 0; x < w / 4; x++)
 		{
-			const uint32_t a = n[x], b = w[x];
+			const uint32_t a = n[x], b = w32[x];
 			if (a == b)
 				continue;
 
@@ -140,36 +151,14 @@ void videoPresent(void (*service)(void))
 				dst[2 * x] = (uint16_t)a;
 			if ((a ^ b) >> 16)
 				dst[2 * x + 1] = (uint16_t)(a >> 16);
-			w[x] = a;
+			w32[x] = a;
 		}
 	}
 }
 
-void sideFill(int x, int y, int w, int h, pixel_t c)
+void videoPresent(void (*service)(void))
 {
-	for (int yy = y; yy < y + h; yy++)
-	{
-		volatile uint8_t *d = (volatile uint8_t *)(FB_BASE + FRAME + (uint32_t)yy * PITCH + (uint32_t)x);
-		for (int xx = 0; xx < w; xx++)
-			d[xx] = c;
-	}
-}
-
-/* The platform's 8 x 13 font (PfHost::font: 95 glyphs from ' ', the leftmost dot in bit 7), a line at a time. */
-void sideText(int x, int y, const char *s, pixel_t fg, pixel_t bg)
-{
-	for (; *s; s++, x += 8)
-	{
-		const int c = (*s >= ' ' && *s <= '~') ? *s - ' ' : 0;
-		const uint8_t *g = host->font + c * 13;
-		for (int r = 0; r < 13; r++)
-		{
-			volatile uint16_t *d = (volatile uint16_t *)(FB_BASE + FRAME + (uint32_t)(y + r) * PITCH + (uint32_t)x);
-			for (int b = 0; b < 8; b += 2)
-			{
-				const pixel_t p0 = (g[r] & (0x80 >> b)) ? fg : bg, p1 = (g[r] & (0x40 >> b)) ? fg : bg;
-				d[b / 2] = (uint16_t)(p0 | (p1 << 8));
-			}
-		}
-	}
+	present(video.frameBuffer, shown, SCREEN_W, PT_LEFT, service);
+	present(side[0], sideShown[0], SIDE_W, 0, service);
+	present(side[1], sideShown[1], SIDE_W, PT_LEFT + SCREEN_W, service);
 }

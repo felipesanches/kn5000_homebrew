@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 
 #include "kn7pt.h"
+#include "edit.h"
 #include "pt2_structs.h"
 #include "pt2_tables.h"
 #include "pt2_replayer.h"
@@ -38,7 +39,10 @@
 
 void sinkVisualizerBars(void);                               /* ui.c */
 void updateSpectrumAnalyzer(uint8_t vol, uint16_t period);  /* ui.c */
-void editNote(int midiNote);                                 /* edit.c */
+void controlsInit(void);                                     /* controls.c */
+void controlsUpdate(void);
+void uiDrawSides(void);                                      /* sides.c */
+bool controlsHelp(int *page);
 void setDefaultPalette(void);                                /* pt2_palette.c */
 
 extern char __bss_lo[], __bss_hi[], __init_lo[], __init_hi[], __game_end[];
@@ -169,115 +173,21 @@ static uint32_t stamp(void)
 static uint32_t nextTick;
 static bool ticking;
 
-static void restartClock(void)
+void restartClock(void)
 {
 	ticking = false; // (a module's load takes seconds: its ticks are not to be caught up)
 }
 
-/* ---- the modules ------------------------------------------------------------------------------------------------ */
-#define MAX_MODULES 64
-static char names[MAX_MODULES][13];
-static int moduleCount, moduleAt;
-static const char *const pinballModules[] = { "INTRO.MOD", "MOD2.MOD", "TABLE1.MOD", "TABLE2.MOD", "TABLE3.MOD", "TABLE4.MOD" };
-
-static void readModuleList(void)
-{
-	moduleCount = 0;
-	PfPiece piece = { scratch, scratchBytes < 4096 ? scratchBytes : 4096 };
-	const s32 got = host->load("MODS.TXT", &piece, 1);
-	if (got > 0)
-	{
-		const char *p = (const char *)scratch, *end = p + got;
-		while (p < end && moduleCount < MAX_MODULES)
-		{
-			while (p < end && (*p == '\r' || *p == '\n' || *p == ' ' || *p == '\t'))
-				p++;
-			if (p >= end)
-				break;
-
-			int n = 0;
-			const bool comment = *p == '#';
-			while (p < end && *p != '\r' && *p != '\n')
-			{
-				if (!comment && n < 12 && *p != ' ' && *p != '\t')
-					names[moduleCount][n++] = *p;
-				p++;
-			}
-
-			if (!comment && n > 0)
-				names[moduleCount++][n] = '\0';
-		}
-	}
-
-	if (moduleCount == 0)
-		for (unsigned i = 0; i < sizeof (pinballModules) / sizeof (pinballModules[0]); i++)
-			strcpy(names[moduleCount++], pinballModules[i]);
-}
-
-static void showProgress(const char *what)
+/* ---- loading ---------------------------------------------------------------------------------------------------- */
+/* What is being done, on the status line, at once (disk.c: a module is loading or saving). */
+void showProgress(const char *what)
 {
 	uiMessage(what);
 	uiUpdate();
 	videoPresent(NULL);
 }
 
-/* An empty module (what ProTracker starts with), when a file cannot be loaded. */
-static void emptyModule(void)
-{
-	module_t *m = createEmptyMod();
-	if (m == NULL || !kn7AllocSamples(m) || !kn7AllocPatterns(m, 1))
-		fatal("out of memory");
-
-	m->header.initialTempo = 125;
-	song = m;
-	setupLoadedMod();
-	song->loaded = true;
-}
-
-static bool loadModule(int index)
-{
-	if (song != NULL)
-	{
-		modStop();
-		editor.currMode = MODE_IDLE;
-		editor.playMode = PLAY_MODE_NORMAL;
-		paulaFlush();
-		song->loaded = false;
-		modFree();
-	}
-
-	paulaSetBank(host->dspBase, false);
-	restartClock();
-	moduleAt = index;
-	const char *name = names[index];
-	PfPiece piece = { scratch, scratchBytes };
-	const s32 got = host->load(name, &piece, 1);
-	module_t *m = got > 0 ? modLoadFromBuffer(scratch, (uint32_t)got) : NULL;
-	if (m == NULL)
-	{
-		const char *why = got > 0 ? ui.statusMessage : "CAN'T FIND FILE !";
-		char keep[18];
-		strncpy(keep, why, sizeof (keep) - 1);
-		keep[sizeof (keep) - 1] = '\0';
-		emptyModule();
-		uiFullRedraw();
-		displayErrorMsg(keep);
-		return false;
-	}
-
-	song = m;
-	setupLoadedMod();
-	song->loaded = true;
-	uiFullRedraw();
-	showProgress("SENDING SAMPLES..");
-	if (bankSend() == 1)
-		statusAllRight();
-	else
-		displayErrorMsg(host->dspVoices ? "DSP NOT READY !" : "NO DSP: SILENT !");
-	return true;
-}
-
-
+/* ---- the replayer's clock ------------------------------------------------------------------------------------- */
 static uint32_t bpmOf(void)
 {
 	const int32_t bpm = song->currBPM;
@@ -349,199 +259,6 @@ static void service(void)
 		paulaFlush(); // (F00 stopped it: the voices go silent)
 }
 
-/* ---- the controls ------------------------------------------------------------------------------------------- */
-#define MUTE_UP(c) PB(kMuteSeg[c], kMuteBit[c])
-#define MUTE_DOWN(c) PB(kMuteSeg[c], kMuteBit[c] << 1)
-static const uint8_t kMuteSeg[4] = { PANEL_CPL + 5, PANEL_CPL + 5, PANEL_CPL + 8, PANEL_CPL + 8 };  /* (KN7FM's MuteTab) */
-static const uint8_t kMuteBit[4] = { 0x10, 0x40, 0x01, 0x04 };
-
-static uint8_t panelWas[0x40];
-static uint16_t notesWas[128];
-static int32_t wheelWas;
-
-static bool pressed(uint32_t b)
-{
-	const uint32_t seg = b >> 8, bit = b & 0xFF;
-	return (host->panel[seg] & bit) && !(panelWas[seg] & bit);
-}
-
-static void playSong(void)
-{
-	restartClock();
-	editor.playMode = PLAY_MODE_NORMAL;
-	modPlay(DONT_SET_PATTERN, song->currPos, DONT_SET_ROW);
-	editor.currMode = MODE_PLAY;
-	statusAllRight();
-}
-
-static void playPatternNow(void)
-{
-	restartClock();
-	editor.playMode = PLAY_MODE_PATTERN;
-	modPlay(song->currPattern, DONT_SET_ORDER, DONT_SET_ROW);
-	editor.currMode = MODE_PLAY;
-	statusAllRight();
-}
-
-static void stop(void)
-{
-	modStop();
-	editor.currMode = MODE_IDLE;
-	paulaFlush();
-	statusAllRight();
-}
-
-static void setSample(int s)
-{
-	editor.currSample = (int8_t)((s + MOD_SAMPLES) % MOD_SAMPLES);
-	updateCurrSample();
-}
-
-static void moveRow(int d)
-{
-	modSetPos(DONT_SET_ORDER, (song->currRow + d) & 63);
-}
-
-static void movePos(int d)
-{
-	int pos = song->currPos + d;
-	if (pos < 0)
-		pos = 0;
-	if (pos > song->header.songLength - 1)
-		pos = song->header.songLength - 1;
-
-	if (editor.songPlaying && editor.playMode == PLAY_MODE_NORMAL)
-	{
-		restartClock();
-		modPlay(DONT_SET_PATTERN, (int16_t)pos, 0); // the replayer goes there
-		return;
-	}
-
-	modSetPos((int16_t)pos, DONT_SET_ROW);
-	if (editor.currMode != MODE_PLAY)
-		modSetPattern((uint8_t)song->header.patternTable[pos]);
-}
-
-static void controls(void)
-{
-	const volatile uint8_t *panel = host->panel;
-	if (panel == NULL)
-		return;
-
-	if (pressed(BTN_LCDL1))
-		playSong();
-	if (pressed(BTN_LCDL2))
-		playPatternNow();
-	if (pressed(BTN_LCDL3))
-		stop();
-	if (pressed(BTN_LCDL4))
-	{
-		// ProTracker's space: stop, and the edit mode on or off
-		const bool edit = editor.currMode != MODE_EDIT;
-		modStop();
-		paulaFlush();
-		editor.currMode = edit ? MODE_EDIT : MODE_IDLE;
-		statusAllRight();
-		ui.updatePatternData = true;
-	}
-	if (pressed(BTN_LCDL5))
-	{
-		ui.visualizerMode = ui.visualizerMode == VISUAL_QUADRASCOPE ? VISUAL_SPECTRUM : VISUAL_QUADRASCOPE;
-		uiFullRedraw();
-	}
-
-	if (pressed(BTN_LCDR1) && moduleCount)
-	{
-		if (loadModule((moduleAt + moduleCount - 1) % moduleCount))
-			playSong();
-	}
-	if (pressed(BTN_LCDR2) && moduleCount)
-	{
-		if (loadModule((moduleAt + 1) % moduleCount))
-			playSong();
-	}
-	if (pressed(BTN_LCDR3))
-		setSample(editor.currSample - 1);
-	if (pressed(BTN_LCDR4))
-		setSample(editor.currSample + 1);
-	if (pressed(BTN_LCDR5))
-	{
-		const bool any = editor.muted[0] || editor.muted[1] || editor.muted[2] || editor.muted[3];
-		for (int c = 0; c < PAULA_VOICES; c++)
-		{
-			editor.muted[c] = !any;
-			if (!any)
-				paulaWriteWord(0xDFF096, 1 << c); // (its voice off now, as the mute button does)
-		}
-		renderMuteButtons();
-		paulaFlush();
-	}
-
-	if (pressed(BTN_START_STOP))
-	{
-		if (editor.currMode == MODE_PLAY)
-			stop();
-		else
-			playSong();
-	}
-
-	if (pressed(BTN_PAGE_UP) || pressed(BTN_PAGE_DOWN))
-	{
-		const int d = pressed(BTN_PAGE_UP) ? -1 : 1;
-		if (editor.currMode == MODE_EDIT && !editor.songPlaying)
-			moveRow(d);
-		else
-			movePos(d);
-	}
-
-	for (int c = 0; c < PAULA_VOICES; c++)
-	{
-		if (pressed(MUTE_UP(c)))
-		{
-			editor.muted[c] = !editor.muted[c];
-			if (editor.muted[c])
-			{
-				paulaWriteWord(0xDFF096, 1 << c);
-				paulaFlush();
-			}
-			renderMuteButtons();
-		}
-
-		if (pressed(MUTE_DOWN(c)))
-		{
-			cursor.channel = (uint8_t)c;
-			cursor.pos = (uint8_t)(c * 6);
-		}
-	}
-
-	for (unsigned i = 0; i < sizeof (panelWas); i++)
-		panelWas[i] = panel[i];
-
-	// the wheel: rows while stopped, samples while playing
-	if (host->wheel)
-	{
-		const int32_t w = *host->wheel, d = w - wheelWas;
-		wheelWas = w;
-		if (d)
-		{
-			if (editor.songPlaying)
-				setSample(editor.currSample + d);
-			else
-				moveRow(-d);
-		}
-	}
-
-	// the keybed: a key that went down is a note key
-	host->pollNotes();
-	for (int n = 0; n < 128; n++)
-	{
-		const uint16_t now = host->notes[n];
-		if (now && !notesWas[n])
-			editNote(n);
-		notesWas[n] = now;
-	}
-}
-
 /* ---- the program ------------------------------------------------------------------------------------------------ */
 int pt_entry(const PfHost *h)
 {
@@ -569,20 +286,25 @@ int pt_entry(const PfHost *h)
 	host->keybedSound(0); // the keybed plays ProTracker's samples, not the instrument's sounds
 	paulaReset();
 
-	readModuleList();
-	emptyModule();
+	diskReadList();
+	controlsInit();
+	diskLoad(-1);  // (an empty module first: the screen has something to show while the first one loads)
 	videoOwn();
-	uiSides();
 	setStatusMessage("ALL RIGHT", DO_CARRY);
-	if (loadModule(0))
-		playSong();
+	if (diskLoad(0))
+	{
+		restartClock();
+		editor.playMode = PLAY_MODE_NORMAL;
+		modPlay(DONT_SET_PATTERN, song->currPos, DONT_SET_ROW);
+		editor.currMode = MODE_PLAY;
+	}
 
 	host->status("PROTRACKER: HOLD EXIT TO QUIT");
 	uint32_t vblank = stamp();
 	for (;;)
 	{
 		service();
-		controls();
+		controlsUpdate();
 		service();
 
 		// 50 times a second as on a PAL Amiga: the bars sink, the screen is drawn
@@ -592,8 +314,13 @@ int pt_entry(const PfHost *h)
 			vblank += TICKS_PER_MS * 20;
 			if (now - vblank >= TICKS_PER_MS * 200)
 				vblank = now;
-			sinkVisualizerBars();
-			uiUpdate();
+			int helpPage;
+			if (!controlsHelp(&helpPage))
+			{
+				sinkVisualizerBars();
+				uiUpdate();
+			}
+			uiDrawSides();
 			videoPresent(service);
 		}
 

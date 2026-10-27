@@ -46,5 +46,6 @@ bool panelPressed(int c);         /* went down since the last update (or repeats
 bool panelReleased(int c);        /* came up since the last update */
 bool panelDown(int c);            /* is held */
 uint32_t panelHeldMs(int c);      /* how long it has been held, 0 when it is not */
+uint32_t panelReleasedAfter(int c); /* came up since the last update after being held so long (ms); else 0 */
 bool panelShift(void);            /* DISPLAY HOLD held: the second function of a control */
 const char *panelName(int c);     /* its name on the panel */

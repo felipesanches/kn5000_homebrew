@@ -108,7 +108,7 @@ static const control_t kControls[C_COUNT] =
 };
 
 static bool down[C_COUNT], pressed[C_COUNT], released[C_COUNT];
-static uint32_t downAt[C_COUNT], nextRepeat[C_COUNT];
+static uint32_t downAt[C_COUNT], nextRepeat[C_COUNT], heldFor[C_COUNT];
 
 void panelInit(void)
 {
@@ -137,6 +137,7 @@ void panelUpdate(void)
 		else if (!is && down[c])
 		{
 			released[c] = true;
+			heldFor[c] = now - downAt[c];
 		}
 		down[c] = is;
 	}
@@ -146,5 +147,6 @@ bool panelPressed(int c) { return pressed[c]; }
 bool panelReleased(int c) { return released[c]; }
 bool panelDown(int c) { return down[c]; }
 uint32_t panelHeldMs(int c) { return down[c] ? host->ms() - downAt[c] : 0; }
+uint32_t panelReleasedAfter(int c) { return released[c] ? heldFor[c] : 0; }
 bool panelShift(void) { return down[C_DISPLAY_HOLD]; }
 const char *panelName(int c) { return kControls[c].name; }
