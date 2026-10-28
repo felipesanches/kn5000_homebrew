@@ -325,7 +325,7 @@ static const char *const kHelp[HELP_PAGES][26] =
 		"",
 		"CONDUCTOR LEFT/RIGHT 1  THE EDITED PATTERN, DOWN/UP",
 		"CONDUCTOR RIGHT 2 ...... INSERT A POSITION (SHIFT: DELETE IT)",
-		"LCDR 1, 2 .............. THE MODULE BEFORE, AFTER (MODS.TXT)",
+		"LCDR 1, 2 .............. THE MODULE BEFORE, AFTER (IN THE FOLDER)",
 		"LCDR 3, DISK, SD ....... DISK OP.: THE WHEEL CHOOSES; LOAD, SAVE,",
 		"                         SAVE AS NEW (PTNEWnn.MOD)",
 		"LCDR 4 ................. SAVE OVER THE MODULE'S FILE",

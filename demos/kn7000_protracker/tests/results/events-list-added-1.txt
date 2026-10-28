@@ -1,0 +1,31 @@
+   57.43 menu: up, 1 programs, "ProTracker 2.3D" at 0
+   59.08 RUN
+   79.43 playing: dsp state 2 fail 0 ready 1 flushes 83 busy 0 bank 2070 ms; song "Steelchambers2" pos 0 patt 5 row 30 speed 5 bpm 125 playing 1, status "ALL RIGHT", panel frames 0 late 0, late 106/10/7/9/16/4/0 max 24.2 ms
+   79.43 CHECK ok   the folder's modules, sorted (INTRO.MOD MOD.JAZ MOD2.MOD SPACE_~1.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD)
+   80.90 CHECK ok   EASY REC: edit mode (1)
+   81.62 CHECK ok   VARIATION 3: row 32 (32)
+   83.27 CHECK ok   C3 into row 32: C-2 (428) and the sample (428/1)
+   83.27 CHECK ok   the cursor on by the edit skip (33)
+   84.00 CHECK ok   MUTE DOWN 16: skip 0 (0)
+   86.20 CHECK ok   PART SELECT RIGHT 1 x3: the command column (3)
+   89.85 CHECK ok   SYNTH, STRINGS, PIANO: C40 in row 33 (C40)
+   90.57 CHECK ok   SOUND EXPLORER: the effect deleted (000)
+   91.28 CHECK ok   PADS BANK: undone (C40)
+   92.75 CHECK ok   SET, PANEL MEMORY 1: macro 1 = C40 (C40)
+   94.92 CHECK ok   TRANSPOSE +: C#2 (404) (404)
+   95.65 CHECK ok   R1/R2 OCTAVE -: C#1 (808) (808)
+   96.38 CHECK ok   FILL IN 1: row 32 empty, C#1 now in row 33 (0/808)
+   97.12 CHECK FAIL FILL IN 2: C#1 back in row 32 (0)
+   98.57 CHECK ok   MUTE UP 8: channel 2 (1)
+   99.28 CHECK FAIL PAD 2, PAD 3: the track copied to channel 2 (808 1 A01)
+  100.75 CHECK ok   BALLAD: sample 3 (3)
+  103.13 CHECK ok   C3 E3 G3 as a chord: C-2 E-2 G-2 across channels 1-3, sample 3 (428 339 285 s3)
+  104.58 CHECK ok   MUTE UP 3: the song one position longer (45)
+  105.32 CHECK ok   CONDUCTOR RIGHT 2: a position inserted (46)
+  106.68 CHECK ok   SHIFT + CONDUCTOR RIGHT 2: deleted (45)
+  122.48 saved: dsp state 2 fail 0 ready 1 flushes 91 busy 0 bank 2070 ms; song "Steelchambers2" pos 0 patt 6 row 0 speed 5 bpm 125 playing 0, status "MODULE SAVED !", panel frames 89 late 0, late 108/10/7/10/16/4/0 max 24.2 ms
+  122.48 CHECK ok   SAVE AS NEW: the module saved (MODULE SAVED !)
+  122.48 CHECK ok   SAVE AS NEW: PTNEW01.MOD in the list (INTRO.MOD MOD.JAZ MOD2.MOD SPACE_~1.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD PTNEW01.MOD)
+  124.97 CHECK ok   EXIT: the edit mode off (0)
+  124.97 CHECKS: 2 failed
+  124.97 end

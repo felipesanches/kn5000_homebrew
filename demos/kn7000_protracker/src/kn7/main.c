@@ -5,8 +5,8 @@
  *   * memory: what KN7APP hands it (PfHost::regions) and the rest of its own area; two blocks carved first, the
  *     module's file and then its samples coded for the DSP (scratch), and its samples (kn7SampleArena); the rest is the
  *     heap newlib's malloc grows into, a region after another (the Pinball port's memory.cpp, in C);
- *   * the modules: the files MODS.TXT names, one a line, in the program's folder (or the six of Pinball Fantasies when
- *     there is no MODS.TXT); loaded whole, parsed by pt2-clone's loader, their samples sent to the DSP (bank.c);
+ *   * the modules: the program folder's *.MOD and MOD.* files, by name (disk.c; the six of Pinball Fantasies when the
+ *     folder cannot be read); loaded whole, parsed by pt2-clone's loader, their samples sent to the DSP (bank.c);
  *   * time: the replayer ticks by the kernel's millisecond counter and timer 4 (2,001 counts a millisecond), 50 times
  *     a second at 125 BPM as the CIA does it; Paula's changes go to the DSP after each tick (paula.c). The screen is
  *     drawn between ticks; between its parts, and every 8 rows of its writes to the LCD, the ticks that are due run;

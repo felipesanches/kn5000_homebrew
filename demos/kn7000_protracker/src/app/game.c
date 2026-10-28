@@ -67,6 +67,7 @@ static PfHost host = {
     .panelScan = wheel_scan,
     .noteOns = notes_ons,
     .modWheel = &notes_mod_wheel,
+    .list = file_list,
 };
 
 static u32 crc32(const u8* p, u32 n) {

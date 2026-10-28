@@ -3,7 +3,7 @@
 --
 -- pt_test.lua -- ProTracker in MAME, through the program menu (run_pt.sh OUT):
 --   * DISK MENU, STYLE CONVERT, OK: the loader, the menu; the "ProTracker 2.3D" row, RUN;
---   * PT.BIN loads the first module of MODS.TXT, sends its samples to the DSP and plays it;
+--   * PT.BIN loads the first module of its folder, sends its samples to the DSP and plays it;
 --   * each second to $PT_OUT/events.txt: the converter's text, the DSP's state (KN7APP.BIN's dsp: state, fail,
 --     ready, the voice commands sent), and the replayer's (PT.BIN's song: position, pattern, row, speed, BPM;
 --     editor.songPlaying; the status line); a snapshot every 4 s;
@@ -79,6 +79,7 @@ local function state()
       sp:read_u32(m + 0xAEC), EDITOR and sp:read_u8(EDITOR + 0x2E) or -1)
   end
   if UI then s = s .. string.format(", status %q", cstr(UI, 18)) end  -- ui_t's statusMessage, its first field
+  if SYM["_moduleAt"] then s = s .. string.format(", file %s", cstr(SYM["_names"] + 13 * sp:read_u32(SYM["_moduleAt"]), 13)) end
   if SYM["_panel_frames"] then  -- entry.c: switch frames kept from the firmware; of them, decoded by it first
     s = s .. string.format(", panel frames %d late %d", sp:read_u32(SYM["_panel_frames"]), sp:read_u32(SYM["_panel_late"]))
     local nl = sp:read_u32(SYM["_panel_late"])
@@ -94,6 +95,14 @@ local function state()
   end
   return d .. "; " .. s
 end
+
+-- disk.c's list: the modules the folder holds, as PT.BIN read it off the card (PfHost::list), space-separated
+local function modules()
+  local n, t = SYM["_moduleCount"] and sp:read_u32(SYM["_moduleCount"]) or 0, {}
+  for i = 0, n - 1 do t[#t + 1] = cstr(SYM["_names"] + 13 * i, 13) end
+  return table.concat(t, " ")
+end
+local LIST = os.getenv("PT_LIST") or "INTRO.MOD MOD2.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD"
 
 local co = coroutine.create(function()
   wait_until(function() return now() > 30 end, 60)
@@ -126,11 +135,27 @@ local co = coroutine.create(function()
         return sp:read_u16(a + 4), sp:read_u8(a + 1), sp:read_u8(a + 2), sp:read_u8(a)
       end
       local function mode() return sp:read_u8(EDITOR + 0x2170) end
-      local function tap(tag, mask) press(tag, mask); wait(0.4) end
+      local function tap(tag, mask)
+        if not os.getenv("PT_TRACE") then press(tag, mask); wait(0.4); return end
+        -- PT_TRACE=1: the switch frames KN7APP took during the tap (time, frames so far, the tag's byte of panel_real)
+        local idx = (tag:sub(1, 3) == "CPR" and 0 or 0x30) + tonumber(tag:match("SEG(%d+)"))
+        local F, R = SYM["_panel_frames"], SYM["_panel_real"] + idx
+        local f0, t, last = sp:read_u32(F), {}, nil
+        local f = field(tag, mask); f:set_value(1)
+        local t0, released = now(), false
+        while now() < t0 + 0.7 do
+          if not released and now() >= t0 + 0.3 then f:set_value(0); released = true end
+          local k = string.format("%d:%02X", sp:read_u32(F) - f0, sp:read_u8(R))
+          if k ~= last then t[#t + 1] = string.format("%.3f=%s", now() - t0, k); last = k end
+          coroutine.yield()
+        end
+        E("tap %s %02X: %s", tag, mask, table.concat(t, " "))
+      end
       local function keys(list) for _, k in ipairs(list) do KEY[k]:set_value(1) end; wait(0.4); for _, k in ipairs(list) do KEY[k]:set_value(0) end; wait(0.5) end
       wait_until(function() return SONG and sp:read_u32(SONG) ~= 0 and EDITOR and sp:read_u8(EDITOR + 0x2E) == 1 end, 60)
       wait(3)
       E("playing: %s", state()); M.video:snapshot()
+      CHECK("the folder's modules, sorted", modules() == LIST, modules())
       tap("CPL_SEG0", 0x10)                                    -- START/STOP: stop
       tap("CPR_SEG0", 0x08)                                    -- EASY REC: the edit mode
       CHECK("EASY REC: edit mode", mode() == 1, mode())
@@ -214,6 +239,7 @@ local co = coroutine.create(function()
       wait_until(function() return cstr(UI, 18):find("SAVED") ~= nil end, 60)
       E("saved: %s", state())
       CHECK("SAVE AS NEW: the module saved", cstr(UI, 18):find("MODULE SAVED") ~= nil, cstr(UI, 18))
+      CHECK("SAVE AS NEW: PTNEW01.MOD in the list", (" " .. modules() .. " "):find(" PTNEW01.MOD ", 1, true) ~= nil, modules())
       tap("CPC_SEG11", 0x80); wait(0.5)                        -- EXIT: the Disk Op. closed
       tap("CPC_SEG11", 0x80); wait(0.5)                        -- EXIT: the edit mode off
       CHECK("EXIT: the edit mode off", mode() == 0, mode())

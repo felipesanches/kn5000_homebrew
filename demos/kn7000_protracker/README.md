@@ -25,10 +25,13 @@ Contents: [The card](#the-card) · [Playing](#playing) · [How it works](#how-it
 | `KN7APP.BIN`   | the platform: firmware search, task, files, panel, wheel, keybed, the DSP's mixer (the Pinball port's) |
 | `PT.BIN`       | ProTracker: pt2-clone's replayer, loader and main screen, and the KN7000 side (`src/kn7/`)             |
 | `MANIFEST.TXT` | the name the program menu shows ("ProTracker 2.3D") and its folder                                     |
-| `MODS.TXT`     | the modules, one file name a line, in the order LCDR 1 and 2 step through them                         |
-| `*.MOD`        | the modules (8.3 names), any ProTracker, NoiseTracker or Soundtracker module with 4 channels           |
+| `*.MOD`        | the modules, any ProTracker, NoiseTracker or Soundtracker module with 4 channels                       |
 
-Without `MODS.TXT` the program looks for the six Pinball Fantasies modules by name.
+The modules are the folder's files named `*.MOD` or `MOD.*` (the Amiga's way), in order of name: copy one in and it
+is listed. The program reads the folder off the card as the program menu does (`src/app/folder.c`: the firmware's raw
+sector read and a FAT16 reader of our own, read-only), because the firmware's file routines open a file by name and
+cannot list a folder. A long name is listed by its 8.3 alias (`Space_Debris.mod` as `SPACE_~1.MOD`, as the computer that copied it made it), which the
+firmware opens.
 
 ## Playing and editing
 
@@ -36,8 +39,8 @@ Without `MODS.TXT` the program looks for the six Pinball Fantasies modules by na
 every control, the screen, tutorials and ProTracker's effects. `PLAN-EDITING.md` says why each control does what it
 does.
 
-DISK MENU, STYLE CONVERT, `KN7LOAD.CNV`, OK; then the program menu's "ProTracker 2.3D" row, RUN. The first module of
-`MODS.TXT` loads and plays. In short:
+DISK MENU, STYLE CONVERT, `KN7LOAD.CNV`, OK; then the program menu's "ProTracker 2.3D" row, RUN. The first module (by
+name) loads and plays. In short:
 - **Playing:** START/STOP plays and stops; SYNCHRO & BREAK plays the pattern; LCDR 1/2 step through the modules.
 - **The edit mode:** EASY REC. Notes come from the keybed (C2 is ProTracker's C-1). The SOUND GROUP is a hex keypad,
   0-7 above and 8-F below. The RHYTHM GROUP chooses samples 1-16.
@@ -48,7 +51,7 @@ DISK MENU, STYLE CONVERT, `KN7LOAD.CNV`, OK; then the program menu's "ProTracker
   - 1-4 change POS, PATT, LEN and BPM;
   - 5-12, two under each channel's track, mute it, solo it, or take the cursor there;
   - 13-16 change SAMPLE, VOLUME, FINETUNE and the edit skip.
-- **Saving:** in the Disk Op. (LCDR 3), SAVE, or SAVE AS NEW (`PTNEWnn.MOD`, added to `MODS.TXT`).
+- **Saving:** in the Disk Op. (LCDR 3), SAVE, or SAVE AS NEW (`PTNEWnn.MOD`, the first number free).
 - **Help and SHIFT:** HELP shows five pages of help; DISPLAY HOLD is SHIFT.
 - **Leaving:** EXIT, held 1.5 s.
 
@@ -106,7 +109,7 @@ So a module may have up to 376 KB in its file and 268 KB of samples.
   position and starts the DSP voice on the new loop when the old part has ended, up to one tick late.
 - **EFx (invert loop)** changes the samples in the CPU's RAM, as on the Amiga, but not the DSP's copy, so it is not
   heard. **E8x** (Karplus-Strong) is off, as in pt2-clone by default.
-- **Not part of the port:** the disk op. (modules come from `MODS.TXT`), saving, the sample editor, the position
+- **Not part of the port:** the sample editor, the position
   editor, the edit ops., the about screen, sampling, MOD2WAV. PowerPacker and XPK packed modules are not unpacked.
 
 ## Building
@@ -175,7 +178,11 @@ In MAME, the published overlay emulator, program 893 (`tests/mame/run_pt.sh`, `p
   - SAVE AS NEW, then EXIT.
 - **The saved module** (`tests/mame/check_saved.py`, `tests/results/saved-PTNEW01-vs-MOD2.txt`): taken off the card
   after the session, PTNEW01.MOD differs from MOD2.MOD in exactly those edits. Its sample data are the same byte for
-  byte, libopenmpt plays it, and MODS.TXT lists it.
+  byte, and libopenmpt plays it.
+- **The folder's list** (`PT_EDIT=2` with `PT_ADD`, `tests/results/events-list-*.txt`): the modules of
+  `PROTRACK\` are listed sorted, with `MOD.JAZ` and a long-named `Space_Debris.mod` (as `SPACE_~1.MOD`) added and
+  `NOTES.TXT` left out; PTNEW01.MOD joins the list when saved. Five modules in turn, `SPACE_~1.MOD` among them, load
+  and play.
 - **The firmware leaves the panel alone** (`PT_RISK=1`, `tests/results/events-risk-after-10.txt` to `-12.txt`): after
   the fix, none of the 66 switch frames in three runs reached the firmware.
 

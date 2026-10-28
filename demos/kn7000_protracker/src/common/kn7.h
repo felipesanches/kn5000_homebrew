@@ -28,6 +28,7 @@ typedef int32_t s32;
 #define SV_CLOSE 0x14
 #define SV_READ 0x18              /* fmmread(a0 = buffer, d0 = bytes) -> d0 = bytes read */
 #define SV_WRITE 0x1C
+#define SV_RAWREAD 0x20            /* SD sector read(d0 = card sector, d1 = count <= 0x80, a1 = buffer) -> d0 = 0 */
 #define SV_SETEXT 0x08            /* the file layer to the SD card (d0 = 1), or a no-op */
 #define SV_RESETEXT 0x0C          /* and back */
 #define SV_BUILD 0x38             /* the PROGRAM build number */
@@ -35,6 +36,7 @@ typedef int32_t s32;
 #define SV_FOUND 0x64
 #define FOUND_FILESIG 0x01
 #define FOUND_TABLES 0x02
+#define FOUND_RAW 0x04
 #define SVC_MAGIC 0x53374E4Bu     /* "KN7S" */
 #define APP_MAGIC 0x41374E4Bu     /* "KN7A" */
 

@@ -5,8 +5,8 @@
 # run_pt.sh OUT [LUA] -- ProTracker in one MAME session, through the program menu, as it is started on the instrument
 # (pt_test.lua says what it does and checks; LUA picks another script). As the Pinball port's tests/mame/run.sh:
 #   * a card tree: the program menu (technics-roms-disasm kn7000/tools/kn7menu, built into OUT/menu) as the root
-#     KN7APP.BIN, and the PROTRACK\ folder (`make card-dir`: KN7APP.BIN, PT.BIN, MANIFEST.TXT, MODS.TXT and the
-#     modules from PF_DATA), copied into a fresh copy of the real KN7000's SD card (kn7menu's fatimg.py put);
+#     KN7APP.BIN, and the PROTRACK\ folder (`make card-dir`: KN7APP.BIN, PT.BIN, MANIFEST.TXT and the modules from
+#     PF_DATA, and PT_ADD's files), copied into a fresh copy of the real KN7000's SD card (kn7menu's fatimg.py put);
 #   * the published overlay emulator (EMU, default ~/compartilhado/kn7000-emulator), -bios v13 (program 893, the
 #     owner's), the owner's loader floppy as released, the script as -autoboot_script; the sound to OUT/sound.wav.
 # OUT is scratch (~/compartilhado/tmp/..., never /tmp); the card and floppy copies are deleted afterwards (KEEP_SD=1
@@ -28,6 +28,7 @@ NM=~/compartilhado/tools/mn10300-elf-kn7000/bin/mn10300-elf-nm
 rm -rf -- "${O:?}/tree" "${O:?}/snap"; mkdir -p "$O/tree" "$O/snap" "$O/cfg" "$O/nv"
 cp "$O/menu/KN7APP.BIN" "$O/tree/KN7APP.BIN"
 cp -r "$PT/build/card/PROTRACK" "$O/tree/PROTRACK"
+for a in ${PT_ADD:-}; do cp "${a%%=*}" "$O/tree/PROTRACK/${a#*=}"; done  # PT_ADD="FILE=NAME ...": more files in PROTRACK\
 cp "$EMU/sdcard_from_real_kn7000.img" "$O/sd.img"; chmod u+w "$O/sd.img"
 python3 -I "$MENU/fatimg.py" "$O/sd.img" put "$O/tree" > "$O/fatimg.txt"
 cp "$FLOPPY" "$O/floppy.img"; chmod u+w "$O/floppy.img"

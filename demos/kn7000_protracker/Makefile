@@ -4,8 +4,8 @@
 # ProTracker for the KN7000 (README.md): pt2-clone, a C port of the Amiga's ProTracker 2.3D, run by the KN7000
 # program loader (KN7LOAD.CNV) from the program menu's folder PROTRACK\.
 #   make             $(OUT)/KN7APP.BIN (the platform) and $(OUT)/PT.BIN (ProTracker)
-#   make card-dir    $(OUT)/card/PROTRACK/: those, MANIFEST.TXT, MODS.TXT and the modules in MODS (default: the six of
-#                    Pinball Fantasies, from PF_DATA)
+#   make card-dir    $(OUT)/card/PROTRACK/: those, MANIFEST.TXT and the modules in MODS (default: the six of Pinball
+#                    Fantasies, from PF_DATA)
 #   make mame-media  $(OUT)/mame/sd.img and floppy.img: a copy of the real KN7000's card with the program menu and
 #                    PROTRACK\, and of the loader floppy (RUNNING-THE-BUILDS.md, KN7000 repo)
 #   make test-bank   the sample coder against dsp_bank.py (tests/bank/)
@@ -30,7 +30,7 @@ CFLAGS_COMMON := -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Isrc/
 # ---- KN7APP.BIN: the platform (the Pinball port's, src/app/) ----
 APP_CFLAGS := $(CFLAGS_COMMON) -std=c11 -ffreestanding -Isrc/app
 APP_C   := src/app/entry.c src/app/fwfind.c src/app/notes.c src/app/files.c src/app/task.c src/app/lcd.c src/app/game.c \
-           src/app/dsp.c src/app/crash.c src/app/fwdraw.c
+           src/app/dsp.c src/app/crash.c src/app/fwdraw.c src/app/folder.c
 APP_OBJ := $(APP_C:src/app/%.c=$(OUT)/app/%.o) $(OUT)/app/glue.o $(OUT)/app/font8x13.o
 
 # ---- PT.BIN: pt2-clone (src/pt2/) and the KN7000 side (src/kn7/) ----
@@ -91,13 +91,12 @@ $(OUT)/PT.BIN: $(OUT)/pt/pt.elf tools/build/mkgame.py
 	$(PYTHON) -I tools/build/mkgame.py $(OUT)/pt/pt.bin $@ 80
 
 # The PROTRACK\ folder for the program menu's card: the program, and the modules named by MODS from PF_DATA (without
-# PF_DATA, no modules: MODS.TXT is still written, and the player copies modules in by hand).
+# PF_DATA, no modules: the player copies them in by hand; the program lists the folder's *.MOD and MOD.* files).
 card-dir: $(OUT)/KN7APP.BIN $(OUT)/PT.BIN
 	@mkdir -p $(OUT)/card/PROTRACK
 	cp $(OUT)/KN7APP.BIN $(OUT)/PT.BIN $(OUT)/card/PROTRACK/
 	$(if $(PF_DATA),for m in $(MODS); do cp "$(PF_DATA)/$$m" $(OUT)/card/PROTRACK/; done)
-	printf '# ProTracker for the KN7000: the modules it plays, one a line (8.3 names, in this folder)\r\n' > $(OUT)/card/PROTRACK/MODS.TXT
-	for m in $(MODS); do printf '%s\r\n' "$$m" >> $(OUT)/card/PROTRACK/MODS.TXT; done
+	$(if $(OUT),rm -f -- $(OUT)/card/PROTRACK/MODS.TXT)
 	printf '# ProTracker: the KN7000 program menu shows this name (kn7menu/README.md)\r\nNAME=ProTracker 2.3D\r\nFOLDER=Other apps\r\n' > $(OUT)/card/PROTRACK/MANIFEST.TXT
 
 # A card and a floppy for MAME: a copy of the real KN7000's card with the program menu as its root KN7APP.BIN and the

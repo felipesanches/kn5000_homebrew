@@ -1,13 +1,14 @@
 /* (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
  * Licensed under the terms of the GNU General Public License v3 or later
  *
- * disk.c -- ProTracker's Disk Op. on the KN7000: the modules are the files MODS.TXT names, one a line, in the program's
- * folder (the platform reads and writes files by name; it cannot list a folder), or the six of Pinball Fantasies when
- * there is no MODS.TXT. The list is shown in the right side column (sides.c); the wheel or PAGE UP/DOWN choose, LOAD
- * loads. SAVE writes the module over its own file (asked first); SAVE AS NEW writes PTNEWnn.MOD, the first nn not in
- * the list, and adds it to MODS.TXT. A module is saved as pt2-clone's modSave writes it (pt2_module_saver.c). */
+ * disk.c -- ProTracker's Disk Op. on the KN7000: the modules are the files of the program's folder named *.MOD or MOD.*
+ * (as the Amiga names them), sorted by name; the platform reads the folder off the card (PfHost::list). When it cannot,
+ * the six of Pinball Fantasies are looked for by name. The list is shown in the right side column (sides.c); the wheel
+ * or PAGE UP/DOWN choose, LOAD loads. SAVE writes the module over its own file (asked first); SAVE AS NEW writes
+ * PTNEWnn.MOD, the first nn not in the list. A module is saved as pt2-clone's modSave writes it (pt2_module_saver.c). */
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include "kn7pt.h"
 #include "edit.h"
@@ -18,7 +19,7 @@
 #include "pt2_textout.h"
 #include "pt2_visuals.h"
 
-#define MAX_MODULES 64
+#define MAX_MODULES 128
 static char names[MAX_MODULES][13];
 static int moduleCount, moduleAt, listAt;
 static bool shown;
@@ -32,51 +33,33 @@ int diskModuleCount(void) { return moduleCount; }
 const char *diskModuleName(int i) { return names[i]; }
 bool diskShown(void) { return shown; }
 
+static bool isModule(const char *n)
+{
+	const size_t len = strlen(n);
+	return (len > 4 && strcasecmp(n + len - 4, ".MOD") == 0) || (len > 4 && strncasecmp(n, "MOD.", 4) == 0);
+}
+
 void diskReadList(void)
 {
 	uint32_t room;
-	uint8_t *buf = kn7Scratch(&room);
+	PfFile *files = (PfFile *)kn7Scratch(&room);
+	const s32 got = host->list(files, room / sizeof (PfFile));
 	moduleCount = 0;
-	PfPiece piece = { buf, room < 8192 ? room : 8192 };
-	const s32 got = host->load("MODS.TXT", &piece, 1);
-	if (got > 0)
-	{
-		const char *p = (const char *)buf, *end = p + got;
-		while (p < end && moduleCount < MAX_MODULES)
+	for (s32 i = 0; i < got && moduleCount < MAX_MODULES; i++)
+		if (isModule(files[i].name) && files[i].bytes > 0)
 		{
-			while (p < end && (*p == '\r' || *p == '\n' || *p == ' ' || *p == '\t'))
-				p++;
-			if (p >= end)
-				break;
-
-			int n = 0;
-			const bool comment = *p == '#';
-			while (p < end && *p != '\r' && *p != '\n')
+			int at = moduleCount++; // sorted as they come in
+			while (at > 0 && strcasecmp(names[at - 1], files[i].name) > 0)
 			{
-				if (!comment && n < 12 && *p != ' ' && *p != '\t')
-					names[moduleCount][n++] = *p;
-				p++;
+				strcpy(names[at], names[at - 1]);
+				at--;
 			}
-
-			if (!comment && n > 0)
-				names[moduleCount++][n] = '\0';
+			strcpy(names[at], files[i].name);
 		}
-	}
 
-	if (moduleCount == 0)
+	if (got < 0)
 		for (unsigned i = 0; i < sizeof (pinballModules) / sizeof (pinballModules[0]); i++)
 			strcpy(names[moduleCount++], pinballModules[i]);
-}
-
-static bool writeList(void)
-{
-	uint32_t room;
-	char *buf = (char *)kn7Scratch(&room);
-	char *o = fmtStr(buf, "# ProTracker for the KN7000: the modules it plays, one a line (8.3 names, in this folder)\r\n", 0);
-	for (int i = 0; i < moduleCount && (uint32_t)(o - buf) < room - 32; i++)
-		o = fmtStr(fmtStr(o, names[i], 0), "\r\n", 0);
-	const s32 n = (s32)(o - buf);
-	return host->save("MODS.TXT", buf, (u32)n) == n;
 }
 
 /* An empty module (what ProTracker starts with), when a file cannot be loaded. */
@@ -189,13 +172,8 @@ void diskSave(bool asNew)
 
 	if (name == fresh)
 	{
-		strcpy(names[moduleCount], fresh);
+		strcpy(names[moduleCount], fresh); // (PTNEWnn sorts among the others: the list is read again next time)
 		moduleAt = listAt = moduleCount++;
-		if (!writeList())
-		{
-			displayErrorMsg("MODS.TXT ERROR !");
-			return;
-		}
 	}
 
 	song->modified = false;

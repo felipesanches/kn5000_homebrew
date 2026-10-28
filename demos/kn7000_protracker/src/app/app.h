@@ -17,6 +17,7 @@ const u8* find_byte(const u8* from, const u8* to, u32 byte);
 /* fwfind.c: what the firmware search found */
 typedef struct Fw {
   u32 open, read, close, write, setext, resetext;  /* the loader's SD file routines */
+  u32 raw;                                         /* its raw SD sector read, or 0 */
   u32 cre, sta, dly, exd;                          /* the kernel's task services, the yield */
   u32 ms;                                          /* the kernel's millisecond counter */
   u32 panel;                                       /* the panel bitmaps (CPR; CPL at +0x30) */
@@ -56,6 +57,11 @@ s32 file_load(const char* name, const PfPiece* pieces, u32 count);  /* game task
 int file_serve(void);                                               /* entry: 1 when it did a request */
 int file_pending(void);                                             /* entry: a request waits */
 s32 file_save(const char* name, const void* data, u32 bytes);       /* game task: waits */
+s32 file_list(PfFile* files, u32 max);                               /* game task: waits */
+extern volatile u32 file_busy;  /* 1 while the firmware fills a buffer of ours */
+
+/* folder.c: on the main task (the entry) */
+s32 folder_list(const char* path, PfFile* files, u32 max);
 
 /* task.c */
 extern volatile u32 quit_req, task_done;

@@ -1,0 +1,76 @@
+   57.43 menu: up, 1 programs, "ProTracker 2.3D" at 0
+   59.08 RUN
+   79.43 playing: dsp state 2 fail 0 ready 1 flushes 83 busy 0 bank 2070 ms; song "Steelchambers2" pos 0 patt 5 row 30 speed 5 bpm 125 playing 1, status "ALL RIGHT", panel frames 0 late 0, late 106/10/7/9/16/4/0 max 24.2 ms
+   79.43 CHECK ok   the folder's modules, sorted (INTRO.MOD MOD.JAZ MOD2.MOD SPACE_~1.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD)
+   80.15 tap CPL_SEG0 10: 0.000=0:00 0.033=1:10 0.350=2:00
+   80.87 tap CPR_SEG0 08: 0.000=0:00 0.033=1:08 0.350=2:00
+   80.87 CHECK ok   EASY REC: edit mode (1)
+   81.58 tap CPL_SEG4 01: 0.000=0:00 0.033=1:01 0.333=2:00
+   81.58 CHECK ok   VARIATION 3: row 32 (32)
+   82.30 tap CPC_SEG8 40: 0.000=0:00 0.033=1:40 0.333=2:00
+   83.23 CHECK ok   C3 into row 32: C-2 (428) and the sample (428/1)
+   83.23 CHECK ok   the cursor on by the edit skip (33)
+   83.95 tap CPC_SEG11 08: 0.000=0:00 0.033=1:08 0.350=2:00
+   83.95 CHECK ok   MUTE DOWN 16: skip 0 (0)
+   84.67 tap CPR_SEG1 02: 0.000=0:00 0.033=1:02 0.350=2:00
+   85.38 tap CPR_SEG1 02: 0.000=0:00 0.033=1:02 0.350=2:00
+   86.10 tap CPR_SEG1 02: 0.000=0:00 0.033=1:02 0.333=2:00
+   86.10 CHECK ok   PART SELECT RIGHT 1 x3: the command column (3)
+   86.82 tap CPR_SEG0 20: 0.000=0:00 0.033=1:20 0.333=2:00
+   87.53 tap CPR_SEG1 02: 0.000=0:00 0.033=1:02 0.350=2:00
+   88.25 tap CPR_SEG0 10: 0.000=0:00 0.033=1:10 0.350=2:00
+   88.97 tap CPR_SEG1 02: 0.000=0:00 0.033=1:02 0.350=2:00
+   89.68 tap CPR_SEG4 10: 0.000=0:00 0.033=1:10 0.333=2:00
+   89.68 CHECK ok   SYNTH, STRINGS, PIANO: C40 in row 33 (C40)
+   90.40 tap CPR_SEG6 08: 0.000=0:00 0.033=1:08 0.333=2:00
+   90.40 CHECK ok   SOUND EXPLORER: the effect deleted (000)
+   91.12 tap CPL_SEG6 08: 0.000=0:00 0.033=1:08 0.350=2:00
+   91.12 CHECK ok   PADS BANK: undone (C40)
+   91.83 tap CPR_SEG7 40: 0.000=0:00 0.033=1:40 0.350=2:00
+   92.55 tap CPR_SEG0 02: 0.000=0:00 0.033=1:02 0.350=2:00
+   92.55 CHECK ok   SET, PANEL MEMORY 1: macro 1 = C40 (C40)
+   93.27 tap CPL_SEG4 01: 0.000=0:00 0.033=1:01 0.333=2:00
+   93.98 tap CPC_SEG8 40: 0.000=0:00 0.033=1:40 0.333=2:00
+   94.70 tap CPR_SEG3 01: 0.000=0:00 0.033=1:01 0.350=2:00
+   94.70 CHECK ok   TRANSPOSE +: C#2 (404) (404)
+   95.42 tap CPR_SEG7 02: 0.000=0:00 0.033=1:02 0.350=2:00
+   95.42 CHECK ok   R1/R2 OCTAVE -: C#1 (808) (808)
+   96.13 tap CPL_SEG3 10: 0.000=0:00 0.033=1:10 0.350=2:00
+   96.13 CHECK ok   FILL IN 1: row 32 empty, C#1 now in row 33 (0/808)
+   96.85 tap CPL_SEG3 04: 0.000=0:00 0.033=1:04 0.333=2:00
+   96.85 CHECK ok   FILL IN 2: C#1 back in row 32 (808)
+   97.57 tap CPL_SEG4 80: 0.000=0:00 0.033=1:80 0.333=2:00
+   98.28 tap CPC_SEG9 04: 0.000=0:00 0.033=1:04 0.350=2:00
+   98.28 CHECK ok   MUTE UP 8: channel 2 (1)
+   99.00 tap CPL_SEG4 20: 0.000=0:00 0.033=1:20 0.350=2:00
+   99.00 CHECK ok   PAD 2, PAD 3: the track copied to channel 2 (0 0 C40)
+   99.72 tap CPC_SEG8 40: 0.000=0:00 0.033=1:40 0.350=2:00
+  100.43 tap CPL_SEG2 08: 0.000=0:00 0.033=1:08 0.333=2:00
+  100.43 CHECK ok   BALLAD: sample 3 (3)
+  101.15 tap CPL_SEG7 08: 0.000=0:00 0.033=1:08 0.333=2:00
+  101.87 tap CPL_SEG4 10: 0.000=0:00 0.033=1:10 0.350=2:00
+  102.80 CHECK ok   C3 E3 G3 as a chord: C-2 E-2 G-2 across channels 1-3, sample 3 (428 339 285 s3)
+  103.52 tap CPC_SEG5 40: 0.000=0:00 0.033=1:40 0.350=2:00
+  104.23 tap CPC_SEG8 01: 0.000=0:00 0.033=1:01 0.350=2:00
+  104.23 CHECK ok   MUTE UP 3: the song one position longer (45)
+  104.95 tap CPR_SEG4 02: 0.000=0:00 0.033=1:02 0.350=2:00
+  104.95 CHECK ok   CONDUCTOR RIGHT 2: a position inserted (46)
+  105.97 tap CPR_SEG4 02: 0.000=0:00 0.033=1:02 0.350=2:00
+  106.27 CHECK ok   SHIFT + CONDUCTOR RIGHT 2: deleted (45)
+  106.98 tap CPC_SEG5 02: 0.000=0:00 0.033=1:02 0.350=2:00
+  108.72 tap CPC_SEG11 20: 0.000=0:00 0.033=1:20 0.350=2:00
+  110.45 tap CPC_SEG11 20: 0.000=0:00 0.033=1:20 0.350=2:00
+  112.18 tap CPC_SEG11 20: 0.000=0:00 0.033=1:20 0.350=2:00
+  113.92 tap CPC_SEG11 20: 0.000=0:00 0.033=1:20 0.350=2:00
+  115.65 tap CPC_SEG11 80: 0.000=0:00 0.033=1:80 0.333=2:00
+  117.38 tap CPR_SEG7 01: 0.000=0:00 0.033=1:01 0.333=2:00
+  119.12 tap CPL_SEG0 04: 0.000=0:00 0.033=1:04 0.333=2:00
+  120.85 tap CPL_SEG0 10: 0.000=0:00 0.033=1:10
+  121.97 saved: dsp state 2 fail 0 ready 1 flushes 91 busy 0 bank 2070 ms; song "Steelchambers2" pos 0 patt 6 row 0 speed 5 bpm 125 playing 0, status "MODULE SAVED !", panel frames 88 late 1 CB=20, late 108/10/7/10/16/4/0 max 24.2 ms
+  121.97 CHECK ok   SAVE AS NEW: the module saved (MODULE SAVED !)
+  121.97 CHECK ok   SAVE AS NEW: PTNEW01.MOD in the list (INTRO.MOD MOD.JAZ MOD2.MOD SPACE_~1.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD PTNEW01.MOD)
+  122.68 tap CPC_SEG11 80: 0.000=0:00 0.033=1:80 0.333=2:00
+  123.92 tap CPC_SEG11 80: 0.000=0:00 0.033=1:80 0.350=2:00
+  124.43 CHECK ok   EXIT: the edit mode off (0)
+  124.43 CHECKS: 0 failed
+  124.43 end

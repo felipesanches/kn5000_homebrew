@@ -95,18 +95,19 @@ and Soundtracker modules. The examples in this manual use the music of <em>Pinba
   <tr><th>file</th><th>what</th></tr>
   <tr><td><code>KN7APP.BIN</code>, <code>PT.BIN</code></td><td>the program</td></tr>
   <tr><td><code>MANIFEST.TXT</code></td><td>the name the program menu shows: "ProTracker 2.3D"</td></tr>
-  <tr><td><code>MODS.TXT</code></td><td>the modules, one file name a line, in the order the module buttons step through them</td></tr>
-  <tr><td><code>*.MOD</code></td><td>the modules, with 8.3 names (<code>TABLE1.MOD</code>, <code>PTNEW01.MOD</code>)</td></tr>
+  <tr><td><code>*.MOD</code>, <code>MOD.*</code></td><td>the modules (<code>TABLE1.MOD</code>, <code>PTNEW01.MOD</code>, or Amiga-style names such as <code>MOD.JAZ</code>)</td></tr>
 </table>
-<p>To add a module, copy it into <code>PROTRACK\</code> and add its name as a line of <code>MODS.TXT</code>. The program
-cannot list a folder by itself. When it saves a new module it adds the name to <code>MODS.TXT</code> for you.</p>
+<p>To add a module, copy it into <code>PROTRACK\</code>. The program lists every file there whose name ends in
+<code>.MOD</code> or starts with <code>MOD.</code>, in order of name, and steps through them in that order. A file with a
+long name is listed by the short 8.3 name the computer gave it on the card (<code>Space_Debris.mod</code> shows as
+<code>SPACE_~1.MOD</code>).</p>
 <h3>Starting</h3>
 <ol class="steps">
   <li>Insert the KN7LOAD floppy and the SD card.</li>
   <li>Press <span class="key">DISK MENU</span>, then <span class="key">STYLE CONVERT</span> (left button 3), then
       <span class="key">OK</span> on <code>KN7LOAD.CNV</code>.</li>
   <li>In the program menu, select "ProTracker 2.3D" with the left buttons and press <span class="key">RUN</span>.</li>
-  <li>The first module of <code>MODS.TXT</code> loads and plays. Its samples are sent to the DSP first: this takes
+  <li>The first module, by name, loads and plays. Its samples are sent to the DSP first: this takes
       between half a second and two seconds, and the status line says <code>SENDING SAMPLES..</code>.</li>
 </ol>
 <h3>Leaving</h3>
@@ -468,8 +469,8 @@ plays sample 1F every few rows, as ProTracker's does.</p>
   <li><strong>Load:</strong> open the Disk Op., choose with the wheel (or UP/DOWN, PAGE UP/DOWN), press LOAD. Or step
       with LCDR 1 / LCDR 2 from the main page. If the module in hand has unsaved edits, you are asked first.</li>
   <li><strong>Save:</strong> LCDR 4 (or SAVE in the Disk Op.) writes the module over its own file, after asking.</li>
-  <li><strong>Save as new:</strong> SV.NEW in the Disk Op. writes <code>PTNEW01.MOD</code> (or the next free number) and
-      adds it to <code>MODS.TXT</code>. Your original stays as it was.</li>
+  <li><strong>Save as new:</strong> SV.NEW in the Disk Op. writes <code>PTNEW01.MOD</code> (or the next free number).
+      Your original stays as it was.</li>
   <li><strong>Clear:</strong> LCDR 5 empties the song (its patterns and positions), after asking; the samples stay.</li>
 </ul>
 <figure>
@@ -616,18 +617,18 @@ channel they are in, at that row.</p>
   <li>A loop changed while a sample plays takes over up to a tick late.</li>
   <li>EFx changes only ProTracker's copy of the sample, not what the DSP plays.</li>
   <li>There is no sample editor, no sampling, no MOD2WAV, and packed (PowerPacker, XPK) modules do not load.</li>
-  <li>Modules are listed by <code>MODS.TXT</code>, not by reading the folder.</li>
+  <li>Modules are listed by their 8.3 names, not their long names.</li>
 </ul>
 
 <h2 id="trouble">14. If something goes wrong</h2>
 <table class="small">
   <tr><th>what you see</th><th>what to do</th></tr>
-  <tr><td><code>CAN'T FIND FILE !</code></td><td>the module named in MODS.TXT is not in PROTRACK\: check the name (8.3, as on the card).</td></tr>
+  <tr><td><code>CAN'T FIND FILE !</code></td><td>the module could not be read from the card: check that the card is in, and that the file is in PROTRACK\.</td></tr>
   <tr><td><code>NOT A MOD FILE !</code>, <code>UNSUPPORTED MOD !</code></td><td>not a 4-channel module, or a packed one.</td></tr>
   <tr><td><code>NO DSP: SILENT !</code>, <code>DSP NOT READY !</code></td><td>the effects DSP could not be used: the program runs silent. Leave and start again.</td></tr>
   <tr><td><code>NOT IN EDIT MODE</code></td><td>press EASY REC first.</td></tr>
   <tr><td><code>MODULE TOO BIG !</code></td><td>the module does not fit in memory for saving (more than 376 KB).</td></tr>
-  <tr><td><code>LIST IS FULL !</code></td><td>MODS.TXT has 64 modules, or PTNEW99.MOD exists: remove some names.</td></tr>
+  <tr><td><code>LIST IS FULL !</code></td><td>PROTRACK\ has 128 modules, or PTNEW99.MOD exists: move some off the card.</td></tr>
   <tr><td>a button does nothing</td><td>check the page (the tags) and whether SHIFT is held; HELP lists everything.</td></tr>
 </table>
 <p>Modules up to 376 KB load, with up to 268 KB of samples.</p>

@@ -135,6 +135,7 @@ static int step_files(void) {
   fw.resetext = RD32(SVC + SV_RESETEXT);
   fw.write = RD32(SVC + SV_WRITE);   /* optional */
   fw.build = RD32(SVC + SV_BUILD);   /* optional */
+  fw.raw = RD32(SVC + SV_FOUND) & FOUND_RAW ? RD32(SVC + SV_RAWREAD) : 0;  /* optional: listing a folder */
   return !fw.open || !fw.read || !fw.close || !fw.setext || !fw.resetext;
 }
 

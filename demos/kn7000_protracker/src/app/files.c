@@ -14,7 +14,8 @@
 
 static struct {
   volatile u32 pending;      /* set by the game task, cleared by the entry when done */
-  u32 write;                 /* 1: write the first piece to the file (made afresh), not read */
+  u32 write;                 /* 1: write the first piece to the file (made afresh), not read; 2: list the folder */
+  PfFile* files;
   const char* name;
   const PfPiece* pieces;
   u32 count;
@@ -86,6 +87,11 @@ int file_serve(void) {
   if (!req.pending) return 0;
   if (!panel_idle() && ++req.held < HELD_CALLS) return 0;
   req.held = 0;
+  if (req.write == 2) {
+    req.result = folder_list(prefix, req.files, req.count);
+    req.pending = 0;
+    return 1;
+  }
   make_path(req.name);
   if (req.write) {  /* drive switch, open, one write a piece, close: as the ROM dumper writes its files */
     s32 total = -1;
@@ -153,6 +159,17 @@ s32 file_save(const char* name, const void* data, u32 bytes) {
   req.name = name;
   req.pieces = &piece;
   req.count = 1;
+  req.result = -1;
+  req.pending = 1;
+  while (req.pending) task_yield(10);
+  return req.result;
+}
+
+/* The game task: the files in the program's folder (folder.c) -> how many, or < 0. */
+s32 file_list(PfFile* files, u32 max) {
+  req.write = 2;
+  req.files = files;
+  req.count = max;
   req.result = -1;
   req.pending = 1;
   while (req.pending) task_yield(10);

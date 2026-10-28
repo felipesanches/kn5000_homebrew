@@ -185,26 +185,26 @@ The sides are drawn into buffers of their own and written to the LCD the way the
 
 ## 3. The changes to the code
 
-| #   | change                                                                                                                                                             | where                                          |
-|-----|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
-| 1   | a panel layer: every switch by name, press/release edges, auto-repeat (300 ms, then 60 ms), SHIFT, long press                                                      | `src/kn7/panel.c`                              |
-| 2   | the control map of section 1, one table: control, page, with or without SHIFT, action                                                                              | `src/kn7/controls.c`                           |
-| 3   | the cursor in all 24 columns, as ProTracker's (`cursor.pos`, `cursor.channel`); hex entry per column                                                               | `src/kn7/edit.c`                               |
-| 4   | delete field and cell; insert and delete rows (track, pattern); transpose (note, track, pattern)                                                                   | `src/kn7/edit.c`                               |
-| 5   | track and pattern buffers: cut, copy, paste; undo of the last change (a copy of the pattern before it)                                                             | `src/kn7/edit.c`                               |
-| 6   | effect macros (8, PANEL MEMORY); the edit skip; MULTI; chord entry; record mode while playing; step play                                                           | `src/kn7/edit.c`                               |
-| 7   | the song: position up/down, the pattern at a position, insert and delete positions, length; BPM, speed                                                             | `src/kn7/song.c`                               |
-| 8   | the sample: select, volume, finetune, repeat, replen (with Paula's loops updated: `updatePaulaLoops`)                                                              | `src/kn7/song.c`                               |
-| 9   | saving: pt2-clone's module saver into a buffer, `PfHost::save`; SAVE (the module's own file, asked first), SAVE AS NEW (`PTNEW01.MOD` and on, added to `MODS.TXT`) | `src/pt2/pt2_module_saver.c`, `src/kn7/disk.c` |
-| 10  | the Disk Op.: the modules of `MODS.TXT` in a list on ProTracker's top area, the wheel to choose                                                                    | `src/kn7/disk.c`                               |
-| 11  | CLEAR: an empty song, asked first                                                                                                                                  | `src/kn7/song.c`                               |
-| 12  | the sides: soft-key tags, the position list, the sample list, the MUTE columns' parameters                                                                         | `src/kn7/ui.c`                                 |
-| 13  | HELP pages                                                                                                                                                         | `src/kn7/help.c`                               |
-| 14  | the keybed: note-on events in order (a chord or a quick repeat between two polls is not lost), velocity, the modulation wheel, pitch bend (ABI 11)                 | `src/app/notes.c`, `pfhost.h`                  |
-| 15  | TAP TEMPO, the metronome, the options page                                                                                                                         | `src/kn7/controls.c`                           |
-| 16  | the wheel's LED for SHIFT and questions (PfHost::wheelLed, ABI 9)                                                                                                  | `src/kn7/controls.c`                           |
-| 17  | a MAME session that edits a pattern with these controls and checks the result in memory and in the saved file                                                      | `tests/mame/`                                  |
-| 18  | the user manual, in PDF                                                                                                                                            | `manual/`                                      |
+| #  | change                                                                                                                                             | where                                          |
+|----|----------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| 1  | a panel layer: every switch by name, press/release edges, auto-repeat (300 ms, then 60 ms), SHIFT, long press                                      | `src/kn7/panel.c`                              |
+| 2  | the control map of section 1, one table: control, page, with or without SHIFT, action                                                              | `src/kn7/controls.c`                           |
+| 3  | the cursor in all 24 columns, as ProTracker's (`cursor.pos`, `cursor.channel`); hex entry per column                                               | `src/kn7/edit.c`                               |
+| 4  | delete field and cell; insert and delete rows (track, pattern); transpose (note, track, pattern)                                                   | `src/kn7/edit.c`                               |
+| 5  | track and pattern buffers: cut, copy, paste; undo of the last change (a copy of the pattern before it)                                             | `src/kn7/edit.c`                               |
+| 6  | effect macros (8, PANEL MEMORY); the edit skip; MULTI; chord entry; record mode while playing; step play                                           | `src/kn7/edit.c`                               |
+| 7  | the song: position up/down, the pattern at a position, insert and delete positions, length; BPM, speed                                             | `src/kn7/song.c`                               |
+| 8  | the sample: select, volume, finetune, repeat, replen (with Paula's loops updated: `updatePaulaLoops`)                                              | `src/kn7/song.c`                               |
+| 9  | saving: pt2-clone's module saver into a buffer, `PfHost::save`; SAVE (the module's own file, asked first), SAVE AS NEW (`PTNEW01.MOD` and on)      | `src/pt2/pt2_module_saver.c`, `src/kn7/disk.c` |
+| 10 | the Disk Op.: the folder's modules (`*.MOD`, `MOD.*`, read off the card: `src/app/folder.c`), the wheel to choose                                  | `src/kn7/disk.c`                               |
+| 11 | CLEAR: an empty song, asked first                                                                                                                  | `src/kn7/song.c`                               |
+| 12 | the sides: soft-key tags, the position list, the sample list, the MUTE columns' parameters                                                         | `src/kn7/ui.c`                                 |
+| 13 | HELP pages                                                                                                                                         | `src/kn7/help.c`                               |
+| 14 | the keybed: note-on events in order (a chord or a quick repeat between two polls is not lost), velocity, the modulation wheel, pitch bend (ABI 11) | `src/app/notes.c`, `pfhost.h`                  |
+| 15 | TAP TEMPO, the metronome, the options page                                                                                                         | `src/kn7/controls.c`                           |
+| 16 | the wheel's LED for SHIFT and questions (PfHost::wheelLed, ABI 9)                                                                                  | `src/kn7/controls.c`                           |
+| 17 | a MAME session that edits a pattern with these controls and checks the result in memory and in the saved file                                      | `tests/mame/`                                  |
+| 18 | the user manual, in PDF                                                                                                                            | `manual/`                                      |
 
 What stays as it is: the replayer, the loader, Paula on the DSP, the sample bank, the clock.
 

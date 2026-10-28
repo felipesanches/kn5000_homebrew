@@ -3,14 +3,15 @@
  *
  * pfhost.h -- between KN7APP.BIN (the platform: firmware search, files, task, panel, keybed, DSP) and the program it
  * runs, PT.BIN (ProTracker). The Pinball Fantasies port's interface (Pinball kn7000/src/common/pfhost.h), with ABI 10
- * added: the program codes its own sample bank in RAM and the platform sends it to the DSP (dspSend). KN7APP.BIN loads
+ * added: the program codes its own sample bank in RAM and the platform sends it to the DSP (dspSend); ABI 12 lists the
+ * program's folder (list). KN7APP.BIN loads
  * the program at GAME_BASE, checks its header, clears its bss, runs its constructors and calls its entry on the game
  * task, with a PfHost. The program returns when the player leaves it. */
 #ifndef PF_PFHOST_H
 #define PF_PFHOST_H
 #include "kn7.h"
 
-#define PFHOST_ABI 11
+#define PFHOST_ABI 12
 #define PFGAME_MAGIC 0x4D474650u  /* "PFGM" */
 #define PFHOST_MAGIC 0x54534850u  /* "PHST" */
 #define PT_PROGRAM 0x50  /* PfGameHeader::table of PT.BIN */
@@ -24,6 +25,12 @@ typedef struct PfPiece {
   void* dst;
   u32 bytes;
 } PfPiece;
+
+/* A file in the program's folder (PfHost::list): its 8.3 name as the card's FAT holds it, and its size. */
+typedef struct PfFile {
+  char name[13];
+  u32 bytes;
+} PfFile;
 
 /* A stretch of RAM the table program may use as it likes until it returns. */
 typedef struct PfRegion {
@@ -99,6 +106,10 @@ typedef struct PfHost {
    * pollNotes brings them in. And the modulation wheel (CC 1), 0-127. */
   u32 (*noteOns)(u8* note, u8* velocity, u32 max);
   const volatile u8* modWheel;
+  /* ABI 12: the files in the program's folder (prefix), in the directory's order, at most max: read off the card by the
+   * converter entry, as load is, with the program menu's FAT16 reader. -> how many, or < 0 (no raw sector read, not a
+   * FAT16 card, no such folder, a read error). */
+  s32 (*list)(PfFile* files, u32 max);
 } PfHost;
 
 /* The header at the start of PT.BIN (GAME_BASE). */
