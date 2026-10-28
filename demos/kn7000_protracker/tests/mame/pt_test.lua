@@ -210,6 +210,10 @@ local co = coroutine.create(function()
       tap("CPC_SEG8", 0x40)                                    -- back to channel 1
       tap("CPL_SEG2", 0x08)                                    -- BALLAD: sample 3
       CHECK("BALLAD: sample 3", sp:read_u8(EDITOR + 0x2160) == 2, sp:read_u8(EDITOR + 0x2160) + 1)
+      tap("CPC_SEG10", 0x20)                                   -- MUTE DOWN 13: down the sample list
+      CHECK("MUTE DOWN 13: sample 4", sp:read_u8(EDITOR + 0x2160) == 3, sp:read_u8(EDITOR + 0x2160) + 1)
+      tap("CPC_SEG10", 0x10)                                   -- MUTE UP 13: back up it
+      CHECK("MUTE UP 13: sample 3", sp:read_u8(EDITOR + 0x2160) == 2, sp:read_u8(EDITOR + 0x2160) + 1)
       tap("CPL_SEG7", 0x08)                                    -- AUTO PLAY CHORD OFF/ON: chord entry
       tap("CPL_SEG4", 0x10)                                    -- VARIATION 1: row 0
       keys({ "C3", "E3", "G3" })                               -- a chord

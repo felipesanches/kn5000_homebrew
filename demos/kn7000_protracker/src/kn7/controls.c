@@ -171,7 +171,7 @@ static void column(int col, int d)
 	if (col < 4 || col >= 12)
 	{
 		const int field = controlsColumnField(col);
-		songField(field, field == F_POS ? -d : d);  // the position list grows downwards: UP goes up it
+		songField(field, field == F_POS || field == F_SAMPLE ? -d : d);  // their lists grow downwards: UP goes up them
 		return;
 	}
 

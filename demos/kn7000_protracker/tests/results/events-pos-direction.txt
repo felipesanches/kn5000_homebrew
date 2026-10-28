@@ -1,6 +1,6 @@
    57.43 menu: up, 1 programs, "ProTracker 2.3D" at 0
    59.08 RUN
-   79.43 playing: dsp state 2 fail 0 ready 1 flushes 83 busy 0 bank 2072 ms; song "Steelchambers2" pos 0 patt 5 row 30 speed 5 bpm 125 playing 1, status "ALL RIGHT", file INTRO.MOD, panel frames 0 late 0, late 104/7/11/8/20/2/0 max 24.2 ms
+   79.43 playing: dsp state 2 fail 0 ready 1 flushes 83 busy 0 bank 2072 ms; song "Steelchambers2" pos 0 patt 5 row 30 speed 5 bpm 125 playing 1, status "ALL RIGHT", file INTRO.MOD, panel frames 0 late 0, late 107/8/13/7/16/1/0 max 20.2 ms
    79.43 CHECK ok   the folder's modules, sorted (INTRO.MOD MOD2.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD)
    80.90 CHECK ok   EASY REC: edit mode (1)
    81.62 CHECK ok   VARIATION 3: row 32 (32)
@@ -19,15 +19,17 @@
    98.57 CHECK ok   MUTE UP 8: channel 2 (1)
    99.28 CHECK ok   PAD 2, PAD 3: the track copied to channel 2 (0 0 C40)
   100.75 CHECK ok   BALLAD: sample 3 (3)
-  103.13 CHECK ok   C3 E3 G3 as a chord: C-2 E-2 G-2 across channels 1-3, sample 3 (428 339 285 s3)
-  104.58 CHECK ok   MUTE UP 3: the song one position longer (45)
-  105.32 CHECK ok   MUTE DOWN 1: the next position (1)
-  106.05 CHECK ok   MUTE UP 1: the position before (0)
-  106.78 CHECK ok   CONDUCTOR RIGHT 2: a position inserted (46)
-  108.13 CHECK ok   SHIFT + CONDUCTOR RIGHT 2: deleted (45)
-  123.97 saved: dsp state 2 fail 0 ready 1 flushes 90 busy 0 bank 2072 ms; song "Steelchambers2" pos 0 patt 6 row 0 speed 5 bpm 125 playing 0, status "MODULE SAVED !", file PTNEW01.MOD, panel frames 92 late 0, late 104/7/12/8/20/3/0 max 24.2 ms
-  123.97 CHECK ok   SAVE AS NEW: the module saved (MODULE SAVED !)
-  123.97 CHECK ok   SAVE AS NEW: PTNEW01.MOD in the list (INTRO.MOD MOD2.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD PTNEW01.MOD)
-  126.47 CHECK ok   EXIT: the edit mode off (0)
-  126.47 CHECKS: 0 failed
-  126.47 end
+  101.48 CHECK ok   MUTE DOWN 13: sample 4 (4)
+  102.20 CHECK ok   MUTE UP 13: sample 3 (3)
+  104.58 CHECK ok   C3 E3 G3 as a chord: C-2 E-2 G-2 across channels 1-3, sample 3 (428 339 285 s3)
+  106.05 CHECK ok   MUTE UP 3: the song one position longer (45)
+  106.78 CHECK ok   MUTE DOWN 1: the next position (1)
+  107.50 CHECK ok   MUTE UP 1: the position before (0)
+  108.23 CHECK ok   CONDUCTOR RIGHT 2: a position inserted (46)
+  109.58 CHECK ok   SHIFT + CONDUCTOR RIGHT 2: deleted (45)
+  125.30 saved: dsp state 2 fail 0 ready 1 flushes 90 busy 0 bank 2072 ms; song "Steelchambers2" pos 0 patt 6 row 0 speed 5 bpm 125 playing 0, status "MODULE SAVED !", file PTNEW01.MOD, panel frames 96 late 0, late 107/8/14/7/17/1/0 max 20.2 ms
+  125.30 CHECK ok   SAVE AS NEW: the module saved (MODULE SAVED !)
+  125.30 CHECK ok   SAVE AS NEW: PTNEW01.MOD in the list (INTRO.MOD MOD2.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD PTNEW01.MOD)
+  127.78 CHECK ok   EXIT: the edit mode off (0)
+  127.78 CHECKS: 0 failed
+  127.78 end
