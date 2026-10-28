@@ -129,7 +129,7 @@ bool diskLoad(int index)
 	return true;
 }
 
-/* SAVE: over the module's own file; SAVE AS NEW: PTNEWnn.MOD, added to MODS.TXT. The caller has asked. */
+/* SAVE: over the module's own file; SAVE AS NEW: PTNEWnn.MOD, added to the list. The caller has asked. */
 void diskSave(bool asNew)
 {
 	const char *name = names[moduleAt];
