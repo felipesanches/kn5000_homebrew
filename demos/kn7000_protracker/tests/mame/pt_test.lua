@@ -221,6 +221,11 @@ local co = coroutine.create(function()
       tap("CPC_SEG5", 0x40)                                    -- MUTE UP 2: PATT of this position +1
       tap("CPC_SEG8", 0x01)                                    -- MUTE UP 3: LEN + 1
       CHECK("MUTE UP 3: the song one position longer", sp:read_u16(m() + 0x12C) == len0 + 1, sp:read_u16(m() + 0x12C))
+      local pos0 = sp:read_u16(m() + 0xAF0)
+      tap("CPC_SEG5", 0x20)                                    -- MUTE DOWN 1: down the position list
+      CHECK("MUTE DOWN 1: the next position", sp:read_u16(m() + 0xAF0) == pos0 + 1, sp:read_u16(m() + 0xAF0))
+      tap("CPC_SEG5", 0x10)                                    -- MUTE UP 1: back up it
+      CHECK("MUTE UP 1: the position before", sp:read_u16(m() + 0xAF0) == pos0, sp:read_u16(m() + 0xAF0))
       tap("CPR_SEG4", 0x02)                                    -- CONDUCTOR RIGHT 2: insert a position
       CHECK("CONDUCTOR RIGHT 2: a position inserted", sp:read_u16(m() + 0x12C) == len0 + 2, sp:read_u16(m() + 0x12C))
       local hold = field("CPC_SEG11", 0x40); hold:set_value(1); wait(0.3)

@@ -25,6 +25,7 @@ own folders (the sound, the snapshots) are scratch; what the README quotes is he
 | `events-list-added-1.txt`                | 2026-10-28, `PT_EDIT=2` with PT_ADD (below): the list right; FILL IN 2 and PAD 2 failed (89 switch frames, one extra; not seen again) |
 | `events-list-added-trace-2.txt` to `-5`  | the same with `PT_TRACE=1`: four runs, 26 checks each, every tap one press and one release frame                                      |
 | `events-list-play5.txt`                  | `PT_MODULES=5 PT_EACH=14` with PT_ADD: INTRO.MOD, MOD.JAZ, MOD2.MOD, SPACE_~1.MOD (a long name's alias) load and play                 |
+| `events-pos-direction.txt`               | 2026-10-28, `PT_EDIT=2`: MUTE DOWN 1 moves POS down the list (0 -> 1), MUTE UP 1 back up it; 28 checks                                |
 
 The PC renders are `tests/host/render <module> <out.wav> 40` (`make render`). Session pt-mame3 predates the
 lateness counters; pt-mame3 and pt-mame4 predate the status line in the log.

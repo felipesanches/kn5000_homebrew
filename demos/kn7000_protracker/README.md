@@ -174,6 +174,7 @@ In MAME, the published overlay emulator, program 893 (`tests/mame/run_pt.sh`, `p
   - choosing a sample (RHYTHM GROUP);
   - a chord across channels 1-3 (AUTO PLAY CHORD);
   - the song's length, and inserting and deleting a position (MUTE 3, CONDUCTOR RIGHT 2);
+  - moving POS down the position list and back (MUTE DOWN 1, MUTE UP 1; `events-pos-direction.txt`, 28 checks);
   - HELP's five pages;
   - SAVE AS NEW, then EXIT.
 - **The saved module** (`tests/mame/check_saved.py`, `tests/results/saved-PTNEW01-vs-MOD2.txt`): taken off the card
