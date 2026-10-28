@@ -21,11 +21,11 @@ own folders (the sound, the snapshots) are scratch; what the README quotes is he
 | `events-pt-mame11.txt`                   | `MODS="MOD2.MOD INTRO.MOD" PT_EDIT=1` with the rest of the controls, after the clock fixes                                            |
 | `edit-2026-10-27.png`                    | pt-mame8: the edit mode after C3, E3, G3 (rows 55-57 of channel 1)                                                                    |
 | `spectrum-2026-10-27.png`                | pt-mame8: the pattern playing, the spectrum analyzer                                                                                  |
-| `events-list-stock.txt`                  | 2026-10-28, `PT_EDIT=2`: the folder read off the card (6 modules, sorted), PTNEW01.MOD listed when saved; 26 checks                   |
+| `events-list-stock.txt`                  | 2026-10-28, `PT_EDIT=2`: the folder read off the card (6 modules, sorted), PTNEW01.MOD listed when saved; 25 checks                   |
 | `events-list-added-1.txt`                | 2026-10-28, `PT_EDIT=2` with PT_ADD (below): the list right; FILL IN 2 and PAD 2 failed (89 switch frames, one extra; not seen again) |
-| `events-list-added-trace-2.txt` to `-5`  | the same with `PT_TRACE=1`: four runs, 26 checks each, every tap one press and one release frame                                      |
+| `events-list-added-trace-2.txt` to `-5`  | the same with `PT_TRACE=1`: four runs, 25 checks each, every tap one press and one release frame                                      |
 | `events-list-play5.txt`                  | `PT_MODULES=5 PT_EACH=14` with PT_ADD: INTRO.MOD, MOD.JAZ, MOD2.MOD, SPACE_~1.MOD (a long name's alias) load and play                 |
-| `events-pos-direction.txt`               | 2026-10-28, `PT_EDIT=2`: MUTE DOWN 1 / 13 move POS / SMP down their lists, MUTE UP 1 / 13 back up; 30 checks                          |
+| `events-pos-direction.txt`               | 2026-10-28, `PT_EDIT=2`: MUTE DOWN 1 / 13 move POS / SMP down their lists, MUTE UP 1 / 13 back up; 29 checks                          |
 
 The PC renders are `tests/host/render <module> <out.wav> 40` (`make render`). Session pt-mame3 predates the
 lateness counters; pt-mame3 and pt-mame4 predate the status line in the log.
