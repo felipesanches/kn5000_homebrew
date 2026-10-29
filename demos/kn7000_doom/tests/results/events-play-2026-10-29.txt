@@ -1,0 +1,22 @@
+   57.43 menu: up, 1 programs, "Doom (Chocolate Doom)" at 0
+   59.08 RUN
+   94.78 CHECK ok   the title screen (text "DOOM: HOLD EXIT TO QUIT"; gametic 0 gamestate 3 demo 0 E0M0; log "ST_Init: Init status bar.")
+   97.10 CHECK ok   MENU: the menu is up
+   98.75 C5: New Game
+  100.38 C5: the episode
+  102.02 C5: the skill
+  102.02 CHECK ok   E1M1 starts (text "DOOM: HOLD EXIT TO QUIT"; gametic 150 gamestate 0 demo 0 E1M1; log "ST_Init: Init status bar.")
+  110.82 CHECK ok   E1M1 runs (text "DOOM: HOLD EXIT TO QUIT"; gametic 187 gamestate 0 demo 0 E1M1; log "ST_Init: Init status bar.")
+  110.82 E1M1 loaded and running after 8.8 s
+  111.83 player at 1056.0, -3616.0 angle 40000000 health 100 bullets 50 weapon 1
+  114.15 CHECK ok   G#4: forward (1055.8, -3149.4)
+  115.48 CHECK ok   F4: turned (70C00000)
+  118.58 CHECK ok   C5: fired (50 -> 47)
+  120.23 CHECK ok   C6: the fist (0)
+  121.87 CHECK ok   E5: the automap (1)
+  123.50 play: 9 checks, 0 failed
+  123.50 text "DOOM: HOLD EXIT TO QUIT"; gametic 575 gamestate 0 demo 0 E1M1; log "ST_Init: Init status bar."
+  125.52 text "DOOM: HOLD EXIT TO QUIT"; gametic 641 gamestate 0 demo 0 E1M1; log "ST_Init: Init status bar."
+  126.52 EXIT held
+  129.03 ended true; borrow_bad 0; foreign accesses 0; text "DOOM: HOLD EXIT TO QUIT"; gametic 716 gamestate 0 demo 0 E1M1; log "ST_Init: Init status bar."
+  132.05 end

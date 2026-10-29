@@ -370,6 +370,7 @@ int doom_entry(const PfHost *h)
     host = h;
     memoryInit();
     kn7LogShow(1);
+    host->keybedSound(0);  /* the keybed is the game pad (i_input.c), not a piano: KN7APP turns it back on at the end */
     host->status("DOOM: HOLD EXIT TO QUIT");
     static char *argv[] = {"doom", "-iwad", "DOOM1.WAD", NULL};
     if (setjmp(quitJmp) == 0)

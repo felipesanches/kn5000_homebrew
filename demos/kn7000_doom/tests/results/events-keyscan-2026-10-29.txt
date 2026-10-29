@@ -1,0 +1,25 @@
+   57.43 menu: up, 1 programs, "Doom (Chocolate Doom)" at 0
+   59.08 RUN
+   96.02 key 48: notes[] while held 0000, after 0000
+   97.25 key 55: notes[] while held 0001, after 0000
+   98.48 key 56: notes[] while held 0001, after 0000
+   99.72 key 59: notes[] while held 0001, after 0000
+  100.95 key 60: notes[] while held 0001, after 0001
+  102.18 key 62: notes[] while held 0001, after 0000
+  103.42 key 64: notes[] while held 0000, after 0000
+  104.65 key 65: notes[] while held 0001, after 0000
+  105.88 key 67: notes[] while held 0001, after 0000
+  107.12 key 68: notes[] while held 0001, after 0000
+  108.35 key 69: notes[] while held 0001, after 0000
+  109.58 key 71: notes[] while held 0001, after 0000
+  110.82 key 72: notes[] while held 0001, after 0000
+  112.05 key 74: notes[] while held 0001, after 0000
+  113.28 key 76: notes[] while held 0001, after 0000
+  114.52 key 79: notes[] while held 0001, after 0000
+  115.75 key 84: notes[] while held 0001, after 0000
+  116.98 key 88: notes[] while held 0001, after 0000
+  118.22 key 95: notes[] while held 0001, after 0000
+  118.22 text "DOOM: HOLD EXIT TO QUIT"; gametic 496 gamestate 0 demo 1 E1M5; log "ST_Init: Init status bar."
+  120.23 EXIT held
+  122.75 ended true; borrow_bad 0; foreign accesses 0; text "DOOM: HOLD EXIT TO QUIT"; gametic 586 gamestate 0 demo 1 E1M5; log "ST_Init: Init status bar."
+  125.77 end

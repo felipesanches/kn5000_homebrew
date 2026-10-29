@@ -129,6 +129,13 @@ $(OUT)/host/doom: $(HOST_C) $(DOOM_HDR)
 	@mkdir -p $(dir $@)
 	cc -m32 -O2 -g -w -fno-strict-aliasing $(DOOM_INC) -Isrc/common -o $@ $(HOST_C) -lm
 
+# the offsets doom_test.lua reads the player's state at (tests/mame/offsets.c)
+tests/mame/offsets.txt: tests/mame/offsets.c $(DOOM_HDR)
+	@mkdir -p $(OUT)
+	$(CROSS)gcc $(DOOM_CFLAGS) -c $< -o $(OUT)/offsets.o
+	$(CROSS)objdump -s $(OUT)/offsets.o > $(OUT)/offsets.dump
+	$(PYTHON) -I tools/build/offsets.py $(OUT)/offsets.dump > $@
+
 clean:
 	test -n "$(OUT)" && rm -rf -- "$(OUT)"
 

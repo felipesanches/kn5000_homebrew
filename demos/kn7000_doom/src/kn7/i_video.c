@@ -14,6 +14,7 @@
 #include "i_video.h"
 #include "tables.h"
 #include "v_video.h"
+#include "w_wad.h"
 #include "z_zone.h"
 
 #define FB_BASE LCD_MEM      /* display memory, uncached */
@@ -77,6 +78,49 @@ static void writeStart(u32 w)
     }
 }
 
+extern const char *const kn7SoftLabels[2][5];  /* i_input.c */
+
+/* 8 bits a pixel into display memory at (x, y): colour index c, w x h */
+static void box(int x, int y, int w, int h, byte c)
+{
+    for (int yy = y; yy < y + h; ++yy)
+    {
+        volatile u8 *dst = (volatile u8 *)(FB_BASE + FRAME + (u32)yy * PITCH + (u32)x);
+        for (int xx = 0; xx < w; ++xx)
+            dst[xx] = c;
+    }
+}
+
+/* text in KN7APP's 8 x 13 font (PfHost::font: 95 glyphs from ' ', 13 rows, the leftmost dot in bit 7) */
+static void text(const char *s, int x, int y, byte fg, byte bg)
+{
+    for (; *s; ++s, x += 8)
+    {
+        const u8 *g = host->font + 13 * (*s >= ' ' && *s < 0x7F ? *s - ' ' : 0);
+        for (int r = 0; r < 13; ++r)
+        {
+            volatile u8 *dst = (volatile u8 *)(FB_BASE + FRAME + (u32)(y + r) * PITCH + (u32)x);
+            for (int b = 0; b < 8; ++b)
+                dst[b] = (g[r] << b) & 0x80 ? fg : bg;
+        }
+    }
+}
+
+/* the soft keys' labels beside them, in the columns either side of the game (i_input.c) */
+static void labels(void)
+{
+    const byte fg = (byte)I_GetPaletteIndex(255, 255, 255), bg = (byte)I_GetPaletteIndex(80, 80, 80);
+    for (int k = 0; k < 2; ++k)
+        for (int i = 0; i < 5; ++i)
+        {
+            const char *t = kn7SoftLabels[k][i];
+            const int w = 8 * (int)strlen(t) + 8, y = 48 * i + 16;
+            const int x = k == 0 ? 4 : FB_W - 4 - w;
+            box(x, y, w, 17, bg);
+            text(t, x + 4, y + 2, fg, bg);
+        }
+}
+
 void I_InitGraphics(void)
 {
     I_VideoBuffer = screen;
@@ -87,7 +131,9 @@ void I_InitGraphics(void)
     volatile u16 *p = (volatile u16 *)(FB_BASE + FRAME);
     for (u32 i = 0; i < PITCH * LCD_H / 2; ++i)
         p[i] = 0;
+    I_SetPalette(W_CacheLumpName("PLAYPAL", PU_CACHE));  /* (as Chocolate Doom's I_InitGraphics) */
     lutLoad();
+    labels();
     *lcdc(0x46) = (u8)(PITCH / 2);
     *lcdc(0x47) = (u8)((PITCH / 2) >> 8);
     *lcdc(0x40) = (u8)((saved40 & ~7) | 3);  /* 8 bits a pixel, SwivelView kept */

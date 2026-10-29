@@ -14,3 +14,8 @@ the end `borrow_bad` (KN7APP.BIN's check of the borrowed RAM's copy in display m
 and the count of foreign accesses. `DOOM_TAPS=1` puts taps on the borrowed RAM (borrow.c) once the game runs and logs
 every access from code that is neither KN7APP.BIN's nor DOOM.BIN's (slow: every access of the game there runs Lua).
 Snapshots every `DOOM_SNAP` seconds to `OUT/snap/kn7000/`.
+
+`DOOM_PLAY=1` plays: MENU, C5 three times (New Game, the episode, the skill), then once E1M1 runs (gametic moving: the
+gamestate is a level's from before the map is read) G#4 held 2 s, F4 held 1 s, C5 three times, C6, E5 twice, each
+CHECKed in DOOM.BIN's memory at the offsets of `offsets.txt` (`make tests/mame/offsets.txt` from `offsets.c`).
+`DOOM_KEYSCAN=1` holds keys one by one at the title screen and logs what KN7APP's `notes[]` saw of each.

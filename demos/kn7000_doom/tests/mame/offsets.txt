@@ -1,0 +1,9 @@
+off_mobj_angle 32
+off_mobj_y 16
+off_mobj_x 12
+size_player 288
+off_player_killcount 212
+off_player_readyweapon 120
+off_player_ammo 164
+off_player_health 40
+off_player_mo 0
