@@ -120,6 +120,16 @@ end
 
 local co = coroutine.create(function()
   wait_until(function() return now() > 30 end, 60)
+  if os.getenv("PT_NATIVE") == "1" then
+    -- the instrument's own sound before ProTracker (its power-on panel), for native_vs_pt.py: four notes, then a
+    -- chord held 2 s; MAIN VOLUME as the session has it (the driver's default 80) for this and for ProTracker alike
+    E("NATIVE start")
+    for _, k in ipairs({ "C4", "E4", "G4", "C5" }) do KEY[k]:set_value(1); wait(0.5); KEY[k]:set_value(0); wait(0.1) end
+    for _, k in ipairs({ "C4", "E4", "G4" }) do KEY[k]:set_value(1) end; wait(2)
+    for _, k in ipairs({ "C4", "E4", "G4" }) do KEY[k]:set_value(0) end; wait(1.5)
+    E("NATIVE end")
+    M.video:snapshot()
+  end
   press("CPR_SEG1", 0x04); wait(6)                      -- DISK MENU
   press("CPL_SEG0", 0x20); wait(8)                      -- STYLE CONVERT
   for i = 1, 8 do                                       -- OK until the loader runs

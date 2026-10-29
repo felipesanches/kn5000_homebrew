@@ -9,6 +9,7 @@
 | `mod_timeline.py`   | where should the song be at each second (ProTracker's sequencing rules)?        | `mod_timeline.py MODULE [SECONDS]`                                           |
 | `offsets.c`         | where are the fields `pt_test.lua` reads in PT.BIN's `module_t` and `editor_t`? | its header says                                                              |
 | `level_compare.py`  | how much louder or quieter is one session than another, the same module played? | `level_compare.py OUT_A OUT_B [FROM TO]`                                     |
+| `native_vs_pt.py`   | how loud is ProTracker against the instrument's own sound (`PT_NATIVE=1`)?      | `native_vs_pt.py OUT [FROM TO]`                                              |
 
 The variables (`run_pt.sh` and `pt_test.lua`):
 - `MODS="A.MOD B.MOD"` (the Makefile's): the modules in `PROTRACK\`, from `PF_DATA`. The program lists the folder's
@@ -17,7 +18,8 @@ The variables (`run_pt.sh` and `pt_test.lua`):
 - `PT_LIST`: the module list `PT_EDIT=2` checks it read (default: the six of Pinball Fantasies).
 - `PT_MODULES`, `PT_EACH`: modules stepped through with LCDR 2, seconds each. `PT_EDIT=1`, `PT_EDIT=2` (the editor's
   checks), `PT_RISK=1` (does the firmware act on the panel), `PT_TRACE=1` (with `PT_EDIT=2`: each tap's switch frames,
-  `time=frames:byte`, as KN7APP took them). `KEEP_SD=1` keeps the card as `sd_after.img`.
+  `time=frames:byte`, as KN7APP took them). `KEEP_SD=1` keeps the card as `sd_after.img`. `PT_NATIVE=1` first plays
+  four notes and a chord on the instrument's own sound (its power-on panel), for `native_vs_pt.py`.
 
 What the log's lines mean:
 - **`dsp state`:** 4 the mixer hooked with no bank, 1 a bank being sent, 2 ready; `bank` is how long the last bank

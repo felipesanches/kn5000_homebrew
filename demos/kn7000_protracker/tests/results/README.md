@@ -31,6 +31,8 @@ own folders (the sound, the snapshots) are scratch; what the README quotes is he
 | `level-gain-16-vs-2.txt`                 | 2026-10-29: the same at DSP_GAIN 16 and 2, RUN + 25..45 s: -18.3 dB RMS, -18.0 dB peak                                                |
 | `events-noplay-gain-16.txt`, `-2.txt`    | `PT_MODULES=2 PT_EACH=25` at 16 and 2: each module loads, does not play by itself, plays on LCDL 1                                    |
 | `events-noplay-edit.txt`                 | 2026-10-29, `PT_EDIT=2` at DSP_GAIN 2: "loaded, not played until PLAY" and the rest; 30 checks                                        |
+| `native-vs-pt-mame-before.txt`           | 2026-10-29, `PT_NATIVE=1`, the overlay of 2026-10-27: ProTracker 25.9 dB below the instrument; unit: 7.7 dB                           |
+| `events-native-before.txt`               | that session                                                                                                                          |
 
 The PC renders are `tests/host/render <module> <out.wav> 40` (`make render`). Session pt-mame3 predates the
 lateness counters; pt-mame3 and pt-mame4 predate the status line in the log.

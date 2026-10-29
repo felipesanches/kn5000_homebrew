@@ -1,0 +1,3 @@
+the instrument: RMS  -42.4 dBFS (30.0..36.1 s)
+ProTracker:     RMS  -68.3 dBFS (RUN + 25..45 s)
+ProTracker - the instrument: -25.9 dB; the unit's: -7.7 dB; off by -18.2 dB
