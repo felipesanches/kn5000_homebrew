@@ -83,12 +83,16 @@ moved the keybed's notes.
     the DSP decodes them into SDRAM. The DSP's checksum confirms them.
   - **Time** (`main.c`): the replayer ticks by the kernel's millisecond counter and timer 4, 2.5/BPM seconds a tick
     (50 a second at 125 BPM, as the CIA timer does it). After each tick, Paula's changes go to the DSP.
+  - **Loudness** (the Makefile's `DSP_GAIN`): the mixer multiplies its sum by 16, where Another World's multiplies it
+    by 128, which is 18 dB louder. At 128, the owner had to set MAIN VOLUME close to the bottom of its travel on the
+    unit (2026-10-29). At 16, four channels at full volume reach 24 dB below the DSP's full scale.
+    `make DSP_GAIN=n` builds another level (1 to 128).
   - **The screen** (`ui.c`, `video.c`): pt2-clone draws ProTracker's screen into a 320 x 240 buffer of 8-bit pixels.
     The LCD controller (an S1D13806) shows it at 8 bits a pixel, its look-up table holding ProTracker's 12-bit colours.
     Only the 16-bit words that changed are written to the LCD. The ticks that are due run between the screen's parts
     and every 8 rows of the writes.
 
-Memory: `PT.BIN` takes about 79 KB with its variables, from `0x502E8000`. The rest is what KN7APP hands it (the
+Memory: `PT.BIN` takes about 103 KB with its variables, from `0x502E8000`. The rest is what KN7APP hands it (the
 Pinball port's ARENA1-7, kn7.h):
 - the largest region (ARENA2, 376 KB) holds the module's file while it is parsed, then its samples coded for the DSP;
 - the next largest (ARENA4, 268 KB) holds the samples;
@@ -184,6 +188,9 @@ In MAME, the published overlay emulator, program 893 (`tests/mame/run_pt.sh`, `p
   `PROTRACK\` are listed sorted, with `MOD.JAZ` and a long-named `Space_Debris.mod` (as `SPACE_~1.MOD`) added and
   `NOTES.TXT` left out; PTNEW01.MOD joins the list when saved. Five modules in turn, `SPACE_~1.MOD` among them, load
   and play.
+- **The loudness** (`tests/mame/level_compare.py`, `tests/results/level-gain-128-vs-16.txt`): INTRO.MOD in MAME,
+  25 s from RUN + 20 s, built with `DSP_GAIN=128` and with 16: 18.1 dB quieter, in RMS and in peak
+  (`events-gain-128.txt`, `events-gain-16.txt`).
 - **The firmware leaves the panel alone** (`PT_RISK=1`, `tests/results/events-risk-after-10.txt` to `-12.txt`): after
   the fix, none of the 66 switch frames in three runs reached the firmware.
 

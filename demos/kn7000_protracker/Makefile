@@ -24,6 +24,9 @@ OUT     ?= build
 PYTHON  ?= python3
 PF_DATA ?= $(HOME)/compartilhado/Projeto_Pinball/data
 MODS    ?= INTRO.MOD MOD2.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD
+# the DSP mixer's output gain (tools/build/dsp_c.py): 16, 18 dB below Another World's 128, which on the unit put a
+# comfortable level at the bottom of MAIN VOLUME's travel (README.md, "How it works")
+DSP_GAIN ?= 16
 
 CFLAGS_COMMON := -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Isrc/common
 
@@ -54,9 +57,17 @@ $(OUT)/app/%.o: src/app/%.c src/app/app.h src/common/kn7.h src/common/pfhost.h
 
 $(OUT)/app/dsp.o $(OUT)/app/game.o: $(OUT)/app/dsp_mixer.h
 
-$(OUT)/app/dsp_mixer.h: tools/build/dsp_c.py $(AW_TOOLS)/dsp_mixer.py $(AW_TOOLS)/sharc_enc.py
+$(OUT)/app/dsp_mixer.h: tools/build/dsp_c.py $(AW_TOOLS)/dsp_mixer.py $(AW_TOOLS)/sharc_enc.py $(OUT)/app/dsp_gain
 	@mkdir -p $(dir $@)
-	$(PYTHON) -I tools/build/dsp_c.py $(AW_TOOLS) $@ $(UNIDASM)
+	$(PYTHON) -I tools/build/dsp_c.py $(AW_TOOLS) $@ $(UNIDASM) $(DSP_GAIN)
+
+# rewritten only when DSP_GAIN changes, so that a new gain makes a new header
+$(OUT)/app/dsp_gain: FORCE
+	@mkdir -p $(dir $@)
+	@echo $(DSP_GAIN) | cmp -s - $@ || echo $(DSP_GAIN) > $@
+
+.PHONY: FORCE
+FORCE:
 
 $(OUT)/app/glue.o: src/app/glue.S
 	@mkdir -p $(dir $@)

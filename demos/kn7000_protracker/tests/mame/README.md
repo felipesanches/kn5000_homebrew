@@ -8,6 +8,7 @@
 | `compare_render.py` | does a sound play a module as a reference does (libopenmpt, or the PC render)?  | `compare_render.py [--waveform] SOUND.WAV MODULE-or-REF.WAV [SECONDS]`       |
 | `mod_timeline.py`   | where should the song be at each second (ProTracker's sequencing rules)?        | `mod_timeline.py MODULE [SECONDS]`                                           |
 | `offsets.c`         | where are the fields `pt_test.lua` reads in PT.BIN's `module_t` and `editor_t`? | its header says                                                              |
+| `level_compare.py`  | how much louder or quieter is one session than another, the same module played? | `level_compare.py OUT_A OUT_B [FROM TO]`                                     |
 
 The variables (`run_pt.sh` and `pt_test.lua`):
 - `MODS="A.MOD B.MOD"` (the Makefile's): the modules in `PROTRACK\`, from `PF_DATA`. The program lists the folder's

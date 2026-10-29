@@ -26,6 +26,8 @@ own folders (the sound, the snapshots) are scratch; what the README quotes is he
 | `events-list-added-trace-2.txt` to `-5`  | the same with `PT_TRACE=1`: four runs, 25 checks each, every tap one press and one release frame                                      |
 | `events-list-play5.txt`                  | `PT_MODULES=5 PT_EACH=14` with PT_ADD: INTRO.MOD, MOD.JAZ, MOD2.MOD, SPACE_~1.MOD (a long name's alias) load and play                 |
 | `events-pos-direction.txt`               | 2026-10-28, `PT_EDIT=2`: MUTE DOWN 1 / 13 move POS / SMP down their lists, MUTE UP 1 / 13 back up; 29 checks                          |
+| `level-gain-128-vs-16.txt`               | 2026-10-29, `level_compare.py`: INTRO.MOD at DSP_GAIN 128 and 16, RUN + 20..45 s: -18.1 dB RMS and peak                               |
+| `events-gain-128.txt`, `-16.txt`         | `PT_MODULES=1 PT_EACH=30`, built with `DSP_GAIN=128` and with 16: those two sessions                                                  |
 
 The PC renders are `tests/host/render <module> <out.wav> 40` (`make render`). Session pt-mame3 predates the
 lateness counters; pt-mame3 and pt-mame4 predate the status line in the log.
