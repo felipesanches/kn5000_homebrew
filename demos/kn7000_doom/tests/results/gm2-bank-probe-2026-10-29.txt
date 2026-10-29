@@ -1,0 +1,7 @@
+NX pc30                   123.90- 125.97  rms  -49.8 dBFS  centroid   1859 Hz  above 2 kHz 37.2 %
+GM2 bank pc30 distortion guitar  126.48- 128.55  rms  -49.9 dBFS  centroid   1861 Hz  above 2 kHz 37.4 %
+GM2 bank pc73 flute       129.05- 131.08  rms  -45.9 dBFS  centroid   1883 Hz  above 2 kHz 34.6 %
+GM2 bank pc0 piano        131.60- 133.63  rms  -47.0 dBFS  centroid   1942 Hz  above 2 kHz 36.3 %
+GM2 bank pc56 trumpet     134.15- 136.18  rms  -45.5 dBFS  centroid   2040 Hz  above 2 kHz 36.3 %
+NX ch10 drums             136.18- 138.42  rms  -44.8 dBFS  centroid   3396 Hz  above 2 kHz 51.7 %
+GM2 drum bank kit 0       138.93- 141.17  rms  -44.5 dBFS  centroid   3390 Hz  above 2 kHz 52.2 %
