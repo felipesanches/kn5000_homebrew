@@ -1,0 +1,118 @@
+   59 s   -120.0 dBFS  peak     0  silent
+   60 s   -120.0 dBFS  peak     0  silent
+   61 s   -120.0 dBFS  peak     0  silent
+   62 s   -120.0 dBFS  peak     0  silent
+   63 s   -120.0 dBFS  peak     0  silent
+   64 s   -120.0 dBFS  peak     0  silent
+   65 s   -120.0 dBFS  peak     0  silent
+   66 s   -120.0 dBFS  peak     0  silent
+   67 s   -120.0 dBFS  peak     0  silent
+   68 s   -120.0 dBFS  peak     0  silent
+   69 s   -120.0 dBFS  peak     0  silent
+   70 s   -120.0 dBFS  peak     0  silent
+   71 s   -120.0 dBFS  peak     0  silent
+   72 s   -120.0 dBFS  peak     0  silent
+   73 s   -120.0 dBFS  peak     0  silent
+   74 s   -120.0 dBFS  peak     0  silent
+   75 s   -120.0 dBFS  peak     0  silent
+   76 s   -120.0 dBFS  peak     0  silent
+   77 s   -120.0 dBFS  peak     0  silent
+   78 s   -120.0 dBFS  peak     0  silent
+   79 s   -120.0 dBFS  peak     0  silent
+   80 s   -120.0 dBFS  peak     0  silent
+   81 s   -120.0 dBFS  peak     0  silent
+   82 s   -120.0 dBFS  peak     0  silent
+   83 s   -120.0 dBFS  peak     0  silent
+   84 s   -120.0 dBFS  peak     0  silent
+   85 s   -120.0 dBFS  peak     0  silent
+   86 s   -120.0 dBFS  peak     0  silent
+   87 s   -120.0 dBFS  peak     0  silent
+   88 s   -120.0 dBFS  peak     0  silent
+   89 s   -120.0 dBFS  peak     0  silent
+   90 s   -120.0 dBFS  peak     0  silent
+   91 s   -120.0 dBFS  peak     0  silent
+   92 s   -120.0 dBFS  peak     0  silent
+   93 s   -120.0 dBFS  peak     0  silent
+   94 s   -120.0 dBFS  peak     0  silent
+   95 s   -120.0 dBFS  peak     0  silent
+   96 s   -120.0 dBFS  peak     0  silent
+   97 s   -120.0 dBFS  peak     0  silent
+   98 s   -120.0 dBFS  peak     0  silent
+   99 s   -120.0 dBFS  peak     0  silent
+  100 s   -120.0 dBFS  peak     0  silent
+  101 s   -120.0 dBFS  peak     0  silent
+  102 s   -120.0 dBFS  peak     0  silent
+  103 s   -120.0 dBFS  peak     0  silent
+  104 s   -120.0 dBFS  peak     0  silent
+  105 s   -120.0 dBFS  peak     0  silent
+  106 s   -120.0 dBFS  peak     0  silent
+  107 s   -120.0 dBFS  peak     0  silent
+  108 s   -120.0 dBFS  peak     0  silent
+  109 s   -120.0 dBFS  peak     0  silent
+  110 s   -120.0 dBFS  peak     0  silent
+  111 s   -120.0 dBFS  peak     0  silent
+  112 s   -120.0 dBFS  peak     0  silent
+  113 s   -120.0 dBFS  peak     0  silent
+  114 s    -43.0 dBFS  peak  1414
+  115 s    -54.0 dBFS  peak   441
+  116 s    -43.5 dBFS  peak  1362
+  117 s    -50.9 dBFS  peak  1310
+  118 s    -44.5 dBFS  peak  1151
+  119 s   -120.0 dBFS  peak     0  silent
+  120 s   -120.0 dBFS  peak     0  silent
+  121 s   -120.0 dBFS  peak     0  silent
+  122 s   -120.0 dBFS  peak     0  silent
+  123 s   -120.0 dBFS  peak     0  silent
+  124 s   -120.0 dBFS  peak     0  silent
+  125 s   -120.0 dBFS  peak     0  silent
+  126 s   -120.0 dBFS  peak     0  silent
+  127 s   -120.0 dBFS  peak     0  silent
+  128 s   -120.0 dBFS  peak     0  silent
+  129 s    -44.6 dBFS  peak  1353
+  130 s    -49.4 dBFS  peak   472
+  131 s    -47.5 dBFS  peak  1324
+  132 s    -45.0 dBFS  peak  1138
+  133 s    -44.1 dBFS  peak  1310
+  134 s    -43.7 dBFS  peak  1361
+  135 s    -43.7 dBFS  peak  1362
+  136 s    -52.5 dBFS  peak   633
+  137 s    -45.1 dBFS  peak  1684
+  138 s    -43.1 dBFS  peak  1489
+  139 s    -41.3 dBFS  peak  1684
+  140 s    -73.0 dBFS  peak    82
+  141 s   -120.0 dBFS  peak     0  silent
+  142 s   -120.0 dBFS  peak     0  silent
+  143 s   -120.0 dBFS  peak     0  silent
+  144 s   -120.0 dBFS  peak     0  silent
+  145 s   -120.0 dBFS  peak     0  silent
+  146 s   -120.0 dBFS  peak     0  silent
+  147 s   -120.0 dBFS  peak     0  silent
+  148 s   -120.0 dBFS  peak     0  silent
+  149 s   -120.0 dBFS  peak     0  silent
+  150 s   -120.0 dBFS  peak     0  silent
+  151 s   -120.0 dBFS  peak     0  silent
+  152 s   -120.0 dBFS  peak     0  silent
+  153 s   -120.0 dBFS  peak     0  silent
+  154 s   -120.0 dBFS  peak     0  silent
+  155 s   -120.0 dBFS  peak     0  silent
+  156 s   -120.0 dBFS  peak     0  silent
+  157 s   -120.0 dBFS  peak     0  silent
+  158 s   -120.0 dBFS  peak     0  silent
+  159 s   -120.0 dBFS  peak     0  silent
+  160 s   -120.0 dBFS  peak     0  silent
+  161 s   -120.0 dBFS  peak     0  silent
+  162 s   -120.0 dBFS  peak     0  silent
+  163 s   -120.0 dBFS  peak     0  silent
+  164 s   -120.0 dBFS  peak     0  silent
+  165 s   -120.0 dBFS  peak     0  silent
+  166 s   -120.0 dBFS  peak     0  silent
+  167 s   -120.0 dBFS  peak     0  silent
+  168 s   -120.0 dBFS  peak     0  silent
+  169 s   -120.0 dBFS  peak     0  silent
+  170 s   -120.0 dBFS  peak     0  silent
+  171 s    -69.6 dBFS  peak   107
+  172 s    -87.0 dBFS  peak    22  silent
+  173 s   -120.0 dBFS  peak     0  silent
+  174 s   -120.0 dBFS  peak     0  silent
+  175 s   -120.0 dBFS  peak     0  silent
+sound: 18 of 101 seconds from RUN + 15 s are heard (83 silent)

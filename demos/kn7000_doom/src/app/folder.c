@@ -224,13 +224,13 @@ s32 folder_open(const char* path, const char* name, PfRawFile* f) {
 }
 
 /* `bytes` of a file folder_open opened, from `offset`, into dst -> the bytes read (fewer at the file's end), or -4. The
- * card's sectors come into f->bounce, a run of consecutive sectors at a time, and are copied on from its uncached view
- * (0x90000000 up: the data cache never holds what the card's read put there). */
+ * card's sectors come into f->bounce, a run of consecutive sectors at a time, and are copied on from there through the
+ * cache, as folder_list reads its directory sectors (which works on the owner's unit: ProTracker's folder list). */
 s32 folder_read(const PfRawFile* f, u32 offset, u8* dst, u32 bytes) {
   if (offset >= f->bytes) return 0;
   if (bytes > f->bytes - offset) bytes = f->bytes - offset;
   const u32 spcl = f->clusterBytes / 512;
-  const volatile u8* from = (const volatile u8*)(((u32)f->bounce & 0x1FFFFFFFu) | 0x80000000u);
+  const u8* from = f->bounce;
   u32 done = 0;
   while (done < bytes) {
     const u32 at = offset + done, k = at / f->clusterBytes, in = at % f->clusterBytes;
@@ -246,7 +246,7 @@ s32 folder_read(const PfRawFile* f, u32 offset, u8* dst, u32 bytes) {
     if (n > bytes - done) n = bytes - done;
     u32 i = 0;
     if (!(((u32)dst + done) & 3) && !(skip & 3))
-      for (; i + 4 <= n; i += 4) *(u32*)(dst + done + i) = *(const volatile u32*)(from + skip + i);
+      for (; i + 4 <= n; i += 4) *(u32*)(dst + done + i) = *(const u32*)(from + skip + i);
     for (; i < n; ++i) dst[done + i] = from[skip + i];
     done += n;
   }

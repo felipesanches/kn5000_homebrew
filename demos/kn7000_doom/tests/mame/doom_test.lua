@@ -12,8 +12,9 @@
 -- E1M1 runs: G#4 held (forward), F4 held (turn left), C5 three times (fire), C6 (the fist), E5 twice (the automap),
 -- each CHECKed against DOOM.BIN's memory (the player's position, angle, bullets and weapon: tests/mame/offsets.txt),
 -- a snapshot after each.
--- DOOM_TAPS=1: taps on the borrowed RAM log every write and read there from code that is neither KN7APP.BIN's nor
--- DOOM.BIN's (the firmware's), at most 40 of them, with the PC.
+-- DOOM_TAPS=1: once the title screen is up, taps on the borrowed RAM log every write there from code that is neither
+-- KN7APP.BIN's nor DOOM.BIN's (the firmware's), at most 40 of them, with the PC (reads too with DOOM_TAPS_READ=1: slow,
+-- as every read of the game's there runs Lua).
 local M = manager.machine
 local cpu = M.devices[":maincpu"]
 local sp = cpu.spaces["program"]
@@ -90,9 +91,13 @@ local function logLast()
   return line
 end
 
+local lastFrames, lastT = 0, 0
 local function state()
-  return string.format("text %q; gametic %d gamestate %d demo %d E%dM%d; log %q", cstr(0x5031BC01, 60),
-    u32("_gametic"), u32("_gamestate"), u32("_demoplayback"), u32("_gameepisode"), u32("_gamemap"), logLast())
+  local f, t = u32("_kn7Frames"), now()
+  local fps = t > lastT and (f - lastFrames) / (t - lastT) or 0
+  lastFrames, lastT = f, t
+  return string.format("text %q; gametic %d gamestate %d demo %d E%dM%d; frames %d (%.1f/s); log %q", cstr(0x5031BC01, 60),
+    u32("_gametic"), u32("_gamestate"), u32("_demoplayback"), u32("_gameepisode"), u32("_gamemap"), f, fps, logLast())
 end
 
 -- the borrowed RAM (borrow.c) and the code that may touch it
@@ -102,7 +107,7 @@ local function ours(pc) return (pc >= 0x502BA000 and pc < 0x502C8000) or (pc >= 
 TAPS, foreign = {}, 0
 local function taps_on()
   for _, r in ipairs(BORROW) do
-    for _, kind in ipairs({ "w", "r" }) do
+    for _, kind in ipairs(os.getenv("DOOM_TAPS_READ") == "1" and { "w", "r" } or { "w" }) do
       local install = kind == "w" and sp.install_write_tap or sp.install_read_tap
       TAPS[#TAPS + 1] = install(sp, r[1], r[2], "borrow" .. kind .. r[1], function(offset, data, mask)
         local pc = cpu.state["PC"].value
@@ -178,7 +183,7 @@ local co = coroutine.create(function()
     end
     local t0, nextLog, nextSnap, tapped = now(), now(), now() + SNAP, false
     while now() - t0 < SECONDS do
-      if os.getenv("DOOM_TAPS") == "1" and not tapped and u32("_gametic") > 0 then taps_on(); tapped = true; E("taps on") end
+      if os.getenv("DOOM_TAPS") == "1" and not tapped and u32("_gamestate") == 3 then taps_on(); tapped = true; E("taps on") end
       if now() >= nextLog then E("%s", state()); nextLog = nextLog + 2 end
       if now() >= nextSnap then M.video:snapshot(); nextSnap = nextSnap + SNAP end
       coroutine.yield()

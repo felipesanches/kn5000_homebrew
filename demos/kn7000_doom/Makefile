@@ -37,7 +37,7 @@ APP_OBJ := $(APP_C:src/app/%.c=$(OUT)/app/%.o) $(OUT)/app/glue.o $(OUT)/app/font
 CHOCO_C := $(filter-out src/choco/w_file_stdc.c src/choco/midifile.c src/choco/mus2mid.c,$(wildcard src/choco/*.c)) \
            $(filter-out src/choco/doom/doom_icon.c,$(wildcard src/choco/doom/*.c))
 KN7_C   := src/kn7/main.c src/kn7/i_video.c src/kn7/i_timer.c src/kn7/i_input.c src/kn7/w_file_kn7.c \
-           src/kn7/i_sound_kn7.c src/kn7/net_none.c src/kn7/left_out.c src/kn7/fmt.c
+           src/kn7/i_sound_kn7.c src/kn7/bank.c src/kn7/net_none.c src/kn7/left_out.c src/kn7/fmt.c
 DOOM_INC := -include src/kn7/doom_kn7.h -Isrc/kn7 -Isrc/kn7/shim -Isrc/choco -Isrc/choco/doom
 DOOM_CFLAGS := $(CFLAGS_COMMON) -std=gnu11 -fno-strict-aliasing $(DOOM_INC) \
                -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers
@@ -87,6 +87,11 @@ $(OUT)/doom/%.o: src/%.c $(DOOM_HDR)
 	@mkdir -p $(dir $@)
 	$(CROSS)gcc $(DOOM_CFLAGS) -c $< -o $@
 
+# ProTracker's bank.c, unchanged: its encoder only (BANK_HOST_TEST leaves its ProTracker part out)
+$(OUT)/doom/kn7/bank.o: src/kn7/bank.c
+	@mkdir -p $(dir $@)
+	$(CROSS)gcc $(CFLAGS_COMMON) -std=gnu11 -DBANK_HOST_TEST -c $< -o $@
+
 $(OUT)/doom/doom.elf: $(DOOM_OBJ) src/kn7/doom.ld
 	$(CROSS)gcc -nostartfiles -T src/kn7/doom.ld -Wl,--gc-sections -Wl,--no-warn-rwx-segments -Wl,-Map=$(OUT)/doom/doom.map \
 	  -o $@ $(DOOM_OBJ) -lc -lm -lgcc
@@ -124,11 +129,11 @@ mame-media: card-dir
 # the same game code on the PC (tests/host/README.md): 32-bit, as the KN7000's, with the PC's files
 HOST_C := $(filter-out src/choco/midifile.c src/choco/mus2mid.c,$(wildcard src/choco/*.c)) \
           $(filter-out src/choco/doom/doom_icon.c,$(wildcard src/choco/doom/*.c)) \
-          src/kn7/net_none.c src/kn7/left_out.c src/kn7/i_sound_kn7.c tests/host/host.c
+          src/kn7/net_none.c src/kn7/left_out.c src/kn7/i_sound_kn7.c src/kn7/bank.c tests/host/host.c
 host: $(OUT)/host/doom
 $(OUT)/host/doom: $(HOST_C) $(DOOM_HDR)
 	@mkdir -p $(dir $@)
-	cc -m32 -O2 -g -w -fno-strict-aliasing $(DOOM_INC) -Isrc/common -o $@ $(HOST_C) -lm
+	cc -m32 -O2 -g -w -fno-strict-aliasing -DBANK_HOST_TEST $(DOOM_INC) -Isrc/common -o $@ $(HOST_C) -lm
 
 # the offsets doom_test.lua reads the player's state at (tests/mame/offsets.c)
 tests/mame/offsets.txt: tests/mame/offsets.c $(DOOM_HDR)

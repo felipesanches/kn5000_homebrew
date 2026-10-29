@@ -18,4 +18,7 @@ Snapshots every `DOOM_SNAP` seconds to `OUT/snap/kn7000/`.
 `DOOM_PLAY=1` plays: MENU, C5 three times (New Game, the episode, the skill), then once E1M1 runs (gametic moving: the
 gamestate is a level's from before the map is read) G#4 held 2 s, F4 held 1 s, C5 three times, C6, E5 twice, each
 CHECKed in DOOM.BIN's memory at the offsets of `offsets.txt` (`make tests/mame/offsets.txt` from `offsets.c`).
+`sound_report.py SOUND.WAV [EVENTS.TXT]` (ProTracker's, unchanged: its header speaks of modules) prints each second's
+level of the session's `-wavwrite` sound and counts the silent ones.
+
 `DOOM_KEYSCAN=1` holds keys one by one at the title screen and logs what KN7APP's `notes[]` saw of each.

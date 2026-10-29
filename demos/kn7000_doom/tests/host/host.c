@@ -26,6 +26,9 @@
 
 void D_DoomMain(void);
 
+#include "pfhost.h"
+const PfHost *host;  /* (none: src/kn7/i_sound_kn7.c is built, never started: -nosound) */
+
 /* ---- i_video ---------------------------------------------------------------------------------------------------- */
 int usemouse = 0, png_screenshots = 0, fullscreen = 0, aspect_ratio_correct = 0, integer_scaling = 0;
 int smooth_pixel_scaling = 0, vga_porch_flash = 0, force_software_renderer = 0, usegamma = 0;

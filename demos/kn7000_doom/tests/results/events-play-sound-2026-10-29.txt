@@ -1,0 +1,35 @@
+   57.43 menu: up, 1 programs, "Doom (Chocolate Doom)" at 0
+   59.08 RUN
+  112.32 CHECK ok   the title screen (text "DOOM: HOLD EXIT TO QUIT"; gametic 0 gamestate 3 demo 0 E0M0; frames 0 (0.0/s); log "ST_Init: Init status bar.")
+  114.65 CHECK ok   MENU: the menu is up
+  116.28 C5: New Game
+  117.92 C5: the episode
+  119.57 C5: the skill
+  119.57 CHECK ok   E1M1 starts (text "DOOM: HOLD EXIT TO QUIT"; gametic 147 gamestate 0 demo 0 E1M1; frames 49 (6.8/s); log "ST_Init: Init status bar.")
+  128.47 CHECK ok   E1M1 runs (text "DOOM: HOLD EXIT TO QUIT"; gametic 183 gamestate 0 demo 0 E1M1; frames 84 (3.9/s); log "ST_Init: Init status bar.")
+  128.47 E1M1 loaded and running after 8.9 s
+  129.48 player at 1056.0, -3616.0 angle 40000000 health 100 bullets 50 weapon 1
+  131.80 CHECK ok   G#4: forward (1055.8, -3149.4)
+  133.13 CHECK ok   F4: turned (6BC00000)
+  136.22 CHECK ok   C5: fired (50 -> 47)
+  137.87 CHECK ok   C6: the fist (0)
+  139.52 CHECK ok   E5: the automap (1)
+  141.15 play: 9 checks, 0 failed
+  141.15 text "DOOM: HOLD EXIT TO QUIT"; gametic 565 gamestate 0 demo 0 E1M1; frames 250 (13.1/s); log "ST_Init: Init status bar."
+  143.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 634 gamestate 0 demo 0 E1M1; frames 273 (11.4/s); log "ST_Init: Init status bar."
+  145.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 698 gamestate 0 demo 0 E1M1; frames 296 (11.5/s); log "ST_Init: Init status bar."
+  147.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 767 gamestate 0 demo 0 E1M1; frames 318 (11.0/s); log "ST_Init: Init status bar."
+  149.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 832 gamestate 0 demo 0 E1M1; frames 341 (11.5/s); log "ST_Init: Init status bar."
+  151.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 901 gamestate 0 demo 0 E1M1; frames 363 (11.0/s); log "ST_Init: Init status bar."
+  153.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 967 gamestate 0 demo 0 E1M1; frames 385 (11.0/s); log "ST_Init: Init status bar."
+  155.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 1035 gamestate 0 demo 0 E1M1; frames 408 (11.5/s); log "ST_Init: Init status bar."
+  157.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 1100 gamestate 0 demo 0 E1M1; frames 430 (11.0/s); log "ST_Init: Init status bar."
+  159.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 1168 gamestate 0 demo 0 E1M1; frames 453 (11.5/s); log "ST_Init: Init status bar."
+  161.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 1234 gamestate 0 demo 0 E1M1; frames 475 (11.0/s); log "ST_Init: Init status bar."
+  163.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 1303 gamestate 0 demo 0 E1M1; frames 498 (11.5/s); log "ST_Init: Init status bar."
+  165.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 1369 gamestate 0 demo 0 E1M1; frames 520 (11.0/s); log "ST_Init: Init status bar."
+  167.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 1438 gamestate 0 demo 0 E1M1; frames 543 (11.5/s); log "ST_Init: Init status bar."
+  169.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 1503 gamestate 0 demo 0 E1M1; frames 565 (11.0/s); log "ST_Init: Init status bar."
+  171.17 EXIT held
+  173.68 ended true; borrow_bad 0; foreign accesses 0; text "DOOM: HOLD EXIT TO QUIT"; gametic 1614 gamestate 0 demo 0 E1M1; frames 603 (8.4/s); log "ST_Init: Init status bar."
+  176.70 end

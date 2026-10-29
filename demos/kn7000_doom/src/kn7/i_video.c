@@ -7,6 +7,7 @@
  * Doom's palette is the look-up table, so a frame goes to the LCD as it is: its 320 x 200 pixels in the middle, its 200
  * lines shown as 240 (every fifth twice), as Chocolate Doom corrects the aspect ratio. A line goes to display memory only
  * when it changed since it last went (the memory is slow: 0.44-0.69 us a halfword, Pinball notes). */
+#include <stdio.h>
 #include <string.h>
 
 #include "kn7doom.h"
@@ -187,10 +188,29 @@ static u32 lineSum(const u32 *w)
     return s;
 }
 
+/* Frames drawn, and once a second their rate under the labels (left column): what the player can report. */
+u32 kn7Frames;
+static u32 fpsAt, fpsFrames;
+
+static void fpsShow(void)
+{
+    const u32 now = host->ms();
+    if (now - fpsAt < 1000)
+        return;
+    char t[16];
+    const u32 tenths = (kn7Frames - fpsFrames) * 10000 / (now - fpsAt);
+    snprintf(t, sizeof t, "%2lu.%lu FPS", (unsigned long)(tenths / 10), (unsigned long)(tenths % 10));
+    text(t, 4, FB_H - 14, (byte)I_GetPaletteIndex(160, 160, 160), (byte)I_GetPaletteIndex(0, 0, 0));
+    fpsAt = now;
+    fpsFrames = kn7Frames;
+}
+
 void I_FinishUpdate(void)
 {
     if (!owned)
         return;
+    ++kn7Frames;
+    fpsShow();
     for (int y = 0; y < SCREENHEIGHT; ++y)
     {
         const u32 *src = (const u32 *)(screen + y * SCREENWIDTH);
