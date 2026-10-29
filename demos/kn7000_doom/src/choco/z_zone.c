@@ -98,8 +98,64 @@ void Z_ClearZone (memzone_t* zone)
 //
 // Z_Init
 //
+#ifdef CHOCO_KN7
+// The KN7000's zone is several stretches of RAM, in address order
+// (I_ZoneRegions, src/kn7/main.c): each one a free block, the RAM between
+// two of them a block that is never freed, its header the last bytes of
+// the stretch before. Every block still runs into the next.
+
+static void Z_InitRegions(void)
+{
+    const kn7_region_t *region;
+    memblock_t *prev, *block, *gap;
+    int count, i;
+
+    region = I_ZoneRegions(&count);
+    mainzone = (memzone_t *) region[0].lo;
+    mainzone->size = region[count - 1].hi - region[0].lo;
+    mainzone->blocklist.user = (void *)mainzone;
+    mainzone->blocklist.tag = PU_STATIC;
+    prev = &mainzone->blocklist;
+
+    for (i = 0; i < count; ++i)
+    {
+        block = (memblock_t *) (i == 0 ? region[0].lo + sizeof(memzone_t)
+                                       : region[i].lo);
+        block->prev = prev;
+        prev->next = block;
+        block->tag = PU_FREE;
+        block->user = NULL;
+        block->id = ZONEID;
+
+        if (i + 1 < count)
+        {
+            gap = (memblock_t *) (region[i].hi - sizeof(memblock_t));
+            block->size = (byte *) gap - (byte *) block;
+            block->next = gap;
+            gap->prev = block;
+            gap->size = region[i + 1].lo - (unsigned) gap;
+            gap->user = (void *) mainzone;
+            gap->tag = PU_STATIC;
+            gap->id = ZONEID;
+            prev = gap;
+        }
+        else
+        {
+            block->size = region[i].hi - (unsigned) block;
+            block->next = &mainzone->blocklist;
+            mainzone->blocklist.prev = block;
+        }
+    }
+
+    mainzone->rover = mainzone->blocklist.next;
+}
+#endif
+
 void Z_Init (void)
 {
+#ifdef CHOCO_KN7
+    Z_InitRegions();
+#else
     memblock_t*	block;
     int		size;
 
@@ -121,6 +177,7 @@ void Z_Init (void)
     block->tag = PU_FREE;
 
     block->size = mainzone->size - sizeof(memzone_t);
+#endif
 
     // [Deliberately undocumented]
     // Zone memory debugging flag. If set, memory is zeroed after it is freed

@@ -81,14 +81,23 @@ static int snd_sbirq = 0;
 static int snd_sbdma = 0;
 static int snd_mport = 0;
 
+#ifdef CHOCO_KN7
+extern const sound_module_t sound_kn7_module;
+extern const music_module_t music_kn7_module;
+#endif
+
 // Compiled-in sound modules:
 
 static const sound_module_t *sound_modules[] =
 {
-#ifndef DISABLE_SDL2MIXER
+#ifdef CHOCO_KN7
+    &sound_kn7_module,  // the KN7000's effects DSP (src/kn7/)
+#elif !defined(DISABLE_SDL2MIXER)
     &sound_sdl_module,
 #endif // DISABLE_SDL2MIXER
+#ifndef CHOCO_KN7
     &sound_pcsound_module,
+#endif
     NULL,
 };
 
@@ -96,6 +105,9 @@ static const sound_module_t *sound_modules[] =
 
 static const music_module_t *music_modules[] =
 {
+#ifdef CHOCO_KN7
+    &music_kn7_module,  // the KN7000's tone generator (src/kn7/)
+#endif
 #ifdef _WIN32
     &music_win_module,
 #endif
@@ -105,7 +117,9 @@ static const music_module_t *music_modules[] =
 #ifndef DISABLE_SDL2MIXER
     &music_sdl_module,
 #endif // DISABLE_SDL2MIXER
+#ifndef CHOCO_KN7
     &music_opl_module,
+#endif
     NULL,
 };
 

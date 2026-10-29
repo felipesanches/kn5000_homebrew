@@ -75,7 +75,9 @@
 
 #include "d_main.h"
 
+#ifndef CHOCO_KN7  // (no window: the KN7000 build leaves its 64 KB out)
 #include "doom_icon.c"
+#endif
 
 //
 // D-DoomLoop()
@@ -472,7 +474,9 @@ void D_DoomLoop (void)
     I_SetWindowTitle(gamedescription);
     I_GraphicsCheckCommandLine();
     I_SetGrabMouseCallback(D_GrabMouseCallback);
+#ifndef CHOCO_KN7
     I_RegisterWindowIcon(doom_icon_data, doom_icon_w, doom_icon_h);
+#endif
     I_InitGraphics();
     EnableLoadingDisk();
 
