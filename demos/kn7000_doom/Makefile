@@ -20,7 +20,8 @@ AW_TOOLS ?= $(HOME)/compartilhado/technics-anotherworld/kn7000/tools
 UNIDASM  ?= $(HOME)/compartilhado/mame-sony-video/unidasm
 OUT     ?= build
 PYTHON  ?= python3
-WAD     ?= $(HOME)/compartilhado/tmp/doom-kn7000/wad/DOOM1.WAD
+# the shareware DOOM1.WAD (tools/get_wad.sh fetches it there)
+WAD     ?= $(HOME)/compartilhado/Doom/DOOM1.WAD
 # the DSP mixer's output gain (tools/build/dsp_c.py), as ProTracker's
 DSP_GAIN ?= 2
 
