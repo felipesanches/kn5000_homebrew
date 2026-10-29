@@ -25,13 +25,13 @@ int cnv_entry(void);
 __attribute__((section(".header"), used)) static const struct {
   u32 magic, abi, size, entry, crc, base, pad[2];
   char name[32];
-} header = {APP_MAGIC, LOADER_ABI, 0, (u32)cnv_entry, 0, APP_BASE, {0, 0}, "PROTRACKER"};
+} header = {APP_MAGIC, LOADER_ABI, 0, (u32)cnv_entry, 0, APP_BASE, {0, 0}, "DOOM"};
 
 enum { S_FIRST, S_SEARCH, S_DSP, S_RUN, S_FAILED };
 static u32 state, step, part, fail_calls, exit_t0, ended;
 u32 calls;
 static char fail_text[40];
-static const char* status_text = "LOADING PROTRACKER";
+static const char* status_text = "LOADING DOOM";
 char prefix[24];
 
 void set_status(const char* s) { status_text = s; }
@@ -59,7 +59,7 @@ static void progress(const char* what, u32 done, u32 of) {
   if (what != shown) {  /* (the LCD is slow: the text once) */
     shown = what;
     lcd_fill(0, 0, FB_W, FB_H, 0);
-    lcd_text("PROTRACKER", 280, 100, 0xFFFF, 0);
+    lcd_text("DOOM", 304, 100, 0xFFFF, 0);
     int n = 0;
     while (what[n]) ++n;
     lcd_text(what, (FB_W - 8 * n) / 2, 120, RGB565(160, 160, 160), 0);
@@ -190,7 +190,7 @@ u32 wheel_frames, wheel_late;  /* wheel frames seen; of them, those the firmware
 static u32 wheel_at;
 static int wheel_on;
 
-/* The panel's switches, kept from the firmware (ProTracker, PLAN-EDITING.md "Risks"). A switch frame is [ADDR, DATA]:
+/* The panel's switches, kept from the firmware (ProTracker's PLAN-EDITING.md, "Risks"). A switch frame is [ADDR, DATA]:
  * ADDR's bits 7-6 the bank (00 the CPR board, 11 the CPL and CPC boards), bits 3-0 the segment; DATA the segment's
  * switches, bit n switch n, 1 pressed, the whole segment each time; the firmware finds the presses by XOR with its own
  * copy (kn7000_mame notes/panel-serial-protocol.md, "Switch-report frame"). In MAME, while the converter ran, the
@@ -310,7 +310,7 @@ int cnv_entry(void) {
       /* fall through */
     case S_SEARCH:
       if (fw_step((int)step)) {
-        fail("PROTRACKER: UNKNOWN FIRMWARE, STEP ", (int)step);
+        fail("DOOM: UNKNOWN FIRMWARE, STEP ", (int)step);
         break;
       }
       progress("Looking for the firmware's routines...", ++step, FW_STEPS);
@@ -323,7 +323,7 @@ int cnv_entry(void) {
       const int r = dsp_start(part++);
       if (r == 2) break;
       state = S_RUN;  /* (r 1, no DSP: the game is silent; DSP.fail says why) */
-      if (task_start()) fail("PROTRACKER: NO TASK SLOT", -1);
+      if (task_start()) fail("DOOM: NO TASK SLOT", -1);
       break;
     }
     case S_RUN:
@@ -340,6 +340,7 @@ int cnv_entry(void) {
   if (quit_req && task_done) {
     led_want = 0;
     led_service();  /* the wheel's LED as the firmware had it */
+    borrow_restore();  /* the firmware's RAM back, before its drawing is */
     crash_disarm();  /* the firmware's NMI stub back */
     fwdraw_unhook();  /* its screen procedure */
     lcdc_restore();  /* and its LCD start address */

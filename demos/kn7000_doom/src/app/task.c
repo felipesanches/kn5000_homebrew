@@ -11,7 +11,7 @@
 #define TASK_ID_LAST 9
 #define TASK_PRI 3
 #define TASK_KSTACK 0x800      /* the kernel's stack for it, used only until task_entry leaves it */
-#define TASK_STACK 0x4000
+#define TASK_STACK 0x6000  /* (Doom: ProTracker's 16 KB and more) */
 
 void task_entry(void);         /* glue.S */
 
@@ -57,6 +57,8 @@ static void watch(void) {
     for (u32 v = 0; v < 8; ++v) dsp_set(v, 0, 0);
     dsp_flush();
     dsp_quit();
+    borrow_restore();  /* (the program cannot go on without that RAM: it ends at this yield) */
+    quit_req = 1;
     fwdraw_unhook();
     dsp.fail = DF_WATCH;
     dsp.ready = 0;

@@ -1,0 +1,14 @@
+demo1: 762 KB
+demo2: 905 KB
+demo3: 873 KB
+map1: 635 KB
+map2: 873 KB
+map3: 889 KB
+map4: 826 KB
+map5: 810 KB
+map6: 953 KB
+map7: 826 KB
+map8: 699 KB
+map9: 810 KB
+
+[exited with code 0]

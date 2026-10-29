@@ -1,12 +1,12 @@
 /* (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
  * Licensed under the terms of the GNU General Public License v3 or later
  *
- * files.c -- reading the game's files from the SD card. The reads are made by the converter entry, on the
- * firmware's main task, with the loader's routines (the drive switch to the SD card and back around them),
- * in pieces of 16 KB, as the loader reads KN7APP.BIN; the game task asks and waits (Another World's port loads
- * its parts the same way: technics-anotherworld kn7000/README-CNV.md, "How it works"). A read starts only once
- * no panel button is down (or after about 5 s): the main task is busy for the whole file, and a button's
- * release must not be the panel event it misses. */
+ * files.c -- reading the game's files from the SD card. The reads are made by the converter entry, on the firmware's
+ * main task; the game task asks and waits (Another World's port loads its parts the same way: technics-anotherworld
+ * kn7000/README-CNV.md, "How it works"). A whole file is read with the loader's routines (the drive switch to the SD
+ * card and back around them), in pieces of 16 KB, as the loader reads KN7APP.BIN, and starts only once no panel button
+ * is down (or after about 5 s): the main task is busy for the whole file, and a button's release must not be the panel
+ * event it misses. A part of a file (Doom's WAD) is read by sectors (folder.c), at most RAW_MAX a call, at once. */
 #include "app.h"
 
 #define PIECE 0x4000
@@ -14,8 +14,12 @@
 
 static struct {
   volatile u32 pending;      /* set by the game task, cleared by the entry when done */
-  u32 write;                 /* 1: write the first piece to the file (made afresh), not read; 2: list the folder */
+  u32 write;                 /* 1: write the first piece to the file (made afresh), not read; 2: list the folder;
+                                3: open a file for raw reads; 4: a raw read */
   PfFile* files;
+  PfRawFile* raw;
+  u32 offset;
+  void* dst;
   const char* name;
   const PfPiece* pieces;
   u32 count;
@@ -85,6 +89,12 @@ int file_pending(void) { return req.pending != 0; }
 /* The entry: serves the pending request, if there is one; 1 when it did. */
 int file_serve(void) {
   if (!req.pending) return 0;
+  if (req.write == 3 || req.write == 4) {  /* (short: a raw read is at most RAW_MAX, so it waits for no button) */
+    req.result = req.write == 3 ? folder_open(prefix, req.name, req.raw)
+                                : folder_read(req.raw, req.offset, (u8*)req.dst, req.count);
+    req.pending = 0;
+    return 1;
+  }
   if (!panel_idle() && ++req.held < HELD_CALLS) return 0;
   req.held = 0;
   if (req.write == 2) {
@@ -163,6 +173,40 @@ s32 file_save(const char* name, const void* data, u32 bytes) {
   req.pending = 1;
   while (req.pending) task_yield(10);
   return req.result;
+}
+
+/* The game task: a file of the program's folder for reading anywhere in it (folder.c) -> 0, or < 0. */
+s32 file_raw_open(const char* name, PfRawFile* f) {
+  req.write = 3;
+  req.name = name;
+  req.raw = f;
+  req.result = -1;
+  req.pending = 1;
+  while (req.pending) task_yield(1);
+  return req.result;
+}
+
+/* The game task: `bytes` of it from `offset` into dst -> the bytes read, or < 0. A request reads at most RAW_MAX, so
+ * that the main task, which decodes the panel, is never kept long. */
+#define RAW_MAX 0x8000
+
+s32 file_raw_read(const PfRawFile* f, u32 offset, void* dst, u32 bytes) {
+  u32 done = 0;
+  while (done < bytes) {
+    const u32 n = bytes - done > RAW_MAX ? RAW_MAX : bytes - done;
+    req.write = 4;
+    req.raw = (PfRawFile*)f;
+    req.offset = offset + done;
+    req.dst = (u8*)dst + done;
+    req.count = n;
+    req.result = -1;
+    req.pending = 1;
+    while (req.pending) task_yield(1);
+    if (req.result < 0) return req.result;
+    done += (u32)req.result;
+    if ((u32)req.result < n) break;
+  }
+  return (s32)done;
 }
 
 /* The game task: the files in the program's folder (folder.c) -> how many, or < 0. */

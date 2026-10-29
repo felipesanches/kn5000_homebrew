@@ -15,6 +15,6 @@ SECTIONS {
   __image_end = .;
   .bss (NOLOAD) : { *(.bss .bss.* COMMON) }
   __app_end = .;
-  ASSERT(__app_end <= 0x502C4000, "KN7APP.BIN and its bss must end below APP_END (kn7.h)")
+  ASSERT(__app_end <= 0x502C8000, "KN7APP.BIN and its bss must end below APP_END (kn7.h)")
   /DISCARD/ : { *(.comment) *(.note*) *(.eh_frame*) }
 }

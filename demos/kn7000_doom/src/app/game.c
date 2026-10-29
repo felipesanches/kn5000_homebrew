@@ -1,10 +1,11 @@
 /* (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
  * Licensed under the terms of the GNU General Public License v3 or later
  *
- * game.c -- the program task: PT.BIN (ProTracker, src/pt/) read to GAME_BASE, checked, started with a PfHost; when it
- * returns, the conversion ends. Holding EXIT ends everything as well (entry.c). The firmware draws nothing on the LCD
- * meanwhile (task.c, fwdraw.c). The Pinball port's game.c, with its table menu and its card-file sample banks left
- * out: ProTracker codes its own bank in RAM and sends it through dspSend (bank_send, entry.c). */
+ * game.c -- the program task: DOOM.BIN (Chocolate Doom, src/choco/ and src/kn7/) read to where its header says (its
+ * image in ARENA2, its bss at GAME_BASE: src/kn7/doom.ld), checked, started with a PfHost; when it returns, the
+ * conversion ends. Holding EXIT ends everything as well (entry.c). The firmware draws nothing on the LCD meanwhile
+ * (task.c, fwdraw.c). ProTracker's game.c (the Pinball port's, with its table menu and its card-file sample banks left
+ * out), with the program read where its header says. */
 #include "app.h"
 #include "dsp_mixer.h"
 
@@ -14,9 +15,29 @@ extern const unsigned char font8x13[95][13];
 #define GREY RGB565(160, 160, 160)
 #define RED RGB565(255, 64, 64)
 
-static PfRegion regions[] = {{ARENA1_LO, ARENA1_HI}, {ARENA2_LO, ARENA2_HI}, {ARENA4_LO, ARENA4_HI},
-                             {ARENA3_LO, ARENA3_HI}, {ARENA5_LO, ARENA5_HI}, {ARENA6_LO, ARENA6_HI},
-                             {ARENA7_LO, ARENA7_HI}, {0, 0}};
+#define PROGRAM_FILE "DOOM.BIN"
+
+/* The RAM the program may use, its own image and bss included (it takes them out: src/kn7/main.c), and on programs 893
+ * and 941 the firmware's RAM lent to it (borrow.c). ARENA3 is left out on program 942 (its SD plug-in lives there),
+ * ARENA5-7 on all but 893 and 941. The list ends at the first {0, 0}. */
+static PfRegion regions[24];
+
+static void regions_make(void) {
+  int n = 0;
+  const int any = fw.build == 893 || fw.build == 941;
+  regions[n++] = (PfRegion){GAME_BASE, GAME_END};
+  regions[n++] = (PfRegion){ARENA2_LO, ARENA2_HI};
+  regions[n++] = (PfRegion){ARENA1_LO, ARENA1_HI};
+  regions[n++] = (PfRegion){ARENA4_LO, ARENA4_HI};
+  if (fw.build != BUILD_SP7001) regions[n++] = (PfRegion){ARENA3_LO, ARENA3_HI};
+  if (any) {
+    regions[n++] = (PfRegion){ARENA5_LO, ARENA5_HI};
+    regions[n++] = (PfRegion){ARENA6_LO, ARENA6_HI};
+    regions[n++] = (PfRegion){ARENA7_LO, ARENA7_HI};
+  }
+  n += borrow_regions(regions + n, (int)(sizeof regions / sizeof *regions) - n - 1);
+  regions[n] = (PfRegion){0, 0};
+}
 static u32 host_ms(void) { return now_ms(); }
 static void host_status(const char* s) { set_status(s); }
 static void host_dsp_set(u32 v, const PfVoice* p, u32 how) {
@@ -68,6 +89,8 @@ static PfHost host = {
     .noteOns = notes_ons,
     .modWheel = &notes_mod_wheel,
     .list = file_list,
+    .rawOpen = file_raw_open,
+    .rawRead = file_raw_read,
 };
 
 static u32 crc32(const u8* p, u32 n) {
@@ -80,7 +103,7 @@ static u32 crc32(const u8* p, u32 n) {
 }
 
 /* The CPU's caches (an MN103002A: instruction cache, and a write-back data cache, 4 KB each in two ways of 16-byte
- * lines, both on: CHCTR 0x008F on the unit) after PT.BIN was read with data stores: its bytes written back to RAM and
+ * lines, both on: CHCTR 0x008F on the unit) after DOOM.BIN was read with data stores: its bytes written back to RAM and
  * no older line of GAME_BASE left in the instruction cache, as program 893 does it (its routines at 0x48407B..: the
  * instruction cache off (CHCTR bit 0), waited for (bit 2), invalidated (bit 4), on again; and func_48407C39: the data
  * cache off (bit 1), waited for (bit 3), each line of both ways written back by reading the purge window 0x28400000 and
@@ -122,16 +145,26 @@ void caches_sync(void) {
   __asm__ volatile("mov %0,psw\n\tnop\n\tnop" ::"d"(psw) : "memory");
 }
 
-/* Reads PT.BIN and checks it; 0, or why not. */
+/* 1 when [lo, hi) lies in GAME_BASE..GAME_END or in ARENA2: where a program's image and bss may be. */
+static int in_program_area(u32 lo, u32 hi) {
+  return lo <= hi && ((lo >= GAME_BASE && hi <= GAME_END) || (lo >= ARENA2_LO && hi <= ARENA2_HI));
+}
+
+/* Reads DOOM.BIN where its header says and checks it; 0, or why not. */
+static PfGameHeader head;
+
 static const char* load_program(void) {
-  PfPiece piece = {(void*)GAME_BASE, GAME_END - GAME_BASE};
-  const s32 got = file_load("PT.BIN", &piece, 1);
-  if (got < (s32)sizeof(PfGameHeader)) return "ITS PROGRAM (PT.BIN) IS NOT ON THE CARD";
-  const PfGameHeader* h = (const PfGameHeader*)GAME_BASE;
-  if (h->magic != PFGAME_MAGIC || h->abi != PFHOST_ABI || h->table != PT_PROGRAM) return "PT.BIN IS NOT THIS BUILD'S";
-  if (h->size != (u32)got || h->end > GAME_END || h->bssLo < GAME_BASE + h->size || h->bssHi > h->end)
-    return "PT.BIN IS DAMAGED (SIZE)";
-  if (crc32((const u8*)GAME_BASE + 0x40, h->size - 0x40) != h->crc) return "PT.BIN IS DAMAGED (CRC)";
+  PfPiece piece = {&head, sizeof head};
+  if (file_load(PROGRAM_FILE, &piece, 1) < (s32)sizeof head) return "ITS PROGRAM (DOOM.BIN) IS NOT ON THE CARD";
+  if (head.magic != PFGAME_MAGIC || head.abi != PFHOST_ABI || head.table != DOOM_PROGRAM)
+    return "DOOM.BIN IS NOT THIS BUILD'S";
+  if (head.size < sizeof head || !in_program_area(head.base, head.base + head.size) ||
+      !in_program_area(head.bssLo, head.bssHi) || (head.bssLo < head.base + head.size && head.bssHi > head.base))
+    return "DOOM.BIN IS DAMAGED (SIZE)";
+  piece = (PfPiece){(void*)head.base, head.size};
+  if (file_load(PROGRAM_FILE, &piece, 1) != (s32)head.size) return "DOOM.BIN IS DAMAGED (SIZE)";
+  const PfGameHeader* h = (const PfGameHeader*)head.base;
+  if (crc32((const u8*)h + 0x40, h->size - 0x40) != h->crc) return "DOOM.BIN IS DAMAGED (CRC)";
   for (u32 a = h->bssLo; a < h->bssHi; a += 4) *(volatile u32*)a = 0;
   caches_sync();
   for (u32 a = h->initLo; a < h->initHi; a += 4) (*(void (**)(void))a)();
@@ -143,14 +176,14 @@ void game_task(void) {
   host.panel = panel_real;  /* (entry.c: the switches the firmware no longer sees) */
   host.msCounter = fw.ms;
   host.dspVoices = dsp.state == DS_IDLE || dsp.state == DS_READY ? 8 : 0;
-  if (fw.build == BUILD_SP7001) regions[3] = (PfRegion){0, 0};  /* its SD plug-in lives in ARENA3 */
-  else if (fw.build != 893 && fw.build != 941) regions[4] = (PfRegion){0, 0};  /* ARENA5-7: 893 and 941 only */
+  regions_make();
   crash_arm();
   fwdraw_settle();  /* (the firmware's last copy to the LCD, before ours) */
   set_status("HOLD EXIT TO QUIT");
   lcd_fill(0, 0, FB_W, FB_H, 0);
-  lcd_text("PROTRACKER", 280, 100, WHITE, 0);
+  lcd_text("DOOM", 304, 100, WHITE, 0);
   lcd_text("Loading...", 280, 120, GREY, 0);
+  borrow_save();  /* (the firmware drew last before fwdraw_settle returned) */
   const char* why = load_program();
   if (why) {
     int n = 0;
@@ -160,7 +193,7 @@ void game_task(void) {
     set_status(why);
     for (;;) task_yield(50);
   }
-  const PfGameHeader* h = (const PfGameHeader*)GAME_BASE;
+  const PfGameHeader* h = (const PfGameHeader*)head.base;
   h->entry(&host);
   wheel_led(0);
   lcdc_restore();

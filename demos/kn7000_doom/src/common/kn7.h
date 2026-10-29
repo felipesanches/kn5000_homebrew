@@ -51,6 +51,14 @@ typedef int32_t s32;
 
 /* ---- the LCD: 640 x 240 RGB565, uncached, 16-bit bus with wait states ----------------------------- */
 #define FB 0x9CE00000u
+/* Its display memory (the S1D13806's 1280 KB, from FB): the firmware's frame at 0 (640 x 240 x 2 bytes), the program's
+ * 8-bit frame at LCD_FRAME (Doom's i_video.c, ProTracker's video.c), the borrowed RAM's contents at LCD_BORROW
+ * (borrow.c), and LCD_FREE up to the firmware's ink layer free for the program. */
+#define LCD_MEM FB
+#define LCD_FRAME 0x50000u
+#define LCD_BORROW 0x76000u
+#define LCD_FREE 0x108000u
+#define LCD_INK 0x136000u
 #define FB_W 640
 #define FB_H 240
 #define FB_STRIDE 1280
@@ -91,7 +99,7 @@ typedef int32_t s32;
 #define PF_HI 0x5037A000u          /* 0x5037A000 on: the custom-flash directory edit buffer */
 #define MAILBOX_PAGE 0x5031B000u
 #define MAILBOX_PAGE_END 0x5031C000u
-#define APP_END 0x502C4000u        /* KN7APP.BIN: image, data, bss and the game task's stack, below this */
+#define APP_END 0x502C8000u        /* KN7APP.BIN: image, data, bss and the game task's stack (24 KB for Doom), below this */
 #define GAME_BASE 0x502E8000u      /* a table program (PFn.BIN): image and bss, from here ... */
 #define GAME_END MAILBOX_PAGE      /* ... to the mailbox page */
 #define ARENA1_LO APP_END          /* the free RAM the table program takes its memory from */

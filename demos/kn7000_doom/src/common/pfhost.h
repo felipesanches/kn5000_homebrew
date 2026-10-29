@@ -2,19 +2,20 @@
  * Licensed under the terms of the GNU General Public License v3 or later
  *
  * pfhost.h -- between KN7APP.BIN (the platform: firmware search, files, task, panel, keybed, DSP) and the program it
- * runs, PT.BIN (ProTracker). The Pinball Fantasies port's interface (Pinball kn7000/src/common/pfhost.h), with ABI 10
- * added: the program codes its own sample bank in RAM and the platform sends it to the DSP (dspSend); ABI 12 lists the
- * program's folder (list). KN7APP.BIN loads
- * the program at GAME_BASE, checks its header, clears its bss, runs its constructors and calls its entry on the game
- * task, with a PfHost. The program returns when the player leaves it. */
+ * runs, DOOM.BIN (Chocolate Doom). It is ProTracker's (kn7000_protracker), which is the Pinball Fantasies port's
+ * interface (Pinball kn7000/src/common/pfhost.h) with ABI 10 added: the program codes its own sample bank in RAM and the
+ * platform sends it to the DSP (dspSend); ABI 12 lists the program's folder (list); ABI 13 (Doom) reads a file anywhere
+ * in it (rawOpen, rawRead) and loads the program where its header says (PfGameHeader::base). KN7APP.BIN loads the
+ * program, checks its header, clears its bss, runs its constructors and calls its entry on the game task, with a
+ * PfHost. The program returns when the player leaves it. */
 #ifndef PF_PFHOST_H
 #define PF_PFHOST_H
 #include "kn7.h"
 
-#define PFHOST_ABI 12
+#define PFHOST_ABI 13
 #define PFGAME_MAGIC 0x4D474650u  /* "PFGM" */
 #define PFHOST_MAGIC 0x54534850u  /* "PHST" */
-#define PT_PROGRAM 0x50  /* PfGameHeader::table of PT.BIN */
+#define DOOM_PROGRAM 0x44  /* PfGameHeader::table of DOOM.BIN */
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,6 +32,20 @@ typedef struct PfFile {
   char name[13];
   u32 bytes;
 } PfFile;
+
+/* A file of the program's folder opened for reading anywhere in it (PfHost::rawOpen): read by sectors, with the program
+ * menu's FAT16 reader, never through the firmware's file routines. The program fills in `chain` (room for maxClusters
+ * of the file's clusters) and `bounce` (bounceSectors x 512 bytes of work RAM, which the card's reads go through); the
+ * platform fills in the rest. */
+typedef struct PfRawFile {
+  u32 bytes;          /* the file's size */
+  u32 clusterBytes;   /* the card's cluster */
+  u32 clusters;       /* the file's clusters: rawOpen with maxClusters too small tells how many */
+  u32* chain;         /* each cluster's first card sector */
+  u32 maxClusters;
+  u8* bounce;
+  u32 bounceSectors;
+} PfRawFile;
 
 /* A stretch of RAM the table program may use as it likes until it returns. */
 typedef struct PfRegion {
@@ -110,20 +125,28 @@ typedef struct PfHost {
    * converter entry, as load is, with the program menu's FAT16 reader. -> how many, or < 0 (no raw sector read, not a
    * FAT16 card, no such folder, a read error). */
   s32 (*list)(PfFile* files, u32 max);
+  /* ABI 13: a file of the program's folder for reading at any offset (PfRawFile): -> 0, -1 (no raw sector read), -2 (not
+   * a FAT16 card), -3 (no such folder or file), -4 (a read error), -5 (more clusters than maxClusters: f->clusters says
+   * how many). Then `bytes` of it from `offset` into dst -> the bytes read, or -4. Both made by the converter entry on
+   * the firmware's main task, as load is; the program's task waits. */
+  s32 (*rawOpen)(const char* name, PfRawFile* f);
+  s32 (*rawRead)(const PfRawFile* f, u32 offset, void* dst, u32 bytes);
 } PfHost;
 
-/* The header at the start of PT.BIN (GAME_BASE). */
+/* The header at the start of the program's file, which is read to `base` (ABI 13: PT.BIN was read to GAME_BASE; DOOM.BIN
+ * is linked to ARENA2 with its bss at GAME_BASE). */
 typedef struct PfGameHeader {
   u32 magic;                  /* PFGAME_MAGIC */
   u32 abi;                    /* PFHOST_ABI */
   u32 size;                   /* bytes in the file */
-  u32 table;                  /* PT_PROGRAM: (the Pinball port's table number) */
+  u32 table;                  /* DOOM_PROGRAM (the Pinball port's table number) */
   u32 bssLo, bssHi;           /* cleared before the entry */
   u32 initLo, initHi;         /* the constructors: void (*)(void), run in order */
   u32 end;                    /* the first byte past everything it uses (image and bss) */
   int (*entry)(const PfHost* host);  /* runs the program; returns when the player leaves it */
   u32 crc;                    /* CRC-32 of the file from offset 0x40 to its end (mkgame.py) */
-  u32 reserved[5];
+  u32 base;                   /* ABI 13: where the file is read to (the header's own address) */
+  u32 reserved[4];
 } PfGameHeader;
 
 #ifdef __cplusplus

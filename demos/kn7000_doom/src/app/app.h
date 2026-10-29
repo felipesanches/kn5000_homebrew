@@ -58,10 +58,21 @@ int file_serve(void);                                               /* entry: 1 
 int file_pending(void);                                             /* entry: a request waits */
 s32 file_save(const char* name, const void* data, u32 bytes);       /* game task: waits */
 s32 file_list(PfFile* files, u32 max);                               /* game task: waits */
+s32 file_raw_open(const char* name, PfRawFile* f);                   /* game task: waits */
+s32 file_raw_read(const PfRawFile* f, u32 offset, void* dst, u32 bytes);  /* game task: waits */
 extern volatile u32 file_busy;  /* 1 while the firmware fills a buffer of ours */
+
+/* borrow.c: firmware RAM lent to the program, its contents kept in display memory meanwhile */
+int borrow_regions(PfRegion* list, int room);
+void borrow_save(void);
+void borrow_restore(void);
+u32 borrow_bytes(void);
+extern u32 borrow_bad;
 
 /* folder.c: on the main task (the entry) */
 s32 folder_list(const char* path, PfFile* files, u32 max);
+s32 folder_open(const char* path, const char* name, PfRawFile* f);
+s32 folder_read(const PfRawFile* f, u32 offset, u8* dst, u32 bytes);
 
 /* task.c */
 extern volatile u32 quit_req, task_done;

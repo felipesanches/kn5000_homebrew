@@ -66,7 +66,7 @@ void crash_main(const u32* sp) {
   fwdraw_unhook();
   lcdc_restore();  /* the firmware's frame on the LCD again: the screen is drawn there */
   lcd_fill(0, 0, FB_W, FB_H, BLUE);
-  lcd_text("PROTRACKER: THE CPU STOPPED THE PROGRAM (SYSTEM ERROR NMI)", 8, 8, 0xFFFF, BLUE);
+  lcd_text("DOOM: THE CPU STOPPED THE PROGRAM (SYSTEM ERROR NMI)", 8, 8, 0xFFFF, BLUE);
   char line[96];
   char* p = str(line, "PC ");
   p = hex(p, sp[1], 8);

@@ -1,12 +1,12 @@
 /* (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
  * Licensed under the terms of the GNU General Public License v3 or later
  *
- * folder.c -- the files in the program's folder, read off the card as the program menu finds its programs
- * (kn5000-roms-disasm kn7000/tools/kn7menu/menu_card.s, README.md "How it finds the programs"): raw sectors through
- * the loader's SV_RAWREAD, the routine the firmware's FAT library reads every sector with, and a read-only FAT16
- * reader on top, with the menu's rules and bounds. The firmware's file routines the loader hands over (fmmopen and the
- * rest) open a file by its name; none of them lists a folder. Nothing here writes to the card. On the main task (the
- * entry), served as files.c's requests are. */
+ * folder.c -- the files in the program's folder, and any part of one, read off the card as the program menu finds its
+ * programs (kn5000-roms-disasm kn7000/tools/kn7menu/menu_card.s, README.md "How it finds the programs"): raw sectors
+ * through the loader's SV_RAWREAD, the routine the firmware's FAT library reads every sector with, and a read-only
+ * FAT16 reader on top, with the menu's rules and bounds. The firmware's file routines the loader hands over (fmmopen and the
+ * rest) open a file by its name; none of them lists a folder, and a read through them starts at the file's start.
+ * Nothing here writes to the card. On the main task (the entry), served as files.c's requests are. */
 #include "app.h"
 
 #define SECS 4            /* sectors read at once */
@@ -150,34 +150,105 @@ static int same_name(const char* a, const char* b, int bn) {
   return i == bn && !a[i];
 }
 
-/* The files (not folders) in the folder `path` names relative to the root ("PROTRACK\", or "" for the root itself),
- * at most max of them, in the directory's order -> how many, or -1 (no raw sector read), -2 (not a FAT16 card),
- * -3 (no such folder), -4 (a read error, or a broken chain). */
-s32 folder_list(const char* path, PfFile* files, u32 max) {
-  if (!fw.raw) return -1;
+/* The folder `path` names relative to the root ("DOOM\", or "" for the root itself) opened in d -> 0, or -2 (not a
+ * FAT16 card), -3 (no such folder), -4 (a read error, or a broken chain). */
+static s32 folder_find(const char* path, Dir* d) {
   if (!geometry()) return -2;
-  Dir d;
   char name[13];
-  dir_open(&d, 0);
+  dir_open(d, 0);
   for (const char* s = path; *s;) {  /* each folder of the path, from the root down */
     int n = 0;
     while (s[n] && s[n] != '\\') ++n;
     u32 cl = 0;
-    for (const u8* e; n && (e = dir_next(&d)) != 0;)
+    for (const u8* e; n && (e = dir_next(d)) != 0;)
       if ((e[11] & 0x10) && entry_name(e, name) && same_name(name, s, n)) {
         cl = rd16(e + 26);
         break;
       }
-    if (d.err) return -4;
+    if (d->err) return -4;
     if (n) {
       if (!cl) return -3;
-      dir_open(&d, cl);
+      dir_open(d, cl);
     }
     s += n;
     if (*s == '\\') ++s;
   }
+  return 0;
+}
+
+/* The files (not folders) in the folder `path` names relative to the root ("DOOM\", or "" for the root itself),
+ * at most max of them, in the directory's order -> how many, or -1 (no raw sector read), -2 (not a FAT16 card),
+ * -3 (no such folder), -4 (a read error, or a broken chain). */
+s32 folder_list(const char* path, PfFile* files, u32 max) {
+  if (!fw.raw) return -1;
+  Dir d;
+  const s32 r = folder_find(path, &d);
+  if (r) return r;
   u32 count = 0;
   for (const u8* e; count < max && (e = dir_next(&d)) != 0;)
     if (!(e[11] & 0x10) && entry_name(e, files[count].name)) files[count++].bytes = rd32(e + 28);
   return d.err ? -4 : (s32)count;
+}
+
+/* The file `name` of the folder `path` for reading anywhere in it (PfHost::rawOpen): its size and its clusters' first
+ * sectors into f -> 0, or folder_list's codes, -3 for no such file, -5 when f->chain has no room for its clusters
+ * (f->clusters says how many). */
+s32 folder_open(const char* path, const char* name, PfRawFile* f) {
+  if (!fw.raw) return -1;
+  Dir d;
+  s32 r = folder_find(path, &d);
+  if (r) return r;
+  char found[13];
+  int n = 0;
+  while (name[n]) ++n;
+  u32 cl = 0;
+  int there = 0;
+  for (const u8* e; (e = dir_next(&d)) != 0;)
+    if (!(e[11] & 0x10) && entry_name(e, found) && same_name(found, name, n)) {
+      there = 1;
+      cl = rd16(e + 26);
+      f->bytes = rd32(e + 28);
+      break;
+    }
+  if (d.err) return -4;
+  if (!there) return -3;
+  f->clusterBytes = spc * 512;
+  f->clusters = 0;
+  for (u32 left = f->bytes; left; left = left > f->clusterBytes ? left - f->clusterBytes : 0) {
+    if (!valid(cl)) return -4;
+    if (f->clusters < f->maxClusters) f->chain[f->clusters] = datalba + (cl - 2) * spc;
+    ++f->clusters;
+    if (left > f->clusterBytes && (cl = fat_next(cl)) == 0) return -4;
+  }
+  return f->clusters > f->maxClusters ? -5 : 0;
+}
+
+/* `bytes` of a file folder_open opened, from `offset`, into dst -> the bytes read (fewer at the file's end), or -4. The
+ * card's sectors come into f->bounce, a run of consecutive sectors at a time, and are copied on from its uncached view
+ * (0x90000000 up: the data cache never holds what the card's read put there). */
+s32 folder_read(const PfRawFile* f, u32 offset, u8* dst, u32 bytes) {
+  if (offset >= f->bytes) return 0;
+  if (bytes > f->bytes - offset) bytes = f->bytes - offset;
+  const u32 spcl = f->clusterBytes / 512;
+  const volatile u8* from = (const volatile u8*)(((u32)f->bounce & 0x1FFFFFFFu) | 0x80000000u);
+  u32 done = 0;
+  while (done < bytes) {
+    const u32 at = offset + done, k = at / f->clusterBytes, in = at % f->clusterBytes;
+    const u32 skip = in % 512;
+    /* the sectors wanted from this cluster on, as long as the clusters run on consecutively */
+    u32 count = (skip + bytes - done + 511) / 512, run = spcl - in / 512;
+    for (u32 j = k + 1; run < count && j < f->clusters && f->chain[j] == f->chain[j - 1] + spcl; ++j) run += spcl;
+    if (count > run) count = run;
+    if (count > f->bounceSectors) count = f->bounceSectors;
+    if (count > 0x80) count = 0x80;
+    if (raw(f->chain[k] + in / 512, count, f->bounce)) return -4;
+    u32 n = count * 512 - skip;
+    if (n > bytes - done) n = bytes - done;
+    u32 i = 0;
+    if (!(((u32)dst + done) & 3) && !(skip & 3))
+      for (; i + 4 <= n; i += 4) *(u32*)(dst + done + i) = *(const volatile u32*)(from + skip + i);
+    for (; i < n; ++i) dst[done + i] = from[skip + i];
+    done += n;
+  }
+  return (s32)done;
 }
