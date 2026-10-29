@@ -129,6 +129,21 @@ local co = coroutine.create(function()
     for _, k in ipairs({ "C4", "E4", "G4" }) do KEY[k]:set_value(0) end; wait(1.5)
     E("NATIVE end")
     M.video:snapshot()
+    -- the same chord with CHORUS off, then on (unit 9's return carries the chorus): native_vs_pt.py compares them
+    local function chord(mark)
+      E("%s start", mark)
+      for _, k in ipairs({ "C4", "E4", "G4" }) do KEY[k]:set_value(1) end; wait(2)
+      for _, k in ipairs({ "C4", "E4", "G4" }) do KEY[k]:set_value(0) end; wait(1.5)
+      E("%s end", mark)
+    end
+    chord("CHORD")
+    press("CPR_SEG5", 0x04); wait(1)                    -- CHORUS on
+    chord("CHORUS CHORD")
+    press("CPR_SEG5", 0x04); wait(1)                    -- CHORUS off
+  end
+  if os.getenv("PT_REVERB_OFF") == "1" then
+    press("CPR_SEG3", 0x04); wait(1)                    -- REVERB off, before ProTracker starts
+    E("REVERB off")
   end
   press("CPR_SEG1", 0x04); wait(6)                      -- DISK MENU
   press("CPL_SEG0", 0x20); wait(8)                      -- STYLE CONVERT

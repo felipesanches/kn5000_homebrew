@@ -19,7 +19,8 @@ The variables (`run_pt.sh` and `pt_test.lua`):
 - `PT_MODULES`, `PT_EACH`: modules stepped through with LCDR 2, seconds each. `PT_EDIT=1`, `PT_EDIT=2` (the editor's
   checks), `PT_RISK=1` (does the firmware act on the panel), `PT_TRACE=1` (with `PT_EDIT=2`: each tap's switch frames,
   `time=frames:byte`, as KN7APP took them). `KEEP_SD=1` keeps the card as `sd_after.img`. `PT_NATIVE=1` first plays
-  four notes and a chord on the instrument's own sound (its power-on panel), for `native_vs_pt.py`.
+  four notes and a chord on the instrument's own sound (its power-on panel), then the chord with CHORUS off and on,
+  for `native_vs_pt.py`; `PT_REVERB_OFF=1` turns REVERB off before ProTracker starts.
 
 What the log's lines mean:
 - **`dsp state`:** 4 the mixer hooked with no bank, 1 a bank being sent, 2 ready; `bank` is how long the last bank

@@ -33,6 +33,10 @@ own folders (the sound, the snapshots) are scratch; what the README quotes is he
 | `events-noplay-edit.txt`                 | 2026-10-29, `PT_EDIT=2` at DSP_GAIN 2: "loaded, not played until PLAY" and the rest; 30 checks                                        |
 | `native-vs-pt-mame-before.txt`           | 2026-10-29, `PT_NATIVE=1`, the overlay of 2026-10-27: ProTracker 25.9 dB below the instrument; unit: 7.7 dB                           |
 | `events-native-before.txt`               | that session                                                                                                                          |
+| `native-vs-pt-mame-after.txt`            | the overlay with TG_TO_DSP 1/4 and unit 9 always mixed (kn7000_mame): -7.8 dB; CHORUS on +4.6 dB                                      |
+| `native-vs-pt-mame-reverb-off.txt`       | the same with `PT_REVERB_OFF=1`: ProTracker heard (unit 9 alone), 6.3 dB below REVERB on                                              |
+| `events-native-after.txt`                | that session (emulator md5 c7715771)                                                                                                  |
+| `events-native-reverb-off.txt`           | that session, REVERB off (the same emulator)                                                                                          |
 
 The PC renders are `tests/host/render <module> <out.wav> 40` (`make render`). Session pt-mame3 predates the
 lateness counters; pt-mame3 and pt-mame4 predate the status line in the log.

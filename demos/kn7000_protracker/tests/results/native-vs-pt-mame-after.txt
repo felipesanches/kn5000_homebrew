@@ -1,0 +1,4 @@
+the instrument: RMS  -42.4 dBFS (30.0..36.1 s)
+ProTracker:     RMS  -50.3 dBFS (RUN + 25..45 s)
+ProTracker - the instrument: -7.8 dB; the unit's: -7.7 dB; off by -0.2 dB
+a chord, CHORUS off: RMS  -44.9 dBFS; on:  -40.3 dBFS; on - off: +4.6 dB

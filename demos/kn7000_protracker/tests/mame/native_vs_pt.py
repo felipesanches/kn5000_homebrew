@@ -7,7 +7,8 @@
 # notes and a chord on the power-on panel). ProTracker's: FROM..TO seconds after RUN (default 25..45, the first module
 # playing). Prints both levels (RMS of all channels, dBFS) and ProTracker minus the instrument, against the unit's:
 # the owner (2026-10-29) finds the instrument comfortable at MAIN VOLUME 40-50 % and ProTracker (DSP_GAIN 2) at 70 %,
-# which the driver's v^2 taper makes ProTracker 40 log10(45/70) = -7.7 dB below the instrument.
+# which the driver's v^2 taper makes ProTracker 40 log10(45/70) = -7.7 dB below the instrument. When the session has
+# them, also the chord with CHORUS off against the same chord with CHORUS on (the chorus comes back on unit 9).
 import math
 import struct
 import sys
@@ -18,7 +19,8 @@ t0, t1 = (float(sys.argv[2]), float(sys.argv[3])) if len(sys.argv) > 3 else (25.
 marks = {}
 for line in open(f"{out}/events.txt"):
     parts = line.split(None, 1)
-    if len(parts) == 2 and parts[1].strip() in ("NATIVE start", "NATIVE end", "RUN"):
+    if len(parts) == 2 and parts[1].strip() in ("NATIVE start", "NATIVE end", "RUN", "CHORD start", "CHORD end",
+                                                "CHORUS CHORD start", "CHORUS CHORD end"):
         marks[parts[1].strip()] = float(parts[0])
 for k in ("NATIVE start", "NATIVE end", "RUN"):
     if k not in marks:
@@ -42,3 +44,7 @@ target = 40 * math.log10(45 / 70)
 print(f"the instrument: RMS {native:6.1f} dBFS ({marks['NATIVE start']:.1f}..{marks['NATIVE end']:.1f} s)")
 print(f"ProTracker:     RMS {pt:6.1f} dBFS (RUN + {t0:g}..{t1:g} s)")
 print(f"ProTracker - the instrument: {pt - native:+.1f} dB; the unit's: {target:+.1f} dB; off by {pt - native - target:+.1f} dB")
+if "CHORUS CHORD end" in marks:
+    off = rms_db(marks["CHORD start"], marks["CHORD end"])
+    on = rms_db(marks["CHORUS CHORD start"], marks["CHORUS CHORD end"])
+    print(f"a chord, CHORUS off: RMS {off:6.1f} dBFS; on: {on:6.1f} dBFS; on - off: {on - off:+.1f} dB")
