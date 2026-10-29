@@ -282,13 +282,7 @@ int pt_entry(const PfHost *h)
 	diskLoad(-1);  // (an empty module first: the screen has something to show while the first one loads)
 	videoOwn();
 	setStatusMessage("ALL RIGHT", DO_CARRY);
-	if (diskLoad(0))
-	{
-		restartClock();
-		editor.playMode = PLAY_MODE_NORMAL;
-		modPlay(DONT_SET_PATTERN, song->currPos, DONT_SET_ROW);
-		editor.currMode = MODE_PLAY;
-	}
+	diskLoad(0);  // loaded, not played: PLAY plays it
 
 	host->status("PROTRACKER: HOLD EXIT TO QUIT");
 	uint32_t vblank = stamp();

@@ -40,7 +40,7 @@ every control, the screen, tutorials and ProTracker's effects. `PLAN-EDITING.md`
 does.
 
 DISK MENU, STYLE CONVERT, `KN7LOAD.CNV`, OK; then the program menu's "ProTracker 2.3D" row, RUN. The first module (by
-name) loads and plays. In short:
+name) loads. A module loads without playing, at the start and from the list; START/STOP plays it. In short:
 - **Playing:** START/STOP plays and stops; SYNCHRO & BREAK plays the pattern; LCDR 1/2 step through the modules.
 - **The edit mode:** EASY REC. Notes come from the keybed (C2 is ProTracker's C-1). The SOUND GROUP is a hex keypad,
   0-7 above and 8-F below. The RHYTHM GROUP chooses samples 1-16.
@@ -83,10 +83,11 @@ moved the keybed's notes.
     the DSP decodes them into SDRAM. The DSP's checksum confirms them.
   - **Time** (`main.c`): the replayer ticks by the kernel's millisecond counter and timer 4, 2.5/BPM seconds a tick
     (50 a second at 125 BPM, as the CIA timer does it). After each tick, Paula's changes go to the DSP.
-  - **Loudness** (the Makefile's `DSP_GAIN`): the mixer multiplies its sum by 16, where Another World's multiplies it
-    by 128, which is 18 dB louder. At 128, the owner had to set MAIN VOLUME close to the bottom of its travel on the
-    unit (2026-10-29). At 16, four channels at full volume reach 24 dB below the DSP's full scale.
-    `make DSP_GAIN=n` builds another level (1 to 128).
+  - **Loudness** (the Makefile's `DSP_GAIN`): the mixer multiplies its sum by 2, where Another World's multiplies it
+    by 128. On the unit (the owner, 2026-10-29), a comfortable level needed MAIN VOLUME close to the bottom of its
+    travel at 128, and at 25 % of it at 16 (18 dB less). A volume control's usual audio taper puts 70 % about 19 dB
+    above 25 %, hence 2, 18 dB below 16. Four channels at full volume then reach 42 dB below the DSP's full scale.
+    `make DSP_GAIN=n` builds another level (1 to 128; each doubling is 6 dB).
   - **The screen** (`ui.c`, `video.c`): pt2-clone draws ProTracker's screen into a 320 x 240 buffer of 8-bit pixels.
     The LCD controller (an S1D13806) shows it at 8 bits a pixel, its look-up table holding ProTracker's 12-bit colours.
     Only the 16-bit words that changed are written to the LCD. The ticks that are due run between the screen's parts
@@ -190,7 +191,10 @@ In MAME, the published overlay emulator, program 893 (`tests/mame/run_pt.sh`, `p
   and play.
 - **The loudness** (`tests/mame/level_compare.py`, `tests/results/level-gain-128-vs-16.txt`): INTRO.MOD in MAME,
   25 s from RUN + 20 s, built with `DSP_GAIN=128` and with 16: 18.1 dB quieter, in RMS and in peak
-  (`events-gain-128.txt`, `events-gain-16.txt`).
+  (`events-gain-128.txt`, `events-gain-16.txt`). From 16 to 2: 18.3 dB quieter in RMS, 18.0 dB in peak
+  (`level-gain-16-vs-2.txt`).
+- **No playing after a load** (`events-noplay-*.txt`): each module loads, does not play by itself, and plays when
+  LCDL 1 (PLAY) is pressed; `PT_EDIT=2` checks it (30 checks).
 - **The firmware leaves the panel alone** (`PT_RISK=1`, `tests/results/events-risk-after-10.txt` to `-12.txt`): after
   the fix, none of the 66 switch frames in three runs reached the firmware.
 

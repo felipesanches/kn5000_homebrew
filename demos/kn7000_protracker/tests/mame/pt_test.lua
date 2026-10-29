@@ -3,12 +3,13 @@
 --
 -- pt_test.lua -- ProTracker in MAME, through the program menu (run_pt.sh OUT):
 --   * DISK MENU, STYLE CONVERT, OK: the loader, the menu; the "ProTracker 2.3D" row, RUN;
---   * PT.BIN loads the first module of its folder, sends its samples to the DSP and plays it;
+--   * PT.BIN loads the first module of its folder and sends its samples to the DSP, and does not play it: once they
+--     are sent, LCDL 1 (PLAY) plays it;
 --   * each second to $PT_OUT/events.txt: the converter's text, the DSP's state (KN7APP.BIN's dsp: state, fail,
 --     ready, the voice commands sent), and the replayer's (PT.BIN's song: position, pattern, row, speed, BPM;
 --     editor.songPlaying; the status line); a snapshot every 4 s;
---   * then LCDR 2 (the next module) every $PT_EACH seconds (default 20) until $PT_MODULES modules (default 2) have
---     played; then STOP (LCDL 3), and the end.
+--   * then LCDR 2 (the next module) and, once it is sent, LCDL 1, every $PT_EACH seconds (default 20) until
+--     $PT_MODULES modules (default 2) have played; then STOP (LCDL 3), and the end.
 -- PT_EDIT=1 instead, once the first module has played 10 s: LCDL 5 (the spectrum analyzer), MUTE UP 1 (channel 1
 -- muted), STOP, EDIT (LCDL 4), the keybed's C3, E3 and G3 (into the pattern on channel 1 from the row shown, read back from
 -- PT.BIN's memory and logged), LCDL 2 (the pattern plays), a snapshot after each; then LCDR 4, 4, 3 (the sample),
@@ -104,6 +105,19 @@ local function modules()
 end
 local LIST = os.getenv("PT_LIST") or "INTRO.MOD MOD2.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD"
 
+-- A module loads without playing: wait until module `at` (disk.c's list) is in hand and its samples are sent (dsp
+-- state 2), log whether it plays by itself (it must not), then LCDL 1 (PLAY) and wait until it plays.
+local function play_when_loaded(at)
+  wait_until(function() return SONG and sp:read_u32(SONG) ~= 0 and DSP and sp:read_u32(DSP + 36) == 2
+    and sp:read_u32(SYM["_moduleAt"]) == at end, 60)
+  wait(2)
+  local by_itself = sp:read_u8(EDITOR + 0x2E)
+  E("loaded, module %d, playing by itself %d: %s", at, by_itself, state())
+  press("CPL_SEG0", 0x02)                               -- LCDL 1: PLAY
+  wait_until(function() return sp:read_u8(EDITOR + 0x2E) == 1 end, 10)
+  return by_itself
+end
+
 local co = coroutine.create(function()
   wait_until(function() return now() > 30 end, 60)
   press("CPR_SEG1", 0x04); wait(6)                      -- DISK MENU
@@ -152,7 +166,7 @@ local co = coroutine.create(function()
         E("tap %s %02X: %s", tag, mask, table.concat(t, " "))
       end
       local function keys(list) for _, k in ipairs(list) do KEY[k]:set_value(1) end; wait(0.4); for _, k in ipairs(list) do KEY[k]:set_value(0) end; wait(0.5) end
-      wait_until(function() return SONG and sp:read_u32(SONG) ~= 0 and EDITOR and sp:read_u8(EDITOR + 0x2E) == 1 end, 60)
+      CHECK("loaded, not played until PLAY", play_when_loaded(0) == 0)
       wait(3)
       E("playing: %s", state()); M.video:snapshot()
       CHECK("the folder's modules, sorted", modules() == LIST, modules())
@@ -260,7 +274,7 @@ local co = coroutine.create(function()
       return
     end
     if RISK then
-      wait_until(function() return SONG and sp:read_u32(SONG) ~= 0 and EDITOR and sp:read_u8(EDITOR + 0x2E) == 1 end, 60)
+      play_when_loaded(0)
       wait(4)
       local NOTES = SYM["_notes"]
       local function held() local t = {} for n = 0, 127 do if sp:read_u16(NOTES + 2 * n) ~= 0 then t[#t + 1] = n end end return table.concat(t, ",") end
@@ -285,7 +299,7 @@ local co = coroutine.create(function()
       return
     end
     if EDIT then
-      wait_until(function() return SONG and sp:read_u32(SONG) ~= 0 and EDITOR and sp:read_u8(EDITOR + 0x2E) == 1 end, 60)
+      play_when_loaded(0)
       wait(10)
       E("playing: %s", state()); M.video:snapshot()
       press("CPL_SEG0", 0x04); wait(2)                  -- LCDL 5: the spectrum analyzer
@@ -328,6 +342,8 @@ local co = coroutine.create(function()
       M:exit()
       return
     end
+    E("loaded, %s", play_when_loaded(0) == 0 and "not played until PLAY" or "PLAYING BY ITSELF")
+    t0 = now()
     local nextSnap, nextMod = t0 + 4, t0 + EACH
     while true do
       wait(1)
@@ -338,6 +354,7 @@ local co = coroutine.create(function()
         press("CPR_SEG5", 0x20)                         -- LCDR 2: the next module
         E("LCDR 2: the next module")
         played = played + 1
+        play_when_loaded(played - 1)
         nextMod = now() + EACH
       end
     end

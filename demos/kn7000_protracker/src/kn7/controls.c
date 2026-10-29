@@ -143,8 +143,8 @@ static void editToggle(void)
 	ui.updatePatternData = true;
 }
 
-/* a module from the list: asked first when the one in hand has unsaved edits */
-static void loadAndPlay(int index)
+/* a module from the list, loaded and not played (PLAY plays it): asked first when the one in hand has unsaved edits */
+static void load(int index)
 {
 	if (song != NULL && song->modified)
 	{
@@ -152,8 +152,7 @@ static void loadAndPlay(int index)
 		ask(ASK_LOAD);
 		return;
 	}
-	if (diskLoad(index))
-		playSong();
+	diskLoad(index);
 }
 
 /* ---- the MUTE UP/DOWN pairs (column 1-16) ------------------------------------------------------------------------ */
@@ -273,8 +272,8 @@ void controlsUpdate(void)
 		if (panelPressed(C_LCDL3)) stop();
 		if (panelPressed(C_LCDL4)) editToggle();
 		if (panelPressed(C_LCDL5)) playPatt(true);
-		if (panelPressed(C_LCDR1)) loadAndPlay((diskModuleAt() + diskModuleCount() - 1) % diskModuleCount());
-		if (panelPressed(C_LCDR2)) loadAndPlay((diskModuleAt() + 1) % diskModuleCount());
+		if (panelPressed(C_LCDR1)) load((diskModuleAt() + diskModuleCount() - 1) % diskModuleCount());
+		if (panelPressed(C_LCDR2)) load((diskModuleAt() + 1) % diskModuleCount());
 		if (panelPressed(C_LCDR3)) page = PAGE_DISK;
 		if (panelPressed(C_LCDR4)) ask(ASK_SAVE);
 		if (panelPressed(C_LCDR5)) ask(ASK_CLEAR);
@@ -283,7 +282,7 @@ void controlsUpdate(void)
 	{
 		if (panelPressed(C_LCDL1)) diskKey(-1);
 		if (panelPressed(C_LCDL2)) diskKey(+1);
-		if (panelPressed(C_LCDL3)) { page = PAGE_MAIN; loadAndPlay(diskModuleAt()); }
+		if (panelPressed(C_LCDL3)) { page = PAGE_MAIN; load(diskModuleAt()); }
 		if (panelPressed(C_LCDL4)) ask(ASK_SAVE);
 		if (panelPressed(C_LCDL5)) ask(ASK_SAVE_NEW);
 		if (panelPressed(C_LCDR5)) page = PAGE_MAIN;

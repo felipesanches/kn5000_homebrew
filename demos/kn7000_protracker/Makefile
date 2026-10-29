@@ -24,9 +24,8 @@ OUT     ?= build
 PYTHON  ?= python3
 PF_DATA ?= $(HOME)/compartilhado/Projeto_Pinball/data
 MODS    ?= INTRO.MOD MOD2.MOD TABLE1.MOD TABLE2.MOD TABLE3.MOD TABLE4.MOD
-# the DSP mixer's output gain (tools/build/dsp_c.py): 16, 18 dB below Another World's 128, which on the unit put a
-# comfortable level at the bottom of MAIN VOLUME's travel (README.md, "How it works")
-DSP_GAIN ?= 16
+# the DSP mixer's output gain (tools/build/dsp_c.py): 2, 36 dB below Another World's 128 (README.md, "How it works")
+DSP_GAIN ?= 2
 
 CFLAGS_COMMON := -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Isrc/common
 

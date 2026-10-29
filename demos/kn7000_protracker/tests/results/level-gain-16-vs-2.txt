@@ -1,0 +1,3 @@
+A /home/fsanches/compartilhado/tmp/pt-gain-16: RMS  -50.1 dBFS, peak  -34.1 dBFS (RUN + 25..45 s)
+B /home/fsanches/compartilhado/tmp/pt-gain-2: RMS  -68.3 dBFS, peak  -52.0 dBFS
+B - A: RMS -18.3 dB, peak -18.0 dB

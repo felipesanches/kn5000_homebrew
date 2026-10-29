@@ -28,6 +28,9 @@ own folders (the sound, the snapshots) are scratch; what the README quotes is he
 | `events-pos-direction.txt`               | 2026-10-28, `PT_EDIT=2`: MUTE DOWN 1 / 13 move POS / SMP down their lists, MUTE UP 1 / 13 back up; 29 checks                          |
 | `level-gain-128-vs-16.txt`               | 2026-10-29, `level_compare.py`: INTRO.MOD at DSP_GAIN 128 and 16, RUN + 20..45 s: -18.1 dB RMS and peak                               |
 | `events-gain-128.txt`, `-16.txt`         | `PT_MODULES=1 PT_EACH=30`, built with `DSP_GAIN=128` and with 16: those two sessions                                                  |
+| `level-gain-16-vs-2.txt`                 | 2026-10-29: the same at DSP_GAIN 16 and 2, RUN + 25..45 s: -18.3 dB RMS, -18.0 dB peak                                                |
+| `events-noplay-gain-16.txt`, `-2.txt`    | `PT_MODULES=2 PT_EACH=25` at 16 and 2: each module loads, does not play by itself, plays on LCDL 1                                    |
+| `events-noplay-edit.txt`                 | 2026-10-29, `PT_EDIT=2` at DSP_GAIN 2: "loaded, not played until PLAY" and the rest; 30 checks                                        |
 
 The PC renders are `tests/host/render <module> <out.wav> 40` (`make render`). Session pt-mame3 predates the
 lateness counters; pt-mame3 and pt-mame4 predate the status line in the log.

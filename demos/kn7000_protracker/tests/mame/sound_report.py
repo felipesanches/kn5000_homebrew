@@ -4,7 +4,8 @@
 #
 # sound_report.py SOUND.WAV [EVENTS.TXT] -- is ProTracker heard in the MAME session's sound (run_pt.sh's -wavwrite)?
 # Prints each second's level (RMS of both channels, dBFS) and its peak; with events.txt (pt_test.lua), from the RUN on,
-# and marks the seconds the script pressed something in. "silent" is below -60 dBFS. The last line counts the seconds
+# and marks the seconds the script pressed something in. "silent" is below -85 dBFS, the WAV's last few steps (the
+# DSP_GAIN of 2 plays modules at about -70 dBFS in MAME; it was -60 while the gain was 128). The last line counts the seconds
 # from RUN + 15 s (the loader, the menu and the first module's samples) to the end, and how many of them are silent.
 import struct
 import sys
@@ -39,7 +40,7 @@ for s in range(int(run_at), n // rate):
     rms = math.sqrt(sum(v * v for v in seg) / len(seg))
     peak = max(abs(v) for v in seg)
     db = 20 * math.log10(rms / 32768) if rms > 0 else -120.0
-    quiet = db < -60
+    quiet = db < -85
     if s >= run_at + 15:
         silent += quiet
         loud += not quiet
