@@ -169,12 +169,15 @@ static void led_service(void) {
  * also decodes the panel, so the wait ends as soon as the panel's receive ring holds bytes the main task has not
  * decoded (PanelFrameDecode, 0x484ACF04: 0x5C bytes at 0x5006BDB0, u16 read and write indexes at 0x5006BDAC and
  * 0x5006BDAE), when the game task wants a file or has ended, or after REST_MS. It sleeps on the kernel's dly_tsk,
- * REST_TICKS at a time, so the other tasks run meanwhile. Program 893 only. */
+ * REST_TICKS at a time, so the other tasks run meanwhile. A raw read (a part of a file) asked for meanwhile is served at
+ * once and the wait goes on: Doom reads its WAD in hundreds of small pieces, and a converter call each cost 30 ms in
+ * MAME. Program 893 only. */
 #define REST_MS 100
 #define REST_TICKS 2
 #define PANEL_RX_RD 0x5006BDACu
 #define PANEL_RX_WR 0x5006BDAEu
 u32 rest_calls, rest_early;  /* calls that waited; of them, those the panel or a file ended early */
+u32 rest_raw;                /* raw reads served during a wait (a converter call serves as many as come in REST_MS) */
 
 /* The TEMPO/PROGRAM wheel, for the game (PfHost::wheel). Each detent comes from the panel as a frame [0x17, step] (a
  * signed step) into the receive ring, and the firmware adds the step to the tempo (kn7000_mame notes,
@@ -272,6 +275,12 @@ static void rest(void) {
   ++rest_calls;
   const u32 t0 = now_ms();
   while (now_ms() - t0 < REST_MS) {
+    if (file_raw_pending()) {  /* a part of a file (Doom's WAD): read now, not a converter call later */
+      file_serve();
+      ++rest_raw;
+      scan_whole();
+      continue;
+    }
     if (*(volatile u16*)PANEL_RX_RD != *(volatile u16*)PANEL_RX_WR || file_pending() || bank_want >= 0 || task_done ||
         quit_req) {
       ++rest_early;

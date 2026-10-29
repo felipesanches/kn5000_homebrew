@@ -10,7 +10,7 @@
 #   * the published overlay emulator (EMU, default ~/compartilhado/kn7000-emulator), -bios v13 (program 893, the
 #     owner's; BIOS=v16 for 941), the owner's loader floppy as released, the script as -autoboot_script; the sound to
 #     OUT/sound.wav.
-# OUT is scratch (~/compartilhado/tmp/..., never /tmp); the card and floppy copies are deleted afterwards (KEEP_SD=1
+# MAKEVARS: variables for make (WAD_CACHE=0 ...). OUT is scratch (~/compartilhado/tmp/..., never /tmp); the card and floppy copies are deleted afterwards (KEEP_SD=1
 # keeps the card). The builds' symbols go to OUT/syms.txt for the script.
 set -uo pipefail
 EXTRA="${EXTRA:-}"
@@ -23,7 +23,7 @@ FLOPPY="$KN7/tools/cnv_romdump/releases/2026-10-19/floppy/kn7load_floppy.img"
 LUA="$(realpath "${2:-$HERE/doom_test.lua}")"
 BIOS="${BIOS:-v13}"
 O="$(mkdir -p "$1" && cd "$1" && pwd)"
-make -s -C "$DOOM" card-dir tests/mame/offsets.txt > "$O/build.log" 2>&1 || { cat "$O/build.log"; exit 1; }
+make -s -C "$DOOM" card-dir tests/mame/offsets.txt ${MAKEVARS:-} > "$O/build.log" 2>&1 || { cat "$O/build.log"; exit 1; }
 make -s -C "$MENU" OUT="$O/menu" > "$O/menu.log" 2>&1 || { cat "$O/menu.log"; exit 1; }
 NM=~/compartilhado/tools/mn10300-elf-kn7000/bin/mn10300-elf-nm
 { "$NM" "$DOOM/build/app/kn7app.elf"; "$NM" "$DOOM/build/doom/doom.elf"; } > "$O/syms.txt"

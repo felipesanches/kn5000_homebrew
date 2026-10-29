@@ -1,0 +1,10 @@
+# WAD read cache A/B in MAME (program 893), DOOM_PLAY=1: tests/mame/run_doom.sh with MAKEVARS=WAD_CACHE=N
+## WAD_CACHE=0
+  111.02 startup: 51.9 s from RUN; the WAD: 851 reads of it, 850 card reads, 2198 KB, 21077 ms
+  124.82 E1M1 loaded and running after 9.6 s; the WAD so far: 1175 reads of it, 1175 card reads, 3153 KB, 29727 ms
+## WAD_CACHE=32768
+  113.08 startup: 54.0 s from RUN; the WAD: 851 reads of it, 154 card reads, 4772 KB, 22986 ms
+  145.87 E1M1 loaded and running after 12.9 s; the WAD so far: 1216 reads of it, 288 card reads, 8992 KB, 43169 ms
+## WAD_CACHE=0, sprite headers only (W_ReadLumpStart), raw reads served in the converter's rest
+  106.17 startup: 47.1 s from RUN; the WAD: 851 reads of it, 850 card reads, 1396 KB, 16373 ms
+  119.82 E1M1 loaded and running after 9.4 s; the WAD so far: 1173 reads of it, 1173 card reads, 2333 KB, 24936 ms

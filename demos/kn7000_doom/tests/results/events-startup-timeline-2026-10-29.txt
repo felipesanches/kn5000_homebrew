@@ -1,0 +1,88 @@
+   57.43 menu: up, 1 programs, "Doom (Chocolate Doom)" at 0
+   59.08 RUN
+   71.68 log +12.6 s:                 
+   71.70 log +12.6 s:                        
+   71.72 log +12.6 s: M_LoadDefaults: Load system defaults.
+   71.75 log +12.7 s: saving config in ./default.cfg
+   71.90 log +12.8 s:  adding DOOM1.WAD
+   72.25 log +13.2 s: ==
+   72.27 log +13.2 s: ========================
+   72.28 log +13.2 s: ==================================
+   72.30 log +13.2 s: =========================================
+   72.32 log +13.2 s: ================================================
+   72.33 log +13.2 s: =====================================================
+   72.35 log +13.3 s: ========================================================
+   72.37 log +13.3 s: ============================================================
+   72.38 log +13.3 s: =================================================================
+   72.40 log +13.3 s: =====================================================================
+   72.42 log +13.3 s: =========================================================================
+   72.43 log +13.3 s:       
+   72.45 log +13.4 s:                      
+   72.47 log +13.4 s:                             DOOM Shareware
+   72.48 log +13.4 s: ====================
+   72.50 log +13.4 s: ===============================
+   72.52 log +13.4 s: =======================================
+   72.53 log +13.4 s: ==============================================
+   72.55 log +13.5 s: ===================================================
+   72.57 log +13.5 s: ======================================================
+   72.58 log +13.5 s: ===========================================================
+   72.60 log +13.5 s: ===============================================================
+   72.62 log +13.5 s: ====================================================================
+   72.63 log +13.5 s: ========================================================================
+   72.65 log +13.6 s: ===========================================================================
+   72.67 log +13.6 s:  License.  There is NO warranty; not even for MERCHANTABILITY or FITNESS
+   72.68 log +13.6 s:  copies under certain conditions. See the source for more information.
+   72.70 log +13.6 s: =======================
+   72.72 log +13.6 s: =================================
+   72.73 log +13.6 s: =========================================
+   72.75 log +13.7 s: ===============================================
+   72.77 log +13.7 s: ====================================================
+   72.78 log +13.7 s: =======================================================
+   72.80 log +13.7 s: ============================================================
+   72.82 log +13.7 s: ================================================================
+   72.83 log +13.7 s: =====================================================================
+   72.85 log +13.8 s: =========================================================================
+   72.87 log +13.8 s: ===========================================================================
+   72.88 log +13.8 s: M_SetMusicPackDir: SDL_GetPrefPath failed, music pack directory not set
+   72.90 log +13.8 s: NET_Init: Init network subsystem.
+   73.95 log +14.9 s: M_Init: Init miscellaneous info.
+   74.08 log +15.0 s: R_Init: Init DOOM refresh daemon - 
+   74.17 log +15.1 s: R_Init: Init DOOM refresh daemon - [      
+   74.18 log +15.1 s: R_Init: Init DOOM refresh daemon - [         
+   74.20 log +15.1 s: R_Init: Init DOOM refresh daemon - [              
+   74.22 log +15.1 s: R_Init: Init DOOM refresh daemon - [                   
+   74.23 log +15.1 s: R_Init: Init DOOM refresh daemon - [                   ]
+   74.30 log +15.2 s: R_Init: Init DOOM refresh daemon - [                   ].
+   74.32 log +15.2 s: R_Init: Init DOOM refresh daemon - [                   ]..
+   80.05 log +21.0 s: R_Init: Init DOOM refresh daemon - [                   ]....
+   80.07 log +21.0 s: R_Init: Init DOOM refresh daemon - [                   ].....
+   80.72 log +21.6 s: R_Init: Init DOOM refresh daemon - [                   ]......
+   81.38 log +22.3 s: R_Init: Init DOOM refresh daemon - [                   ].......
+   82.18 log +23.1 s: R_Init: Init DOOM refresh daemon - [                   ]........
+   83.00 log +23.9 s: R_Init: Init DOOM refresh daemon - [                   ].........
+   83.80 log +24.7 s: R_Init: Init DOOM refresh daemon - [                   ]..........
+   84.63 log +25.5 s: R_Init: Init DOOM refresh daemon - [                   ]...........
+   85.28 log +26.2 s: R_Init: Init DOOM refresh daemon - [                   ]............
+   85.73 log +26.6 s: R_Init: Init DOOM refresh daemon - [                   ].............
+   85.80 log +26.7 s: R_Init: Init DOOM refresh daemon - [                   ].................
+   85.82 log +26.7 s: R_Init: Init DOOM refresh daemon - [                   ]...................
+   85.98 log +26.9 s: P_Init: Init Playloop state.
+   86.32 log +27.2 s: S_Init: Setting up sound.
+   86.45 log +27.4 s: I_InitSound: the sound effects into the DSP
+   89.57 log +30.5 s: I_InitSound: the sound effects into the DSP.
+   91.73 log +32.6 s: I_InitSound: the sound effects into the DSP..
+   92.67 log +33.6 s: I_InitSound: the sound effects into the DSP...
+   95.18 log +36.1 s: I_InitSound: the sound effects into the DSP....
+   99.45 log +40.4 s: I_InitSound: the sound effects into the DSP.....
+  101.93 log +42.8 s: I_InitSound: the sound effects into the DSP......
+  103.05 log +44.0 s: I_InitSound: the sound effects into the DSP...... 521 KB
+  103.20 log +44.1 s: D_CheckNetGame: Checking network game status.
+  103.35 log +44.3 s: startskill 2  deathmatch: 0  startmap: 1  startepisode: 1
+  103.50 log +44.4 s: player 1 of 1 (1 nodes)
+  103.65 log +44.6 s: Emulating the behavior of the 'Doom 1.9' executable.
+  103.78 log +44.7 s: HU_Init: Setting up heads up display.
+  104.65 log +45.6 s: ST_Init: Init status bar.
+  106.17 text "DOOM: HOLD EXIT TO QUIT"; gametic 0 gamestate 3 demo 0 E0M0; frames 0 (0.0/s); log "ST_Init: Init status bar."
+  108.18 EXIT held
+  110.70 ended true; borrow_bad 0; foreign accesses 0; text "DOOM: HOLD EXIT TO QUIT"; gametic 95 gamestate 3 demo 0 E0M0; frames 32 (7.1/s); log "ST_Init: Init status bar."
+  113.72 end

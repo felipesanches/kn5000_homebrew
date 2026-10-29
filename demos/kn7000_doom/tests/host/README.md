@@ -11,6 +11,9 @@ the KN7000's sizes. No window, no sound; the PC's files.
 | `sweep.sh`     | the smallest zone (KB, to 16) each demo and each E1 map runs in       | `sweep.sh DOOM1.WAD ~/compartilhado/tmp/doom-sweep demo1 demo2 demo3 map1 ... map9`                                 |
 | `zone_tags.py` | what the zone holds at its fullest, by tag (static, level, cache ...) | `DOOM_ZONE_DUMP=dump.txt DOOM_FRAMES=600 build/host/doom -iwad DOOM1.WAD -nosound -warp 1 6; zone_tags.py dump.txt` |
 
+`DOOM_HASHES=FILE` writes a hash of every frame (FNV-1a of its colours), one line a frame: two builds are compared
+with `cmp` on the files of the same `-timedemo` (`tests/results/frames-partial-reads-2026-10-29.txt`).
+
 `host.c`'s settings: `DOOM_ZONE_KB` (default 16384), `DOOM_ZONE_PIECES` (the zone in that many pieces with 4 KB gaps,
 as the KN7000's is in several regions), `DOOM_FRAMES` (end after that many frames, printing the zone's high-water mark
 of blocks that cannot be purged and malloc's use), `DOOM_PPM` (a folder: every `DOOM_PPM_EVERY`-th frame as a PPM) and

@@ -8,7 +8,8 @@
 --     a snapshot every $DOOM_SNAP seconds (default 5);
 --   * after $DOOM_SECONDS (default 120) EXIT held 2 s; then the converter's end (request 0xFE) and KN7APP's check of
 --     the borrowed RAM (borrow.c: borrow_bad 0 when its copy in display memory came back as it went).
--- DOOM_PLAY=1, once the title screen is up: MENU (Esc), C5 three times (New Game, the episode, the skill), and once
+-- DOOM_PLAY=1, once the title screen is up: MENU (Esc), C5 three times (New Game, the episode, the skill: each until
+-- the menu it leads to is up, as the attract loop may be loading a demo's map meanwhile), and once
 -- E1M1 runs: G#4 held (forward), F4 held (turn left), C5 three times (fire), C6 (the fist), E5 twice (the automap),
 -- each CHECKed against DOOM.BIN's memory (the player's position, angle, bullets and weapon: tests/mame/offsets.txt),
 -- a snapshot after each.
@@ -137,6 +138,14 @@ local co = coroutine.create(function()
     press("CPL_SEG0", ({ 0x02, 0x08, 0x20, 0x01, 0x04 })[idx % 5 + 1]); wait(1)
     press("CPR_SEG5", 0x01)                             -- RUN
     E("RUN")
+    runAt = now()
+    -- the startup log, line by line as it comes, until the title screen (gamestate 3) or a demo
+    local seen = ""
+    while now() - runAt < 300 and u32("_gamestate") ~= 3 and u32("_demoplayback") ~= 1 do
+      local l = logLast()
+      if l ~= seen and l ~= "" then E("log +%.1f s: %s", now() - runAt, l); seen = l end
+      coroutine.yield()
+    end
     if os.getenv("DOOM_KEYSCAN") == "1" then           -- which keys reach KN7APP's notes[] (held 1 s each)
       wait_until(function() return u32("_gamestate") == 3 or u32("_demoplayback") == 1 end, 300)
       for _, n in ipairs({ 48, 55, 56, 59, 60, 62, 64, 65, 67, 68, 69, 71, 72, 74, 76, 79, 84, 88, 95 }) do
@@ -148,16 +157,28 @@ local co = coroutine.create(function()
     end
     if os.getenv("DOOM_PLAY") == "1" then
       CHECK("the title screen", wait_until(function() return u32("_gamestate") == 3 or u32("_demoplayback") == 1 end, 300), state())
+      E("startup: %.1f s from RUN; the WAD: %d reads of it, %d card reads, %d KB, %d ms", now() - runAt, u32("_kn7WadCalls"),
+        u32("_kn7WadReads"), u32("_kn7WadBytes") // 1024, u32("_kn7WadMs"))
       wait(2)
       press("CPL_SEG0", 0x02)                           -- LCDL 1: MENU
       CHECK("MENU: the menu is up", wait_until(function() return u32("_menuactive") == 1 end, 10))
       M.video:snapshot()
-      for _, what in ipairs({ "New Game", "the episode", "the skill" }) do key(72); wait(1); E("C5: %s", what) end
-      CHECK("E1M1 starts", wait_until(function() return u32("_gamestate") == 0 and u32("_demoplayback") == 0 and
-        u32("_gamemap") == 1 and u32("_menuactive") == 0 end, 60), state())
+      local function menu_is(name) return u32("_currentMenu") == SYM[name] end
+      local function step(what, done)                   -- C5 until it took, three times at most
+        for _ = 1, 3 do
+          key(72)
+          if wait_until(done, 15) then E("C5: %s", what); return true end
+        end
+        return false
+      end
+      CHECK("C5: New Game (the episode menu)", step("New Game", function() return menu_is("_EpiDef") end))
+      CHECK("C5: the episode (the skill menu)", step("the episode", function() return menu_is("_NewDef") end))
+      CHECK("E1M1 starts", step("the skill", function() return u32("_gamestate") == 0 and u32("_demoplayback") == 0 and
+        u32("_gamemap") == 1 and u32("_menuactive") == 0 end), state())
       local loading, tic0 = now(), u32("_gametic")       -- (gamestate is GS_LEVEL from before P_SetupLevel reads the map)
       CHECK("E1M1 runs", wait_until(function() return u32("_gametic") >= tic0 + 35 end, 120), state())
-      E("E1M1 loaded and running after %.1f s", now() - loading)
+      E("E1M1 loaded and running after %.1f s; the WAD so far: %d reads of it, %d card reads, %d KB, %d ms", now() - loading,
+        u32("_kn7WadCalls"), u32("_kn7WadReads"), u32("_kn7WadBytes") // 1024, u32("_kn7WadMs"))
       wait(1)
       M.video:snapshot()
       local p0 = player()

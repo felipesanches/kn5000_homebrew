@@ -662,7 +662,14 @@ void R_InitSpriteLumps (void)
 	if (!(i&63))
 	    printf (".");
 
+#ifdef CHOCO_KN7
+	// (the header only: w_part_kn7.c)
+	patch_t header;
+	W_ReadLumpStart(firstspritelump+i, &header, 8);
+	patch = &header;
+#else
 	patch = W_CacheLumpNum (firstspritelump+i, PU_CACHE);
+#endif
 	spritewidth[i] = SHORT(patch->width)<<FRACBITS;
 	spriteoffset[i] = SHORT(patch->leftoffset)<<FRACBITS;
 	spritetopoffset[i] = SHORT(patch->topoffset)<<FRACBITS;

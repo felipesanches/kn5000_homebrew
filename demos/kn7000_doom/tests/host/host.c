@@ -4,7 +4,8 @@
  * host.c -- Chocolate Doom's platform (i_video, i_input, i_joystick, i_timer, the zone's RAM) on the PC, without a
  * window or sound: the port's game code run as a 32-bit program, to measure what it needs of the KN7000 (tests/host/
  * README.md). The screen goes to PPM files when DOOM_PPM is set (every DOOM_PPM_EVERY-th frame, default 35); the zone's
- * size is DOOM_ZONE_KB (default 16384), in DOOM_ZONE_PIECES; DOOM_FRAMES ends it after that many frames. */
+ * size is DOOM_ZONE_KB (default 16384), in DOOM_ZONE_PIECES; DOOM_FRAMES ends it after that many frames; DOOM_HASHES
+ * names a file that gets a hash of every frame (tests/host/README.md). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,6 +107,22 @@ void I_FinishUpdate(void)
                 fwrite(palette + screen[i] * 3, 1, 3, f);
             fclose(f);
         }
+    }
+    static FILE *hashes;
+    static int hashesOpen;
+    if (!hashesOpen)
+    {
+        hashesOpen = 1;
+        if (getenv("DOOM_HASHES"))
+            hashes = fopen(getenv("DOOM_HASHES"), "w");
+    }
+    if (hashes)  /* FNV-1a of the frame's colours, one line a frame */
+    {
+        unsigned h = 2166136261u;
+        for (int i = 0; i < SCREENWIDTH * SCREENHEIGHT; i++)
+            for (int c = 0; c < 3; c++)
+                h = (h ^ palette[screen[i] * 3 + c]) * 16777619u;
+        fprintf(hashes, "%u %08x\n", frames, h);
     }
     frames++;
     zoneWatch();

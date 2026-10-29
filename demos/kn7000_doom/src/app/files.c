@@ -83,8 +83,9 @@ s32 file_read_now(const char* name, void* dst, u32 max) {
   return total;
 }
 
-/* A request waits for the entry. */
+/* A request waits for the entry; a raw one (a part of a file). */
 int file_pending(void) { return req.pending != 0; }
+int file_raw_pending(void) { return req.pending != 0 && req.write >= 3; }
 
 /* The entry: serves the pending request, if there is one; 1 when it did. */
 int file_serve(void) {

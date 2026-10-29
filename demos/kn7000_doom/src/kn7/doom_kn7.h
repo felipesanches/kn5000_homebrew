@@ -16,3 +16,6 @@ typedef struct kn7_region
 
 /* The zone's stretches of RAM, in address order, *count of them (z_zone.c Z_Init). */
 const kn7_region_t *I_ZoneRegions(int *count);
+
+/* The first `bytes` of lump `lump` into dest (w_part_kn7.c; r_data.c's sprite sizes). */
+void W_ReadLumpStart(int lump, void *dest, int bytes);

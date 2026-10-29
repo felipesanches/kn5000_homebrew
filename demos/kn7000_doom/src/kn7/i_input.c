@@ -12,7 +12,8 @@
  *     ENTER, YES, NO, MAP; right PAUSE, VIEW - and VIEW + (the view's size), GAMMA (F11), QUIT (F10). EXIT pressed is
  *     Esc too (held, KN7APP ends the program); PAGE UP and DOWN the view's size or, on the automap, its zoom; START/STOP
  *     Enter.
- * A key goes down when the first of its controls does and up when the last one is let go. */
+ * A key goes down when the first of its controls does and up when the last one is let go; a keybed key struck since the
+ * last poll counts as down at this one (PfHost::noteOns), so a tap shorter than a frame still reaches the game. */
 #include <string.h>
 
 #include "kn7doom.h"
@@ -77,6 +78,7 @@ const char *const kn7SoftLabels[2][5] = {{"MENU", "ENTER", "YES", "NO", "MAP"},
                                          {"PAUSE", "VIEW -", "VIEW +", "GAMMA", "QUIT"}};
 
 static int noteSent[NNOTES], panelSent[NPANEL], pedalSent;  /* the key each control sent as it went down, or 0 */
+static u8 noteTapped[NNOTES];  /* struck since the last poll: down for this poll even if let go already */
 static u8 held[256];                                         /* how many controls hold each key down */
 
 static void post(evtype_t type, int key)
@@ -114,8 +116,18 @@ void kn7InputPoll(void)
 {
     host->panelScan();
     host->pollNotes();
+    /* a key struck and let go between two polls (a frame can take 100 ms) is still a press: down for one poll */
+    u8 on[16], vel[16];
+    const u32 ons = host->noteOns(on, vel, sizeof on);
+    for (u32 k = 0; k < ons; ++k)
+        for (u32 i = 0; i < NNOTES; ++i)
+            if (noteKeys[i].note == on[k])
+                noteTapped[i] = 1;
     for (u32 i = 0; i < NNOTES; ++i)
-        control(host->notes[noteKeys[i].note] != 0, noteKeys[i].key, &noteSent[i]);
+    {
+        control(host->notes[noteKeys[i].note] != 0 || noteTapped[i], noteKeys[i].key, &noteSent[i]);
+        noteTapped[i] = 0;
+    }
     for (u32 i = 0; i < NPANEL; ++i)
     {
         const u32 b = panelKeys[i].button;

@@ -1,0 +1,7 @@
+# Every frame of the shareware demos (-timedemo, host build, FNV-1a of each frame's colours: tests/host/host.c DOOM_HASHES)
+# A: unchanged r_data.c, 16 MB zone. B: R_InitSpriteLumps reads 8-byte headers only (W_ReadLumpStart). C: unchanged, 1100 KB zone in 5 pieces.
+demo1: 5065 frames; A vs B differ in 3 frames
+demo2: 3875 frames; A vs B differ in 6 frames
+demo3: 2173 frames; A vs B differ in 2 frames
+demo3: A vs C differ in 4 frames (Chocolate Doom's own output moves with the zone's layout; why, not pinned down)
+# R_GenerateLookup reading only patch headers and column offsets (dropped): frames 35, 70, 140, 175, 210 ... of demo1 differed (38 pixels in columns 135 and 185 of frame 35)

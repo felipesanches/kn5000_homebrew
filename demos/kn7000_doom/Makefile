@@ -24,6 +24,9 @@ PYTHON  ?= python3
 WAD     ?= $(HOME)/compartilhado/Doom/DOOM1.WAD
 # the DSP mixer's output gain (tools/build/dsp_c.py), as ProTracker's
 DSP_GAIN ?= 2
+# the WAD's read cache in bytes (src/kn7/w_file_kn7.c), 0 for none: in MAME it read twice the bytes and was slower
+# (tests/results/wad-cache-ab-2026-10-29.txt)
+WAD_CACHE ?= 0
 
 CFLAGS_COMMON := -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Isrc/common
 
@@ -36,10 +39,10 @@ APP_OBJ := $(APP_C:src/app/%.c=$(OUT)/app/%.o) $(OUT)/app/glue.o $(OUT)/app/font
 # ---- DOOM.BIN: Chocolate Doom (src/choco/) and the KN7000 side (src/kn7/) ----
 CHOCO_C := $(filter-out src/choco/w_file_stdc.c src/choco/midifile.c src/choco/mus2mid.c,$(wildcard src/choco/*.c)) \
            $(filter-out src/choco/doom/doom_icon.c,$(wildcard src/choco/doom/*.c))
-KN7_C   := src/kn7/main.c src/kn7/i_video.c src/kn7/i_timer.c src/kn7/i_input.c src/kn7/w_file_kn7.c \
+KN7_C   := src/kn7/main.c src/kn7/i_video.c src/kn7/i_timer.c src/kn7/i_input.c src/kn7/w_file_kn7.c src/kn7/w_part_kn7.c \
            src/kn7/i_sound_kn7.c src/kn7/bank.c src/kn7/net_none.c src/kn7/left_out.c src/kn7/fmt.c
 DOOM_INC := -include src/kn7/doom_kn7.h -Isrc/kn7 -Isrc/kn7/shim -Isrc/choco -Isrc/choco/doom
-DOOM_CFLAGS := $(CFLAGS_COMMON) -std=gnu11 -fno-strict-aliasing $(DOOM_INC) \
+DOOM_CFLAGS := $(CFLAGS_COMMON) -std=gnu11 -fno-strict-aliasing $(DOOM_INC) -DWAD_CACHE=$(WAD_CACHE) \
                -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers
 DOOM_OBJ := $(CHOCO_C:src/%.c=$(OUT)/doom/%.o) $(KN7_C:src/%.c=$(OUT)/doom/%.o)
 DOOM_HDR := $(wildcard src/choco/*.h src/choco/doom/*.h src/kn7/*.h src/kn7/shim/*.h src/common/*.h)
@@ -87,6 +90,12 @@ $(OUT)/doom/%.o: src/%.c $(DOOM_HDR)
 	@mkdir -p $(dir $@)
 	$(CROSS)gcc $(DOOM_CFLAGS) -c $< -o $@
 
+# rebuilt when WAD_CACHE changes (a stamp rewritten only then)
+$(OUT)/doom/kn7/w_file_kn7.o: $(OUT)/doom/wad_cache
+$(OUT)/doom/wad_cache: FORCE
+	@mkdir -p $(dir $@)
+	@echo $(WAD_CACHE) | cmp -s - $@ || echo $(WAD_CACHE) > $@
+
 # ProTracker's bank.c, unchanged: its encoder only (BANK_HOST_TEST leaves its ProTracker part out)
 $(OUT)/doom/kn7/bank.o: src/kn7/bank.c
 	@mkdir -p $(dir $@)
@@ -129,7 +138,7 @@ mame-media: card-dir
 # the same game code on the PC (tests/host/README.md): 32-bit, as the KN7000's, with the PC's files
 HOST_C := $(filter-out src/choco/midifile.c src/choco/mus2mid.c,$(wildcard src/choco/*.c)) \
           $(filter-out src/choco/doom/doom_icon.c,$(wildcard src/choco/doom/*.c)) \
-          src/kn7/net_none.c src/kn7/left_out.c src/kn7/i_sound_kn7.c src/kn7/bank.c tests/host/host.c
+          src/kn7/net_none.c src/kn7/left_out.c src/kn7/i_sound_kn7.c src/kn7/bank.c src/kn7/w_part_kn7.c tests/host/host.c
 host: $(OUT)/host/doom
 $(OUT)/host/doom: $(HOST_C) $(DOOM_HDR)
 	@mkdir -p $(dir $@)

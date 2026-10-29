@@ -56,6 +56,7 @@ void keys_sync(void);
 s32 file_load(const char* name, const PfPiece* pieces, u32 count);  /* game task: waits */
 int file_serve(void);                                               /* entry: 1 when it did a request */
 int file_pending(void);                                             /* entry: a request waits */
+int file_raw_pending(void);                                         /* entry: a raw read waits */
 s32 file_save(const char* name, const void* data, u32 bytes);       /* game task: waits */
 s32 file_list(PfFile* files, u32 max);                               /* game task: waits */
 s32 file_raw_open(const char* name, PfRawFile* f);                   /* game task: waits */
