@@ -7,8 +7,43 @@ loader (`KN7LOAD.CNV`, STYLE CONVERT) from the program menu's folder `DOOM\` on 
 ## Status (2026-10-29)
 
 In MAME (program 893) it starts from the program menu, prints Chocolate Doom's startup log on the LCD, shows the title
-screen and plays the demos (`tests/results/`); holding EXIT ends it and gives the instrument back. There is no input
-yet (the panel and the keybed come next), no sound, and it has not run on the instrument.
+screen and plays the demos; a game is started and played from the keybed and the panel (walk, turn, fire, weapons,
+the automap: `tests/mame/doom_test.lua`, 11 checks), with its sound effects on the effects DSP. Holding EXIT ends it and
+gives the instrument back, its borrowed RAM as it was. Not yet: the music, saving games and settings, and a run on the
+instrument itself.
+
+## Playing it
+
+On the instrument: DISK MENU, STYLE CONVERT, OK (the loader floppy), and in the program menu's Games folder,
+"Doom (Chocolate Doom)". The start takes about 50 s (in MAME): the startup log shows what is being done. The title
+screen and the demos follow, as on a PC.
+
+| control                           | what it does                                  |
+|-----------------------------------|-----------------------------------------------|
+| keybed G#4                        | forward                                       |
+| keybed G4                         | back                                          |
+| keybed F4, A4                     | turn left, turn right                         |
+| keybed F#4, A#4                   | strafe left, strafe right                     |
+| keybed E4 (held)                  | run                                           |
+| keybed C5                         | fire; in the menus, choose                    |
+| keybed D5                         | use (doors, switches, lifts)                  |
+| keybed E5                         | the automap                                   |
+| keybed C6 D6 E6 F6 G6 A6 B6       | weapons 1 to 7                                |
+| sustain pedal                     | fire                                          |
+| soft keys left: MENU              | Esc: the menu (EXIT pressed does it too)      |
+| ENTER, YES, NO                    | Enter, y, n: the menus and their questions    |
+| MAP                               | the automap                                   |
+| soft keys right: PAUSE            | pause                                         |
+| VIEW -, VIEW + (and PAGE DOWN/UP) | the view's size (a smaller view draws faster) |
+| GAMMA                             | brighter or darker (F11)                      |
+| QUIT                              | Doom's quit question (YES ends it)            |
+| EXIT held 1.5 s                   | ends it at once and gives the instrument back |
+
+The keys a game uses lie above C4 because the keybed's keys below the split point are the arranger's chord keys,
+which the firmware sends nowhere a program can read. While Doom runs, the keybed plays no sound of its own.
+
+The frame rate shows at the bottom left. If it stops: the startup log's last line (or the blue crash screen, which
+names the program counter) says where.
 
 ## Building
 
@@ -28,7 +63,8 @@ Two programs, as ProTracker and Pinball Fantasies have them (`src/common/pfhost.
   It finds the firmware's routines, starts a task for the program, serves its file reads, keeps the firmware from
   drawing, and hands the panel's switches over.
 - **`DOOM.BIN`, Chocolate Doom** (`src/choco/`, its sources unchanged but for a few lines behind `CHOCO_KN7`;
-  `src/kn7/`, what takes SDL's place): the LCD, the timer, the WAD, the C library's files and formatted I/O.
+  `src/kn7/`, what takes SDL's place): the LCD, the timer, the input, the sound, the WAD, the C library's files and
+  formatted I/O.
 
 **Memory.** Doom wants about 1.7 MB: an image of 356 KB, 317 KB of static data, a zone of up to 953 KB for the
 shareware maps (E1M6, `tests/results/zone-minimum-host-2026-10-29.txt`) and 50 KB of heap. A program has 1.3 MB of
@@ -47,4 +83,14 @@ raw sector read (`src/app/folder.c`): the firmware's file routines read a file f
 
 **The screen.** The LCD is set to 8 bits a pixel through its look-up table, which holds Doom's palette (4 bits a
 colour). Doom's 320 x 200 frame is in the middle of the 640 x 240 LCD, its lines shown as 240 as Chocolate Doom's aspect
-ratio correction does; a line goes to the LCD only when it changed.
+ratio correction does; a line goes to the LCD only when it changed. The columns either side carry the soft keys'
+labels and the frame rate.
+
+**The input** (`src/kn7/i_input.c`). The keybed's notes come from the firmware's MIDI rings (KN7APP's notes.c, as
+Another World and ProTracker read them); a key struck and let go between two frames still counts. The panel's switches
+come from the panel's receive ring before the firmware decodes them (program 893), so the firmware does not act on
+them.
+
+**The sound** (`src/kn7/i_sound_kn7.c`). At start the WAD's sound effects (534 KB, 11,025 samples a second) go into the
+effects DSP's SDRAM, coded as Another World's mixer decodes them (ProTracker's `bank.c`); each of Doom's eight channels
+is a voice of that mixer. The mixer is mono, so a sound's left-right separation is not heard.
