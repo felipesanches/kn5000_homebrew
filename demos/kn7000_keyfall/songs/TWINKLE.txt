@@ -1,0 +1,22 @@
+# Twinkle, Twinkle, Little Star: the French melody "Ah ! vous dirai-je, maman" (18th century), traditional, public
+# domain. The arrangement (the chords of the left hand) is this game's. Written for tools/songs/mksong.py.
+title: Twinkle Twinkle Little Star
+composer: Traditional (French, 18th century)
+tempo: 96
+time: 4/4
+
+track: Right hand
+channel: 1
+program: 0
+C4 C4 G4 G4 | A4 A4 G4/2 | F4 F4 E4 E4 | D4 D4 C4/2 |
+G4 G4 F4 F4 | E4 E4 D4/2 | G4 G4 F4 F4 | E4 E4 D4/2 |
+C4 C4 G4 G4 | A4 A4 G4/2 | F4 F4 E4 E4 | D4 D4 C4/2 |
+
+track: Left hand
+channel: 2
+program: 0
+vel: 70
+len: /2
+[C3 G3] [C3 G3] | [F3 A3] [C3 G3] | [F3 A3] [C3 G3] | [G2 F3] [C3 E3] |
+[C3 G3] [F3 A3] | [C3 G3] [G2 F3] | [C3 G3] [F3 A3] | [C3 G3] [G2 F3] |
+[C3 G3] [C3 G3] | [F3 A3] [C3 G3] | [F3 A3] [C3 G3] | [G2 F3] [C3 E3] |

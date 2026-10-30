@@ -1,0 +1,42 @@
+# Ode to Joy: the theme of the last movement of Ludwig van Beethoven's Symphony No. 9 (1824), public domain, here in
+# G major. The arrangement (bass, strings, drums) is this game's. Written for tools/songs/mksong.py.
+title: Ode to Joy
+composer: Ludwig van Beethoven (1824)
+tempo: 100
+time: 4/4
+
+track: Right hand
+channel: 1
+program: 0
+B4 B4 C5 D5 | D5 C5 B4 A4 | G4 G4 A4 B4 | B4/4. A4/8 A4/2 |
+B4 B4 C5 D5 | D5 C5 B4 A4 | G4 G4 A4 B4 | A4/4. G4/8 G4/2 |
+A4 A4 B4 G4 | A4 B4/8 C5/8 B4 G4 | A4 B4/8 C5/8 B4 A4 | G4 A4 D4/2 |
+B4 B4 C5 D5 | D5 C5 B4 A4 | G4 G4 A4 B4 | A4/4. G4/8 G4/2 |
+
+track: Bass
+channel: 3
+program: 32
+vel: 80
+len: /2
+G2 D3 | D2 D3 | G2 D3 | D2 D3 |
+G2 D3 | D2 D3 | G2 B2 | D2 G2 |
+D2 G2 | D2 G2 | D2 G2 | A2 D2 |
+G2 D3 | D2 D3 | G2 B2 | D2 G2 |
+
+track: Strings
+channel: 4
+program: 48
+vel: 55
+len: /1
+[G3 B3 D4] | [F#3 A3 D4] | [G3 B3 D4] | [F#3 A3 D4] |
+[G3 B3 D4] | [F#3 A3 D4] | [G3 B3 D4] | [F#3 A3 D4]/2 [G3 B3 D4]/2 |
+[F#3 A3 D4]/2 [G3 B3 D4]/2 | [F#3 A3 D4]/2 [G3 B3 D4]/2 | [F#3 A3 D4]/2 [G3 B3 E4]/2 | [E3 A3 C#4]/2 [F#3 A3 D4]/2 |
+[G3 B3 D4] | [F#3 A3 D4] | [G3 B3 D4] | [F#3 A3 D4]/2 [G3 B3 D4]/2 |
+
+track: Drums
+channel: 10
+program: 0
+vel: 60
+len: /8
+( [36 42] 42 [38 42] 42 [36 42] 42 [38 42] 42 | )*15
+[36 42] 42 [38 42] 42 [36 49]/2 |

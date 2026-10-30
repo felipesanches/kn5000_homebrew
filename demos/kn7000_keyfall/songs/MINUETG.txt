@@ -1,0 +1,25 @@
+# Minuet in G major, BWV Anh. 114, by Christian Petzold (from the 1725 Notebook for Anna Magdalena Bach), public
+# domain: its first part (bars 1-16), the right hand after Petzold, the left hand a simple one of this game's. Written
+# for tools/songs/mksong.py.
+title: Minuet in G
+composer: Christian Petzold (c. 1725)
+tempo: 112
+time: 3/4
+
+track: Right hand
+channel: 1
+program: 0
+len: /8
+D5/4 G4 A4 B4 C5 | D5/4 G4/4 G4/4 | E5/4 C5 D5 E5 F#5 | G5/4 G4/4 G4/4 |
+C5/4 D5 C5 B4 A4 | B4/4 C5 B4 A4 G4 | F#4/4 G4 A4 B4 G4 | A4/2. |
+D5/4 G4 A4 B4 C5 | D5/4 G4/4 G4/4 | E5/4 C5 D5 E5 F#5 | G5/4 G4/4 G4/4 |
+C5/4 D5 C5 B4 A4 | B4/4 C5 B4 A4 G4 | A4/4 B4 A4 G4 F#4 | G4/2. |
+
+track: Left hand
+channel: 2
+program: 0
+vel: 72
+[G3 B3]/2 A3/4 | B3/2. | C4/2. | B3/2. |
+A3/2. | G3/2. | D4/2 B3/4 | D4/4 D3/4 F#3/4 |
+[G3 B3]/2 A3/4 | B3/2. | C4/2. | B3/2. |
+A3/2. | G3/2. | D4/4 D3/4 F#3/4 | G3/2. |
