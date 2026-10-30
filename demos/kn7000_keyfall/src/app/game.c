@@ -72,6 +72,7 @@ static PfHost host = {
     .diagSave = diag_save,
     .keyEvents = key_events,
     .midiIn = midi_in,
+    .panelLatch = panel_latch,
 };
 
 static u32 crc32(const u8* p, u32 n) {

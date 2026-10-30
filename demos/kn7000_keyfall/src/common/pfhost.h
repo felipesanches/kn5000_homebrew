@@ -157,6 +157,10 @@ typedef struct PfHost {
    * all: 0, or 1 when the ring lacks room (try again later). At the end KN7APP sends Reset All Controllers and All Notes
    * Off on every channel the program sent anything on. */
   int (*midiIn)(const u8* msg, u32 n);
+  /* ABI 15: the switches that went down since the program last cleared their bits here (laid out as `panel`): a press
+   * let go again before the program looked at `panel` still shows. The program clears the bits it has taken; KN7APP only
+   * sets them, on the firmware's main task, which never runs halfway through the program task's read and clear. */
+  volatile u8* panelLatch;
 } PfHost;
 
 /* The header at the start of the program's file, which is read to `base` (ABI 13: PT.BIN was read to GAME_BASE; DOOM.BIN

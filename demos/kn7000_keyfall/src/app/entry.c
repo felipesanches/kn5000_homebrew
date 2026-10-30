@@ -127,7 +127,9 @@ static void led_service(void) {
  * REST_TICKS at a time, so the other tasks run meanwhile. A raw read (a part of a file) asked for meanwhile is served at
  * once and the wait goes on: Doom reads its WAD in hundreds of small pieces, and a converter call each cost 30 ms in
  * MAME. Program 893 only. */
+#ifndef REST_MS
 #define REST_MS 100
+#endif
 #define REST_TICKS 2
 #define PANEL_RX_RD 0x5006BDACu
 #define PANEL_RX_WR 0x5006BDAEu
@@ -194,6 +196,9 @@ static int undone_frame(u32 at) {
  * switches the program takes (panel_take, PfHost::panelTake; until it names them, every switch but CONTRAST UP and DOWN):
  * to the firmware those never change, and the others act as ever. Program 893 only, as the wheel. */
 u8 panel_real[0x40];
+/* ABI 15: every switch that went down since the program last cleared its bit (PfHost::panelLatch): a press and its
+ * release between two looks of the program, while it waits for a file, still count */
+u8 panel_latch[0x40];
 static u8 taken[0x40];
 static int taken_set;
 
@@ -216,7 +221,11 @@ void wheel_scan(void) {
     for (u32 i = 0; i < sizeof panel_real; ++i) panel_real[i] = RD8(fw.panel + i);
   }
   if (fw.build != 893) {  /* (no scan: the firmware's own bitmap, unfiltered) */
-    for (u32 i = 0; i < sizeof panel_real; ++i) panel_real[i] = RD8(fw.panel + i);
+    for (u32 i = 0; i < sizeof panel_real; ++i) {
+      const u8 now = RD8(fw.panel + i);
+      panel_latch[i] |= (u8)(now & ~panel_real[i]);
+      panel_real[i] = now;
+    }
     return;
   }
   const u32 rd = *(volatile u16*)PANEL_RX_RD, wr = *(volatile u16*)PANEL_RX_WR;
@@ -234,6 +243,7 @@ void wheel_scan(void) {
     if (addr != 0x17 && type == 0 && (bank == 0 || bank == 0xC0)) {  /* a switch frame (types 0 and 1: bit 3 the segment's) */
       const u32 idx = (bank ? 0x30 : 0) + (addr & 0x0F);
       const u8 data = ring[next];
+      panel_latch[idx] |= (u8)(data & ~panel_real[idx]);
       panel_real[idx] = data;
       ++panel_frames;
       const u32 ahead = (wheel_at + PANEL_RING_LEN - rd) % PANEL_RING_LEN, filled = (wr + PANEL_RING_LEN - rd) % PANEL_RING_LEN;

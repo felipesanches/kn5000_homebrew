@@ -16,11 +16,13 @@ KN7     ?= $(HOME)/compartilhado/technics-roms-disasm/kn7000
 LOADER  := $(KN7)/tools/cnv_romdump
 OUT     ?= build
 PYTHON  ?= python3
+# how long KN7APP's converter calls rest before they hand the firmware's main task back (src/app/entry.c rest)
+REST_MS ?= 100
 
 CFLAGS_COMMON := -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Isrc/common
 
 # ---- KN7APP.BIN: the platform (the PDF viewer's, src/app/, ABI 15) ----
-APP_CFLAGS := $(CFLAGS_COMMON) -std=c11 -ffreestanding -Isrc/app
+APP_CFLAGS := $(CFLAGS_COMMON) -std=c11 -ffreestanding -Isrc/app -DREST_MS=$(REST_MS)
 APP_C   := $(addprefix src/app/,entry.c fwfind.c notes.c files.c task.c lcd.c game.c crash.c fwdraw.c folder.c diag.c)
 APP_OBJ := $(APP_C:src/app/%.c=$(OUT)/app/%.o) $(OUT)/app/glue.o $(OUT)/app/font8x13.o
 
@@ -41,6 +43,11 @@ $(OUT)/app/%.o: src/app/%.c src/app/app.h src/common/kn7.h src/common/pfhost.h
 
 # the build's name in the log (diag.c): git describe of the tree, rewritten only when it changes
 $(OUT)/app/entry.o $(OUT)/app/crash.o: $(OUT)/app/build_id.h
+# rebuilt when REST_MS changes (a stamp rewritten only then)
+$(OUT)/app/entry.o: $(OUT)/app/rest_ms
+$(OUT)/app/rest_ms: FORCE
+	@mkdir -p $(dir $@)
+	@echo $(REST_MS) | cmp -s - $@ || echo $(REST_MS) > $@
 $(OUT)/app/build_id.h: FORCE
 	@mkdir -p $(dir $@)
 	@echo '#define BUILD_ID "'"$$(git describe --always --dirty 2>/dev/null || echo unknown)"'"' | cmp -s - $@ || \

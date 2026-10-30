@@ -19,7 +19,6 @@ extern Judge play_judge;
 enum { K_L1, K_L2, K_L3, K_L4, K_L5, K_R1, K_R2, K_R3, K_R4, K_R5, K_EXIT, KEYS };
 static const u32 keyBit[KEYS] = {BTN_LCDL1, BTN_LCDL2, BTN_LCDL3, BTN_LCDL4, BTN_LCDL5, BTN_LCDR1,
                                  BTN_LCDR2, BTN_LCDR3, BTN_LCDR4, BTN_LCDR5, BTN_EXIT};
-static int keyWas[KEYS];
 static s32 wheelWas;
 
 static void take_keys(void) {
@@ -33,10 +32,13 @@ static void take_keys(void) {
 static u32 pressed(s32 *wheel) {
   host->panelScan();
   u32 p = 0;
-  for (int k = 0; k < KEYS; ++k) {
-    const int d = (host->panel[keyBit[k] >> 8] & (keyBit[k] & 0xFF)) != 0;
-    if (d && !keyWas[k]) p |= 1u << k;
-    keyWas[k] = d;
+  for (int k = 0; k < KEYS; ++k) {  /* (KN7APP's latch: a press let go while the game read a song counts too) */
+    const u32 seg = keyBit[k] >> 8;
+    const u8 bit = (u8)(keyBit[k] & 0xFF);
+    if (host->panelLatch[seg] & bit) {
+      p |= 1u << k;
+      host->panelLatch[seg] &= (u8)~bit;
+    }
   }
   const s32 w = *host->wheel;
   *wheel = w - wheelWas;
@@ -44,7 +46,7 @@ static u32 pressed(s32 *wheel) {
   return p;
 }
 
-static void keys_now(void) {  /* (the keys as they are: what is held now is no press later) */
+static void keys_now(void) {  /* (the presses so far forgotten: they belonged to the screen before) */
   s32 w;
   pressed(&w);
 }

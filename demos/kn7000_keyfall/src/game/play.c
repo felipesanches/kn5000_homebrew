@@ -29,6 +29,7 @@ extern const PfHost *host;
 #define KEY_Y HIT_Y
 #define BLACK_H 27
 #define MIN_NOTE_H 5
+#define NOTE_GAP 3
 #define HIT_FLASH_MS 160
 #define WRONG_FLASH_MS 220
 #define GUIDE_MS 300      /* a key is tinted this long before its next note */
@@ -221,7 +222,7 @@ static int max_i(int a, int b) { return a > b ? a : b; }
 /* the rows of note n at the clock: [*y0, *y1) inside the lanes, empty when *y0 >= *y1 */
 static void rows_of(const ChartNote *n, s32 clock, int *y0, int *y1) {
   const s32 yb = HIT_Y - (s32)((n->t - clock) * (s32)kf_speed / 1000);
-  s32 h = (s32)((s32)n->dur * (s32)kf_speed / 1000);
+  s32 h = (s32)((s32)n->dur * (s32)kf_speed / 1000) - NOTE_GAP;  /* (a gap: the same key struck again shows twice) */
   if (h < MIN_NOTE_H) h = MIN_NOTE_H;
   const s32 yt = yb - h;
   *y0 = yt < HWY_Y0 ? HWY_Y0 : yt > HIT_Y ? HIT_Y : (int)yt;
@@ -430,7 +431,8 @@ int play_run(Chart *c, int m, const char *title, Judge *j) {
   keyboard_all(now);
   const u16 chans = out_channels(c);
   s32 clock = chart_start();
-  u32 outAt = 0, last = now, exitWas = 1;
+  u32 outAt = 0, last = now;
+  host->panelLatch[BTN_EXIT >> 8] &= (u8) ~(BTN_EXIT & 0xFF);
   int aborted = 0;
   PfKeyEvent ev[32];
   kf_log("play: %u notes, keys %u-%u, %u messages on %u channels, mode %d, speed %u", nNotes, c->lo, c->hi, c->nOut,
@@ -484,12 +486,11 @@ int play_run(Chart *c, int m, const char *title, Judge *j) {
     ++play_frames;
     /* EXIT: the song stopped (held 1.5 s, KN7APP ends the program too) */
     host->panelScan();
-    const int exitNow = (host->panel[BTN_EXIT >> 8] & (BTN_EXIT & 0xFF)) != 0;
-    if (exitNow && !exitWas) {
+    if (host->panelLatch[BTN_EXIT >> 8] & (BTN_EXIT & 0xFF)) {
+      host->panelLatch[BTN_EXIT >> 8] &= (u8) ~(BTN_EXIT & 0xFF);
       aborted = 1;
       break;
     }
-    exitWas = exitNow;
     if (clock >= c->length + END_PAD_MS && outAt >= c->nOut && (mode != MODE_WAIT || j->first >= j->count)) break;
     host->yield(1);
   }

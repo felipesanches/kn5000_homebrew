@@ -114,6 +114,7 @@ extern char prefix[24];
 extern u32 calls;  /* converter calls so far */
 void wheel_led(int blink);  /* PfHost::wheelLed (entry.c) */
 extern u8 panel_real[0x40];
+extern u8 panel_latch[0x40];
 void wheel_scan(void);       /* PfHost::panelScan: the ring's frames, the switches and the wheel taken from the firmware */
 void panel_take(const u8* mask);  /* PfHost::panelTake: the switches taken from the firmware */
 extern volatile s32 wheel_steps;  /* the TEMPO/PROGRAM wheel's detents so far, signed (entry.c wheel_scan) */
