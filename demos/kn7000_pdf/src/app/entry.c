@@ -317,20 +317,30 @@ int cnv_entry(void) {
     case S_FIRST:
       lcdc_save();
       launch_folder();
+      diag("KN7APP.BIN (PDF viewer) starts; folder \"%s\"", prefix);
       state = S_SEARCH;
       progress("Looking for the firmware's routines...", 0, FW_STEPS);
       /* fall through */
     case S_SEARCH:
       if (fw_step((int)step)) {
+        diag("firmware search: step %u failed", step);
         fail("PDF VIEWER: UNKNOWN FIRMWARE, STEP ", (int)step);
         break;
       }
+      diag("firmware search: step %u found", step);
       progress("Looking for the firmware's routines...", ++step, FW_STEPS);
       if (step < FW_STEPS) break;
       notes_init();
       fw_find_dial();
+      diag("firmware: PROGRAM %u; open %08X read %08X close %08X write %08X raw %08X; cre %08X sta %08X dly %08X exd %08X",
+           fw.build, fw.open, fw.read, fw.close, fw.write, fw.raw, fw.cre, fw.sta, fw.dly, fw.exd);
+      diag("firmware: ms %08X panel %08X MIDI IN 1 %08X OUT 1 %08X dial %08X %08X", fw.ms, fw.panel, fw.midiIn1,
+           fw.midiOut1, fw.dial[0], fw.dial[1]);
       state = S_RUN;
-      if (task_start()) fail("PDF VIEWER: NO TASK SLOT", -1);
+      if (task_start()) {
+        diag("task: no slot");
+        fail("PDF VIEWER: NO TASK SLOT", -1);
+      }
       break;
     case S_RUN:
       wheel_scan();
@@ -347,6 +357,7 @@ int cnv_entry(void) {
   }
   if (state != S_FAILED) watch_exit();
   if (quit_req && task_done) {
+    diag("the end: converter calls %u", calls);
     led_want = 0;
     led_service();  /* the wheel's LED as the firmware had it */
     borrow_restore();  /* the firmware's frame buffers back, before its drawing is */

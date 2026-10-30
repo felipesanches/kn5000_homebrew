@@ -63,6 +63,11 @@ s32 file_raw_open(const char* name, PfRawFile* f);                   /* game tas
 s32 file_raw_read(const PfRawFile* f, u32 offset, void* dst, u32 bytes);  /* game task: waits */
 extern volatile u32 file_busy;  /* 1 while the firmware fills a buffer of ours */
 
+/* diag.c: the log saved as PDFLOG.TXT in the program's folder */
+void diag(const char* fmt, ...);
+void diag_line(const char* s);
+void diag_save(void);  /* program task only */
+
 /* borrow.c: the firmware's frame buffers lent to the program, their contents kept in display memory meanwhile */
 int borrow_regions(PfRegion* list, int room);
 void borrow_save(void);

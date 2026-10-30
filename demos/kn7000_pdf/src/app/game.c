@@ -70,6 +70,8 @@ static PfHost host = {
     .rawOpen = file_raw_open,
     .rawRead = file_raw_read,
     .panelTake = panel_take,
+    .diag = diag_line,
+    .diagSave = diag_save,
 };
 
 static u32 crc32(const u8* p, u32 n) {
@@ -140,15 +142,24 @@ static struct {
 
 static const char* load_program(void) {
   PfPiece piece = {&head, sizeof head};
-  if (file_load(PROGRAM_FILE, &piece, 1) < (s32)sizeof head.h) return "ITS PROGRAM (PDF.BIN) IS NOT ON THE CARD";
+  const s32 got = file_load(PROGRAM_FILE, &piece, 1);
+  diag("load: the header: %d bytes", got);
+  if (got < (s32)sizeof head.h) return "ITS PROGRAM (PDF.BIN) IS NOT ON THE CARD";
   const PfGameHeader* const hd = &head.h;
+  diag("load: magic %08X abi %u table %X size %u base %08X bss %08X-%08X entry %08X crc %08X segments %u", hd->magic,
+       hd->abi, hd->table, hd->size, hd->base, hd->bssLo, hd->bssHi, (u32)hd->entry, hd->crc, hd->reserved[0]);
   if (hd->magic != PFGAME_MAGIC || hd->abi != PFHOST_ABI || hd->table != PDF_PROGRAM) return "PDF.BIN IS NOT THIS BUILD'S";
   const u32 nseg = hd->reserved[0];
+  for (u32 i = 0; i < nseg && i < PF_MAX_SEGMENTS; ++i)
+    diag("load: segment %u: %u bytes at %08X, crc %08X", i, head.seg[i].bytes, head.seg[i].addr, head.seg[i].crc);
   if (nseg > PF_MAX_SEGMENTS || hd->size < sizeof head || !in_region(hd->base, hd->base + hd->size) ||
       !in_region(hd->bssLo, hd->bssHi))
     return "PDF.BIN IS DAMAGED (SIZE)";
   for (u32 i = 0; i < nseg; ++i)
     if (!in_region(head.seg[i].addr, head.seg[i].addr + head.seg[i].bytes)) return "PDF.BIN DOES NOT FIT THIS FIRMWARE";
+  diag("load: the whole file, %u bytes", hd->size + (nseg ? head.seg[0].bytes : 0) + (nseg > 1 ? head.seg[1].bytes : 0) +
+       (nseg > 2 ? head.seg[2].bytes : 0));
+  diag_save();  /* (before the long read: if it never returns, the log says so) */
   PfPiece pieces[1 + PF_MAX_SEGMENTS];
   u32 total = hd->size;
   pieces[0] = (PfPiece){(void*)hd->base, hd->size};
@@ -156,14 +167,22 @@ static const char* load_program(void) {
     pieces[1 + i] = (PfPiece){(void*)head.seg[i].addr, head.seg[i].bytes};
     total += head.seg[i].bytes;
   }
-  if (file_load(PROGRAM_FILE, pieces, 1 + nseg) != (s32)total) return "PDF.BIN IS DAMAGED (SIZE)";
+  const s32 read = file_load(PROGRAM_FILE, pieces, 1 + nseg);
+  diag("load: %d of %u bytes read", read, total);
+  if (read != (s32)total) return "PDF.BIN IS DAMAGED (SIZE)";
   const PfGameHeader* h = (const PfGameHeader*)hd->base;
-  if (crc32((const u8*)h + 0x40, h->size - 0x40) != h->crc) return "PDF.BIN IS DAMAGED (CRC)";
+  const u32 crc = crc32((const u8*)h + 0x40, h->size - 0x40);
+  diag("load: the main image's crc %08X, the header says %08X", crc, h->crc);
+  if (crc != h->crc) return "PDF.BIN IS DAMAGED (CRC)";
   const PfSegment* seg = (const PfSegment*)(hd->base + 0x40);
-  for (u32 i = 0; i < nseg; ++i)
-    if (crc32((const u8*)seg[i].addr, seg[i].bytes) != seg[i].crc) return "PDF.BIN IS DAMAGED (SEGMENT CRC)";
+  for (u32 i = 0; i < nseg; ++i) {
+    const u32 c = crc32((const u8*)seg[i].addr, seg[i].bytes);
+    diag("load: segment %u's crc %08X, the table says %08X", i, c, seg[i].crc);
+    if (c != seg[i].crc) return "PDF.BIN IS DAMAGED (SEGMENT CRC)";
+  }
   for (u32 a = h->bssLo; a < h->bssHi; a += 4) *(volatile u32*)a = 0;
   caches_sync();
+  diag("load: bss cleared, caches synced, %u constructors", (h->initHi - h->initLo) / 4);
   for (u32 a = h->initLo; a < h->initHi; a += 4) (*(void (**)(void))a)();
   return 0;
 }
@@ -173,6 +192,7 @@ void game_task(void) {
   host.panel = panel_real;  /* (entry.c: the switches the firmware no longer sees) */
   host.msCounter = fw.ms;
   regions_make();
+  for (const PfRegion* r = regions; r->hi; ++r) diag("region %08X-%08X (%u KB)", r->lo, r->hi, (r->hi - r->lo) / 1024);
   crash_arm();
   fwdraw_settle();  /* (the firmware's last copy to the LCD, before ours) */
   set_status("HOLD EXIT TO QUIT");
@@ -180,8 +200,12 @@ void game_task(void) {
   lcd_text("PDF VIEWER", 280, 100, WHITE, 0);
   lcd_text("Loading...", 280, 120, GREY, 0);
   borrow_save();  /* (the firmware drew last before fwdraw_settle returned) */
+  diag("borrowed RAM saved");
+  diag_save();
   const char* why = load_program();
   if (why) {
+    diag("load FAILED: %s", why);
+    diag_save();
     int n = 0;
     while (why[n]) ++n;
     lcd_text(why, (FB_W - 8 * n) / 2, 140, RED, 0);
@@ -190,7 +214,11 @@ void game_task(void) {
     for (;;) task_yield(50);
   }
   const PfGameHeader* h = (const PfGameHeader*)head.h.base;
+  diag("PDF.BIN loaded: its entry %08X", (u32)h->entry);
+  diag_save();
   h->entry(&host);
+  diag("PDF.BIN returned");
+  diag_save();
   wheel_led(0);
   lcdc_restore();
   keys_sound(1);

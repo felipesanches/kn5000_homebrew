@@ -136,6 +136,10 @@ typedef struct PfHost {
    * sees change; every other switch acts as the firmware makes it act, and reads in `panel` as ever. Until the program
    * calls this, it takes them all (but CONTRAST UP and DOWN). Program 893 only, as panelScan. */
   void (*panelTake)(const u8* mask);
+  /* ABI 14: a line into KN7APP's log (no newline), and the log saved on the card as PDFLOG.TXT in the program's folder
+   * (waits for the converter entry, as save does) */
+  void (*diag)(const char* line);
+  void (*diagSave)(void);
 } PfHost;
 
 /* The header at the start of the program's file, which is read to `base` (ABI 13: PT.BIN was read to GAME_BASE; DOOM.BIN

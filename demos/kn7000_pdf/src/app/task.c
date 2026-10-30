@@ -38,6 +38,7 @@ int task_start(void) {
     if (fw_call(fw.cre, id, 0, (u32)&ctsk, 0) == 0 ||
         (ctsk.itskpri = TASK_PRI_ALSO, fw_call(fw.cre, id, 0, (u32)&ctsk, 0) == 0)) {
       task_pri = ctsk.itskpri;
+      diag("task: id %u priority %u, stack %u bytes", id, task_pri, (u32)TASK_STACK);
       task_id = id;
       task_done = 0;
       fw_call(fw.sta, id, 0, 0, 0);

@@ -268,9 +268,12 @@ static int drawPage(int n) {
   status(t);
   ViewStats st = {0};
   const u32 t0 = host->ms();
+  printf("drawing page %d\n", n + 1);
+  host->diagSave();
   const int h = view_draw(n, FB_W, PAGE_ROWS, BAND_ROWS, band, NULL, &st);
   if (h < 0) {
     printf("page %d: %s\n", n + 1, view_error());
+    host->diagSave();
     status("This page cannot be drawn: see the log (L5)");
     return -1;
   }
@@ -285,6 +288,7 @@ static int drawPage(int n) {
   snprintf(t, sizeof t, "%s  page %d of %d%s", docName, n + 1, pages,
            st.incomplete ? "  (memory ran short: it may lack something)" : "");
   status(t);
+  host->diagSave();
   return 0;
 }
 
@@ -317,9 +321,14 @@ static void showLog(void) {
 static void viewDoc(const PfFile *f) {
   snprintf(docName, sizeof docName, "%s", f->name);
   status("Opening...");
+  printf("opening %s\n", f->name);
+  host->diagSave();
   pages = view_open(f->name);
+  printf("%s: %d pages\n", f->name, pages);
+  host->diagSave();
   if (pages <= 0) {
     printf("%s: %s\n", f->name, pages < 0 ? view_error() : "no pages");
+    host->diagSave();
     status("This file cannot be opened: see the log (L5)");
     for (;;) {
       s32 w;
@@ -392,9 +401,13 @@ int viewer_main(void) {
     printf("%s\n", view_error());
     return 1;
   }
+  printf("MuPDF's context made\n");
   extern const char *fontfile_dir;
   fontfile_dir = "";  /* (the folder: KN7APP puts it in front of every name) */
   listFiles();
+  printf("%d PDF files listed\n", nFiles);
+  for (int i = 0; i < nFiles; ++i) printf("  %s %lu bytes\n", files[i].name, (unsigned long)files[i].bytes);
+  host->diagSave();
   own();
   int sel = 0, first = 0;
   for (;;) {

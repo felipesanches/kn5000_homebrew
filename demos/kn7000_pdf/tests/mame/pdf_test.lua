@@ -215,10 +215,10 @@ local co = coroutine.create(function()
       string.format("%d of %d late, %d taken back", u32("_wheel_late"), u32("_wheel_frames"), u32("_wheel_undone")))
     wait(1)
     snap("page 2")
-    E("PAGE UP")
+    local shown = s32("_pageNo")                        -- (the wheel may have gone on past page 2's end too)
+    E("PAGE UP on page %d", shown + 1)
     press("CPC_SEG11", 0x10)                            -- PAGE UP: the page before
-    E("PAGE UP pressed: %s", state())
-    CHECK("PAGE UP: the page before", wait_until(function() return s32("_pageNo") == 0 end, 600), state())
+    CHECK("PAGE UP: the page before", wait_until(function() return s32("_pageNo") == shown - 1 end, 600), state())
     wait(1)
     snap("page 1 again")
   end

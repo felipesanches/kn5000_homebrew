@@ -58,7 +58,7 @@ all: $(OUT)/KN7APP.BIN $(OUT)/PDF.BIN
 # ---- KN7APP.BIN: the platform (Doom's, src/app/) ----
 CFLAGS_COMMON := -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Isrc/common
 APP_CFLAGS := $(CFLAGS_COMMON) -std=c11 -ffreestanding -Isrc/app
-APP_C   := $(addprefix src/app/,entry.c fwfind.c notes.c files.c task.c lcd.c game.c crash.c fwdraw.c folder.c borrow.c)
+APP_C   := $(addprefix src/app/,entry.c fwfind.c notes.c files.c task.c lcd.c game.c crash.c fwdraw.c folder.c borrow.c diag.c)
 APP_OBJ := $(APP_C:src/app/%.c=$(OUT)/app/%.o) $(OUT)/app/glue.o $(OUT)/app/font8x13.o
 
 $(OUT)/app/%.o: src/app/%.c src/app/app.h src/common/kn7.h src/common/pfhost.h

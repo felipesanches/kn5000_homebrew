@@ -316,6 +316,7 @@ void kn7LogShow(int on) {
 
 static void logChar(char c) {
   if (logRows == 0) logRows = 1;
+  if (c == '\n' && host->diag) host->diag(logLine[logRows - 1]);  /* (each line into KN7APP's log, PDFLOG.TXT) */
   if (c == '\n' || logCol >= LOG_COLS) {
     if (logShown) host->text(logLine[logRows - 1], 0, 1 + 13 * (logRows - 1), 0xFFFF, 0);
     if (logRows == LOG_ROWS) {
@@ -365,8 +366,17 @@ void _exit(int code) {
 
 int pdf_entry(const PfHost *h) {
   host = h;
+  host->diag("PDF.BIN: entry");
+  host->diagSave();
   memoryInit();
+  for (u32 i = 0; i < heap_regions; ++i) {
+    char t[64];
+    snprintf(t, sizeof t, "heap pool %u at %08lX", (unsigned)i, (unsigned long)pools[i]);
+    host->diag(t);
+  }
   if (setjmp(quitJmp) == 0) exitCode = viewer_main();
+  printf("viewer ended: code %d\n", exitCode);
+  host->diagSave();
   if (exitCode != 0) {
     kn7LogShow(1);
     host->status("PDF VIEWER STOPPED: HOLD EXIT");

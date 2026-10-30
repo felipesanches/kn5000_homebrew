@@ -55,7 +55,10 @@ static s32 read_into(u8* dst, u32 bytes) {
     total += got;
     if (dst) dst += got;
     bytes -= (u32)got;
-    if ((u32)got < n) break;  /* the end of the file */
+    if ((u32)got < n) {  /* the end of the file */
+      if (bytes) diag("read: %d of %u bytes at %d, %u more wanted: taken as the end", got, n, total - got, bytes);
+      break;
+    }
   }
   file_busy = 0;
   return total;
@@ -129,10 +132,14 @@ int file_serve(void) {
   fw_call(fw.setext, 1, 0, 0, 0);
   const s32 h = (s32)(int16_t)fw_call(fw.open, 0, 0, (u32)path, (u32) "rb");
   s32 total = -1;
+  diag("load %s: open -> %d, %u pieces", path, h, req.count);
   if (h >= 0) {
     total = 0;
     for (u32 i = 0; i < req.count; ++i) {
+      const u32 t0 = now_ms();
       const s32 got = read_into((u8*)req.pieces[i].dst, req.pieces[i].bytes);
+      diag("load: piece %u: %d of %u bytes to %08X, %u ms", i, got, req.pieces[i].bytes, (u32)req.pieces[i].dst,
+           now_ms() - t0);
       if (got < 0) {
         total = got;
         break;
