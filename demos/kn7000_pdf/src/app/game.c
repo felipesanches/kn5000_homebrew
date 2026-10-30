@@ -1,13 +1,13 @@
 /* (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
  * Licensed under the terms of the GNU General Public License v3 or later
  *
- * game.c -- the program task: DOOM.BIN (Chocolate Doom, src/choco/ and src/kn7/) read to where its header says (its
- * image in ARENA2, its bss at GAME_BASE: src/kn7/doom.ld), checked, started with a PfHost; when it returns, the
- * conversion ends. Holding EXIT ends everything as well (entry.c). The firmware draws nothing on the LCD meanwhile
- * (task.c, fwdraw.c). ProTracker's game.c (the Pinball port's, with its table menu and its card-file sample banks left
- * out), with the program read where its header says. */
+ * game.c -- the program task: PDF.BIN (the viewer: MuPDF, src/mupdf/, and src/kn7/) read to where its header says, its
+ * main image in ARENA2 and its segments in other regions (src/kn7/pdf.ld, pfhost.h PfSegment), checked, started with a
+ * PfHost; when it returns, the conversion ends. Holding EXIT ends everything as well (entry.c). The firmware draws
+ * nothing on the LCD meanwhile (task.c, fwdraw.c). Doom's game.c (ProTracker's, the Pinball port's), with the segments
+ * added and without the effects DSP and the firmware RAM Doom borrowed: the instrument plays on while the viewer runs,
+ * so its RAM stays its own. */
 #include "app.h"
-#include "dsp_mixer.h"
 
 extern const unsigned char font8x13[95][13];
 
@@ -15,11 +15,11 @@ extern const unsigned char font8x13[95][13];
 #define GREY RGB565(160, 160, 160)
 #define RED RGB565(255, 64, 64)
 
-#define PROGRAM_FILE "DOOM.BIN"
+#define PROGRAM_FILE "PDF.BIN"
 
-/* The RAM the program may use, its own image and bss included (it takes them out: src/kn7/main.c), and on programs 893
- * and 941 the firmware's RAM lent to it (borrow.c). ARENA3 is left out on program 942 (its SD plug-in lives there),
- * ARENA5-7 on all but 893 and 941. The list ends at the first {0, 0}. */
+/* The RAM the program may use, its own image, segments and bss included (it takes them out: src/kn7/main.c). ARENA3 is
+ * left out on program 942 (its SD plug-in lives there), ARENA5-7 on all but 893 and 941. The list ends at the first
+ * {0, 0}. */
 static PfRegion regions[24];
 
 static void regions_make(void) {
@@ -35,27 +35,10 @@ static void regions_make(void) {
     regions[n++] = (PfRegion){ARENA6_LO, ARENA6_HI};
     regions[n++] = (PfRegion){ARENA7_LO, ARENA7_HI};
   }
-  n += borrow_regions(regions + n, (int)(sizeof regions / sizeof *regions) - n - 1);
   regions[n] = (PfRegion){0, 0};
 }
 static u32 host_ms(void) { return now_ms(); }
 static void host_status(const char* s) { set_status(s); }
-static void host_dsp_set(u32 v, const PfVoice* p, u32 how) {
-  if (dsp.ready) dsp_set(v, p, how);
-}
-static void host_dsp_flush(void) {
-  if (dsp.ready) dsp_flush();
-}
-static void host_dsp_bank(u32 n, u32* base) {
-  (void)n;
-  *base = 0;
-}
-/* every voice silent (the program left) */
-static void dsp_silence(void) {
-  if (!dsp.ready) return;
-  for (u32 v = 0; v < 8; ++v) dsp_set(v, 0, 0);
-  dsp_flush();
-}
 
 static PfHost host = {
     .magic = PFHOST_MAGIC,
@@ -70,9 +53,6 @@ static PfHost host = {
     .regions = regions,
     .text = lcd_text,
     .fill = lcd_fill,
-    .dspBank = host_dsp_bank,
-    .dspSet = host_dsp_set,
-    .dspFlush = host_dsp_flush,
     .status = host_status,
     .keybedSound = keys_sound,
     .keybedSoundOn = keys_sound_on,
@@ -82,15 +62,13 @@ static PfHost host = {
     .lastTable = -1,
     .font = &font8x13[0][0],
     .wheelLed = wheel_led,
-    .dspSend = bank_send,
-    .dspBase = DSP_BANK,
-    .dspMaxWords = DSP_BANK_MAX,
     .panelScan = wheel_scan,
     .noteOns = notes_ons,
     .modWheel = &notes_mod_wheel,
     .list = file_list,
     .rawOpen = file_raw_open,
     .rawRead = file_raw_read,
+    .panelTake = panel_take,
 };
 
 static u32 crc32(const u8* p, u32 n) {
@@ -145,26 +123,44 @@ void caches_sync(void) {
   __asm__ volatile("mov %0,psw\n\tnop\n\tnop" ::"d"(psw) : "memory");
 }
 
-/* 1 when [lo, hi) lies in GAME_BASE..GAME_END or in ARENA2: where a program's image and bss may be. */
-static int in_program_area(u32 lo, u32 hi) {
-  return lo <= hi && ((lo >= GAME_BASE && hi <= GAME_END) || (lo >= ARENA2_LO && hi <= ARENA2_HI));
+/* 1 when [lo, hi) lies in one region (regions_make): where the program's image, segments and bss may be */
+static int in_region(u32 lo, u32 hi) {
+  for (const PfRegion* r = regions; r->hi; ++r)
+    if (lo <= hi && lo >= r->lo && hi <= r->hi) return 1;
+  return 0;
 }
 
-/* Reads DOOM.BIN where its header says and checks it; 0, or why not. */
-static PfGameHeader head;
+/* Reads PDF.BIN where its header says, its segments where the table after the header says, and checks them; 0, or why
+ * not. The file is read once, from its start: the header and the table first, to know where the rest goes. */
+static struct {
+  PfGameHeader h;
+  PfSegment seg[PF_MAX_SEGMENTS];
+} head;
 
 static const char* load_program(void) {
   PfPiece piece = {&head, sizeof head};
-  if (file_load(PROGRAM_FILE, &piece, 1) < (s32)sizeof head) return "ITS PROGRAM (DOOM.BIN) IS NOT ON THE CARD";
-  if (head.magic != PFGAME_MAGIC || head.abi != PFHOST_ABI || head.table != DOOM_PROGRAM)
-    return "DOOM.BIN IS NOT THIS BUILD'S";
-  if (head.size < sizeof head || !in_program_area(head.base, head.base + head.size) ||
-      !in_program_area(head.bssLo, head.bssHi) || (head.bssLo < head.base + head.size && head.bssHi > head.base))
-    return "DOOM.BIN IS DAMAGED (SIZE)";
-  piece = (PfPiece){(void*)head.base, head.size};
-  if (file_load(PROGRAM_FILE, &piece, 1) != (s32)head.size) return "DOOM.BIN IS DAMAGED (SIZE)";
-  const PfGameHeader* h = (const PfGameHeader*)head.base;
-  if (crc32((const u8*)h + 0x40, h->size - 0x40) != h->crc) return "DOOM.BIN IS DAMAGED (CRC)";
+  if (file_load(PROGRAM_FILE, &piece, 1) < (s32)sizeof head.h) return "ITS PROGRAM (PDF.BIN) IS NOT ON THE CARD";
+  const PfGameHeader* const hd = &head.h;
+  if (hd->magic != PFGAME_MAGIC || hd->abi != PFHOST_ABI || hd->table != PDF_PROGRAM) return "PDF.BIN IS NOT THIS BUILD'S";
+  const u32 nseg = hd->reserved[0];
+  if (nseg > PF_MAX_SEGMENTS || hd->size < sizeof head || !in_region(hd->base, hd->base + hd->size) ||
+      !in_region(hd->bssLo, hd->bssHi))
+    return "PDF.BIN IS DAMAGED (SIZE)";
+  for (u32 i = 0; i < nseg; ++i)
+    if (!in_region(head.seg[i].addr, head.seg[i].addr + head.seg[i].bytes)) return "PDF.BIN DOES NOT FIT THIS FIRMWARE";
+  PfPiece pieces[1 + PF_MAX_SEGMENTS];
+  u32 total = hd->size;
+  pieces[0] = (PfPiece){(void*)hd->base, hd->size};
+  for (u32 i = 0; i < nseg; ++i) {
+    pieces[1 + i] = (PfPiece){(void*)head.seg[i].addr, head.seg[i].bytes};
+    total += head.seg[i].bytes;
+  }
+  if (file_load(PROGRAM_FILE, pieces, 1 + nseg) != (s32)total) return "PDF.BIN IS DAMAGED (SIZE)";
+  const PfGameHeader* h = (const PfGameHeader*)hd->base;
+  if (crc32((const u8*)h + 0x40, h->size - 0x40) != h->crc) return "PDF.BIN IS DAMAGED (CRC)";
+  const PfSegment* seg = (const PfSegment*)(hd->base + 0x40);
+  for (u32 i = 0; i < nseg; ++i)
+    if (crc32((const u8*)seg[i].addr, seg[i].bytes) != seg[i].crc) return "PDF.BIN IS DAMAGED (SEGMENT CRC)";
   for (u32 a = h->bssLo; a < h->bssHi; a += 4) *(volatile u32*)a = 0;
   caches_sync();
   for (u32 a = h->initLo; a < h->initHi; a += 4) (*(void (**)(void))a)();
@@ -175,15 +171,13 @@ void game_task(void) {
   host.build = fw.build;
   host.panel = panel_real;  /* (entry.c: the switches the firmware no longer sees) */
   host.msCounter = fw.ms;
-  host.dspVoices = dsp.state == DS_IDLE || dsp.state == DS_READY ? 8 : 0;
   regions_make();
   crash_arm();
   fwdraw_settle();  /* (the firmware's last copy to the LCD, before ours) */
   set_status("HOLD EXIT TO QUIT");
   lcd_fill(0, 0, FB_W, FB_H, 0);
-  lcd_text("DOOM", 304, 100, WHITE, 0);
+  lcd_text("PDF VIEWER", 280, 100, WHITE, 0);
   lcd_text("Loading...", 280, 120, GREY, 0);
-  borrow_save();  /* (the firmware drew last before fwdraw_settle returned) */
   const char* why = load_program();
   if (why) {
     int n = 0;
@@ -193,11 +187,10 @@ void game_task(void) {
     set_status(why);
     for (;;) task_yield(50);
   }
-  const PfGameHeader* h = (const PfGameHeader*)head.base;
+  const PfGameHeader* h = (const PfGameHeader*)head.h.base;
   h->entry(&host);
   wheel_led(0);
   lcdc_restore();
-  dsp_silence();
   keys_sound(1);
   quit_req = 1;  /* the program left: the conversion ends (entry.c) */
   for (;;) task_yield(20);

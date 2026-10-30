@@ -3,8 +3,16 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_STROKER_H
+#ifdef KN7PDF
+#include FT_MODULE_H
+#endif
 
 #define MAX_BBOX_TABLE_SIZE 4096
+
+#ifdef KN7PDF
+void *(*fz_kn7_slow_malloc)(unsigned int size);
+void (*fz_kn7_slow_free)(void *p);
+#endif
 
 /* 20 degrees */
 #define SHEAR 0.36397f
@@ -116,6 +124,11 @@ fz_drop_font(fz_context *ctx, fz_font *font)
 	}
 
 	fz_free(ctx, font->ft_file);
+#ifdef KN7PDF
+	if (font->ft_data_slow)
+		fz_kn7_slow_free(font->ft_data);
+	else
+#endif
 	fz_free(ctx, font->ft_data);
 	fz_free(ctx, font->bbox_table);
 	fz_free(ctx, font->width_table);
@@ -199,6 +212,28 @@ char *ft_error_string(int err)
 	return "Unknown error";
 }
 
+#ifdef KN7PDF
+/* KN7PDF: FreeType's memory from MuPDF's allocator (as MuPDF's later ft_alloc): one heap on the KN7000, where an
+ * allocation FreeType cannot have makes MuPDF give back what its store holds first, as for its own; and counted on the
+ * PC (tests/host/). */
+static void *ft_alloc(FT_Memory memory, long size)
+{
+	return fz_malloc_no_throw((fz_context *)memory->user, (unsigned int)size);
+}
+
+static void ft_free(FT_Memory memory, void *block)
+{
+	fz_free((fz_context *)memory->user, block);
+}
+
+static void *ft_realloc(FT_Memory memory, long cur_size, long new_size, void *block)
+{
+	return fz_resize_array_no_throw((fz_context *)memory->user, block, 1, (unsigned int)new_size);
+}
+
+static struct FT_MemoryRec_ ft_memory;
+#endif
+
 static void
 fz_keep_freetype(fz_context *ctx)
 {
@@ -214,7 +249,17 @@ fz_keep_freetype(fz_context *ctx)
 		return;
 	}
 
+#ifdef KN7PDF
+	ft_memory.user = ctx;
+	ft_memory.alloc = ft_alloc;
+	ft_memory.free = ft_free;
+	ft_memory.realloc = ft_realloc;
+	fterr = FT_New_Library(&ft_memory, &fct->ftlib);
+	if (!fterr)
+		FT_Add_Default_Modules(fct->ftlib);
+#else
 	fterr = FT_Init_FreeType(&fct->ftlib);
+#endif
 	if (fterr)
 	{
 		char *mess = ft_error_string(fterr);
@@ -245,7 +290,11 @@ fz_drop_freetype(fz_context *ctx)
 	fz_lock(ctx, FZ_LOCK_FREETYPE);
 	if (--fct->ftlib_refs == 0)
 	{
+#ifdef KN7PDF
+		fterr = FT_Done_Library(fct->ftlib);
+#else
 		fterr = FT_Done_FreeType(fct->ftlib);
+#endif
 		if (fterr)
 			fz_warn(ctx, "freetype finalizing: %s", ft_error_string(fterr));
 		fct->ftlib = NULL;

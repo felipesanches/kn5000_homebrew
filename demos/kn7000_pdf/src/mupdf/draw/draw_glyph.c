@@ -2,7 +2,10 @@
 
 #define MAX_GLYPH_SIZE 256
 #ifdef KN7PDF
-#define MAX_CACHE_SIZE (128*1024)
+/* (and at most MAX_CACHE_GLYPHS glyphs: a small glyph's pixmap struct and its key outweigh its pixels, and the hash
+ * table, which never shrinks, stays at its first 509 entries below 80% full) */
+#define MAX_CACHE_SIZE (64*1024)
+#define MAX_CACHE_GLYPHS 400
 #else
 #define MAX_CACHE_SIZE (1024*1024)
 #endif
@@ -14,6 +17,9 @@ struct fz_glyph_cache_s
 	int refs;
 	fz_hash_table *hash;
 	int total;
+#ifdef KN7PDF
+	int count;
+#endif
 };
 
 struct fz_glyph_key_s
@@ -67,6 +73,9 @@ fz_evict_glyph_cache(fz_context *ctx)
 	}
 
 	cache->total = 0;
+#ifdef KN7PDF
+	cache->count = 0;
+#endif
 
 	fz_empty_hash(ctx, cache->hash);
 }
@@ -202,8 +211,14 @@ fz_render_glyph(fz_context *ctx, fz_font *font, int gid, fz_matrix ctm, fz_color
 	{
 		if (val->w < MAX_GLYPH_SIZE && val->h < MAX_GLYPH_SIZE)
 		{
+#ifdef KN7PDF
+			if (cache->total + val->w * val->h > MAX_CACHE_SIZE || cache->count >= MAX_CACHE_GLYPHS)
+				fz_evict_glyph_cache(ctx);
+			cache->count++;
+#else
 			if (cache->total + val->w * val->h > MAX_CACHE_SIZE)
 				fz_evict_glyph_cache(ctx);
+#endif
 			fz_try(ctx)
 			{
 				fz_pixmap *pix = fz_hash_insert(ctx, cache->hash, &key, val);

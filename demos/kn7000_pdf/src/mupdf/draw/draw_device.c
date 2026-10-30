@@ -107,6 +107,26 @@ push_stack(fz_draw_device *dev)
 	return state;
 }
 
+#ifdef KN7PDF
+/* KN7PDF: a level of the stack whose push ran out of memory before it made a picture of its own (dest still its
+ * parent's): the display list goes on past the error (dev_list.c) and pops it as if it were whole, which in MuPDF 1.1
+ * dropped the parent's picture (the page's band) and blended it onto itself. Its mask and shape, if it made them, are
+ * dropped here, and nothing is drawn; 1 when so. The pops reset each level to its parent's afterwards, so that a level
+ * is never dropped twice. (MuPDF's later draw device checks the same.) */
+static int
+kn7_unmade(fz_draw_device *dev, fz_draw_state *state)
+{
+	if (state[1].dest != state[0].dest)
+		return 0;
+	if (state[1].mask != state[0].mask)
+		fz_drop_pixmap(dev->ctx, state[1].mask);
+	if (state[1].shape != state[0].shape)
+		fz_drop_pixmap(dev->ctx, state[1].shape);
+	state[1] = state[0];
+	return 1;
+}
+#endif
+
 static fz_draw_state *
 fz_knockout_begin(fz_draw_device *dev)
 {
@@ -201,6 +221,10 @@ static void fz_knockout_end(fz_draw_device *dev)
 		printf(" (isolated)");
 	printf(" (knockout)");
 #endif
+#ifdef KN7PDF
+	if (kn7_unmade(dev, state))
+		return;
+#endif
 	if ((blendmode == 0) && (state[0].shape == state[1].shape))
 		fz_paint_pixmap(state[0].dest, state[1].dest, 255);
 	else
@@ -213,6 +237,9 @@ static void fz_knockout_end(fz_draw_device *dev)
 			fz_paint_pixmap(state[0].shape, state[1].shape, 255);
 		fz_drop_pixmap(dev->ctx, state[1].shape);
 	}
+#ifdef KN7PDF
+	state[1] = state[0];
+#endif
 #ifdef DUMP_GROUP_BLENDS
 	fz_dump_blend(dev->ctx, state[0].dest, " to get ");
 	if (state[0].shape)
@@ -1262,7 +1289,11 @@ fz_draw_pop_clip(fz_device *devp)
 	/* We can get here with state[1].mask == NULL if the clipping actually
 	 * resolved to a rectangle earlier.
 	 */
+#ifdef KN7PDF
+	if (state[1].mask && state[1].mask != state[0].mask && !kn7_unmade(dev, state))
+#else
 	if (state[1].mask)
+#endif
 	{
 #ifdef DUMP_GROUP_BLENDS
 		dump_spaces(dev->top, "");
@@ -1289,12 +1320,21 @@ fz_draw_pop_clip(fz_device *devp)
 		printf("\n");
 #endif
 	}
+#ifdef KN7PDF
+	else if (state[1].mask != state[0].mask)
+	{
+		fz_drop_pixmap(dev->ctx, state[1].mask);  /* (what a clip that ran out of memory made) */
+	}
+#endif
 	else
 	{
 #ifdef DUMP_GROUP_BLENDS
 		dump_spaces(dev->top, "Clip end\n");
 #endif
 	}
+#ifdef KN7PDF
+	state[1] = state[0];
+#endif
 }
 
 static void
@@ -1499,6 +1539,10 @@ fz_draw_end_group(fz_device *devp)
 	if (state[1].blendmode & FZ_BLEND_KNOCKOUT)
 		printf(" (knockout)");
 #endif
+#ifdef KN7PDF
+	if (kn7_unmade(dev, state))
+		goto unmade;
+#endif
 	if ((blendmode == 0) && (state[0].shape == state[1].shape))
 		fz_paint_pixmap(state[0].dest, state[1].dest, alpha * 255);
 	else
@@ -1516,6 +1560,10 @@ fz_draw_end_group(fz_device *devp)
 	if (state[0].shape)
 		fz_dump_blend(dev->ctx, state[0].shape, "/");
 	printf("\n");
+#endif
+#ifdef KN7PDF
+	state[1] = state[0];
+unmade:
 #endif
 
 	if (state[0].blendmode & FZ_BLEND_KNOCKOUT)
@@ -1597,6 +1645,10 @@ fz_draw_end_tile(fz_device *devp)
 	}
 
 	state = &dev->stack[--dev->top];
+#ifdef KN7PDF
+	if (kn7_unmade(dev, state))
+		return;
+#endif
 	xstep = state[1].xstep;
 	ystep = state[1].ystep;
 	area = state[1].area;
@@ -1645,7 +1697,13 @@ fz_draw_end_tile(fz_device *devp)
 	}
 
 	fz_drop_pixmap(dev->ctx, state[1].dest);
+#ifdef KN7PDF
+	if (state[1].shape != state[0].shape)
+#endif
 	fz_drop_pixmap(dev->ctx, state[1].shape);
+#ifdef KN7PDF
+	state[1] = state[0];
+#endif
 #ifdef DUMP_GROUP_BLENDS
 	fz_dump_blend(dev->ctx, state[0].dest, " to get ");
 	if (state[0].shape)

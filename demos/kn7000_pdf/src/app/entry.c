@@ -6,14 +6,12 @@
  * Each call does one step and returns. Every call but the last answers request 5, a short text, which parks
  * the firmware's user interface on the converter while the main task goes on decoding the panel and passing
  * the keybed's notes to MIDI OUT (Another World's port does the same: README-CNV.md, "How it works"):
- *   * the first calls find the firmware (fwfind.c), one step each, and the firmware's routines for the effects
- *     DSP (dsp.c); then the DSP gets the mixer, and the program task starts (game.c). Without the DSP the program
- *     goes on silent;
- *   * then each call serves the program task's file reads (files.c) and, when a module is loaded, sends its sample
- *     bank to the DSP, a slice of work a call (bank_send); and watches EXIT: held 1.5 s, the program task is asked to
- *     end at its next yield; once it has, the call answers 0xFE, which hands the instrument back (the firmware's
- *     message, then "Continue Next?": YES loads KN7APP.BIN afresh, NO leaves).
- * (The Pinball Fantasies port's entry.c, with its diagnostic builds and its card-file banks left out.) */
+ *   * the first calls find the firmware (fwfind.c), one step each; then the program task starts (game.c);
+ *   * then each call serves the program task's file reads (files.c); and watches EXIT: held 1.5 s, the program task is
+ *     asked to end at its next yield; once it has, the call answers 0xFE, which hands the instrument back (the
+ *     firmware's message, then "Continue Next?": YES loads KN7APP.BIN afresh, NO leaves).
+ * (Doom's entry.c, which is the Pinball Fantasies port's, without the effects DSP: the viewer leaves the instrument's
+ * sound alone; and with the switches the program takes named by it, PfHost::panelTake.) */
 #include "app.h"
 
 #define QUIT_HOLD_MS 1500
@@ -25,13 +23,13 @@ int cnv_entry(void);
 __attribute__((section(".header"), used)) static const struct {
   u32 magic, abi, size, entry, crc, base, pad[2];
   char name[32];
-} header = {APP_MAGIC, LOADER_ABI, 0, (u32)cnv_entry, 0, APP_BASE, {0, 0}, "DOOM"};
+} header = {APP_MAGIC, LOADER_ABI, 0, (u32)cnv_entry, 0, APP_BASE, {0, 0}, "PDF"};
 
-enum { S_FIRST, S_SEARCH, S_DSP, S_RUN, S_FAILED };
-static u32 state, step, part, fail_calls, exit_t0, ended;
+enum { S_FIRST, S_SEARCH, S_RUN, S_FAILED };
+static u32 state, step, fail_calls, exit_t0, ended;
 u32 calls;
 static char fail_text[40];
-static const char* status_text = "LOADING DOOM";
+static const char* status_text = "LOADING THE PDF VIEWER";
 char prefix[24];
 
 void set_status(const char* s) { status_text = s; }
@@ -59,58 +57,13 @@ static void progress(const char* what, u32 done, u32 of) {
   if (what != shown) {  /* (the LCD is slow: the text once) */
     shown = what;
     lcd_fill(0, 0, FB_W, FB_H, 0);
-    lcd_text("DOOM", 304, 100, 0xFFFF, 0);
+    lcd_text("PDF VIEWER", 280, 100, 0xFFFF, 0);
     int n = 0;
     while (what[n]) ++n;
     lcd_text(what, (FB_W - 8 * n) / 2, 120, RGB565(160, 160, 160), 0);
     lcd_fill(160, 140, 320, 4, RGB565(48, 48, 48));
   }
   lcd_fill(160, 140, (int)(320 * (unsigned long long)done / (of ? of : 1)), 4, 0xFFFF);
-}
-
-/* The sound, in two calls: the DSP's routines, then the mixer into the DSP (dsp_prepare). 2 while there is more; 0
- * when the DSP is ours; 1 without it. */
-static int dsp_start(u32 n) {
-  if (n == 0) {
-    dsp_find();
-    return 2;
-  }
-  return dsp_prepare();
-}
-
-/* A sample bank into the DSP, asked for on the game task (bank_send, PfHost::dspSend) and sent by the converter calls
- * (bank_serve). */
-static const u32* bank_rec;
-static u32 bank_bytes, bank_words, bank_sum, bank_id;
-static volatile s32 bank_want = -1, bank_result;
-static int bank_begun;
-
-/* On the game task: waits while the converter calls send the bank; 1 when it is there, else 2 (no sound). */
-int bank_send(const u32* rec, u32 bytes, u32 words, u32 sum, u32 id) {
-  if (dsp.state != DS_IDLE && dsp.state != DS_READY) return 2;
-  if (words > 0x30000u) return 2;  /* (dsp_mixer.BANK_MAX) */
-  bank_rec = rec, bank_bytes = bytes, bank_words = words, bank_sum = sum, bank_id = id;
-  bank_want = 1;
-  while (bank_want >= 0) task_yield(20);
-  return bank_result;
-}
-
-/* On a converter call: 1 when it did bank work. */
-static int bank_serve(void) {
-  if (bank_want < 0) return 0;
-  int r;
-  if (!bank_begun) {
-    bank_begun = 1;
-    r = dsp_bank_begin(bank_rec, bank_bytes, bank_words, bank_sum, bank_id);
-  } else {
-    r = dsp_bank_step();
-  }
-  if (r) {
-    bank_result = r;
-    bank_begun = 0;
-    bank_want = -1;
-  }
-  return 1;
 }
 
 /* EXIT held for QUIT_HOLD_MS: the game task is asked to end (the firmware ignores EXIT while we answer 5). */
@@ -193,18 +146,29 @@ u32 wheel_frames, wheel_late;  /* wheel frames seen; of them, those the firmware
 static u32 wheel_at;
 static int wheel_on;
 
-/* The panel's switches, kept from the firmware (ProTracker's PLAN-EDITING.md, "Risks"). A switch frame is [ADDR, DATA]:
+/* The panel's switches, some kept from the firmware (ProTracker's PLAN-EDITING.md, "Risks"). A switch frame is [ADDR, DATA]:
  * ADDR's bits 7-6 the bank (00 the CPR board, 11 the CPL and CPC boards), bits 3-0 the segment; DATA the segment's
  * switches, bit n switch n, 1 pressed, the whole segment each time; the firmware finds the presses by XOR with its own
  * copy (kn7000_mame notes/panel-serial-protocol.md, "Switch-report frame"). In MAME, while the converter ran, the
  * firmware still acted on some: R1/R2 OCTAVE moved the keybed's notes an octave, and PANEL MEMORY 1 recalled a
  * registration, which reloaded the effects DSP over the mixer (the sound stopped). So panel_scan keeps each segment's
  * DATA in panel_real (PfHost::panel: the program reads the switches there, laid out as the firmware's bitmap: CPR's
- * segments at 0-9, CPL's and CPC's at 0x30 + segment) and, in a frame the firmware has not decoded yet, clears every
- * switch but FW_KEEP's: to the firmware no switch changes. Program 893 only, as the wheel. */
-#define FW_KEEP_SEG (0x30 + 5)   /* CPC_SEG5 ... */
-#define FW_KEEP_BITS 0x0C        /* ... CONTRAST UP and DOWN stay the firmware's */
+ * segments at 0-9, CPL's and CPC's at 0x30 + segment) and, in a frame the firmware has not decoded yet, clears the
+ * switches the program takes (panel_take, PfHost::panelTake; until it names them, every switch but CONTRAST UP and DOWN):
+ * to the firmware those never change, and the others act as ever. Program 893 only, as the wheel. */
 u8 panel_real[0x40];
+static u8 taken[0x40];
+static int taken_set;
+
+void panel_take(const u8* mask) {
+  for (u32 i = 0; i < sizeof taken; ++i) taken[i] = mask[i];
+  taken_set = 1;
+}
+
+static u8 take_of(u32 idx) {
+  if (taken_set) return taken[idx];
+  return idx == 0x30 + 5 ? (u8)~0x0C : 0xFF;  /* (CPC_SEG5: CONTRAST UP and DOWN stay the firmware's) */
+}
 u32 panel_frames, panel_late;  /* switch frames seen; of them, those the firmware had decoded first */
 u8 panel_late_log[16];         /* the last 8 of those: ADDR, DATA (a press the firmware saw, or a harmless release) */
 static int panel_copied;
@@ -237,7 +201,7 @@ void wheel_scan(void) {
       ++panel_frames;
       const u32 ahead = (wheel_at + PANEL_RING_LEN - rd) % PANEL_RING_LEN, filled = (wr + PANEL_RING_LEN - rd) % PANEL_RING_LEN;
       if (ahead < filled) {
-        ring[next] = (u8)(idx == FW_KEEP_SEG ? data & FW_KEEP_BITS : 0);
+        ring[next] = (u8)(data & ~take_of(idx));
       } else {
         panel_late_log[(panel_late % 8) * 2] = addr;
         panel_late_log[(panel_late % 8) * 2 + 1] = data;
@@ -275,14 +239,13 @@ static void rest(void) {
   ++rest_calls;
   const u32 t0 = now_ms();
   while (now_ms() - t0 < REST_MS) {
-    if (file_raw_pending()) {  /* a part of a file (Doom's WAD): read now, not a converter call later */
+    if (file_raw_pending()) {  /* a part of a file (a PDF): read now, not a converter call later */
       file_serve();
       ++rest_raw;
       scan_whole();
       continue;
     }
-    if (*(volatile u16*)PANEL_RX_RD != *(volatile u16*)PANEL_RX_WR || file_pending() || bank_want >= 0 || task_done ||
-        quit_req) {
+    if (*(volatile u16*)PANEL_RX_RD != *(volatile u16*)PANEL_RX_WR || file_pending() || task_done || quit_req) {
       ++rest_early;
       break;
     }
@@ -308,7 +271,7 @@ int cnv_entry(void) {
     quit_req = 0;
     exit_t0 = 0;
     state = S_FIRST;
-    step = part = 0;
+    step = 0;
   }
   switch (state) {
     case S_FIRST:
@@ -319,27 +282,21 @@ int cnv_entry(void) {
       /* fall through */
     case S_SEARCH:
       if (fw_step((int)step)) {
-        fail("DOOM: UNKNOWN FIRMWARE, STEP ", (int)step);
+        fail("PDF VIEWER: UNKNOWN FIRMWARE, STEP ", (int)step);
         break;
       }
       progress("Looking for the firmware's routines...", ++step, FW_STEPS);
       if (step < FW_STEPS) break;
       notes_init();
       fw_find_dial();
-      state = S_DSP;
+      state = S_RUN;
+      if (task_start()) fail("PDF VIEWER: NO TASK SLOT", -1);
       break;
-    case S_DSP: {
-      const int r = dsp_start(part++);
-      if (r == 2) break;
-      state = S_RUN;  /* (r 1, no DSP: the game is silent; DSP.fail says why) */
-      if (task_start()) fail("DOOM: NO TASK SLOT", -1);
-      break;
-    }
     case S_RUN:
       wheel_scan();
       led_service();
-      if (!file_serve() && !bank_serve()) rest();
-      else scan_whole();  /* (a file or the bank took the call: the ring's frames before the main task's) */
+      if (!file_serve()) rest();
+      else scan_whole();  /* (a file took the call: the ring's frames before the main task's) */
       break;
     case S_FAILED:
       if (fw.panel ? button(BTN_EXIT) : ++fail_calls >= FAIL_CALLS) quit_req = 1;
@@ -349,11 +306,9 @@ int cnv_entry(void) {
   if (quit_req && task_done) {
     led_want = 0;
     led_service();  /* the wheel's LED as the firmware had it */
-    borrow_restore();  /* the firmware's RAM back, before its drawing is */
     crash_disarm();  /* the firmware's NMI stub back */
     fwdraw_unhook();  /* its screen procedure */
     lcdc_restore();  /* and its LCD start address */
-    dsp_quit();  /* the firmware's effects back first */
     *(volatile u8*)MAILBOX = RQ_END;
     ended = 1;
     return 0;

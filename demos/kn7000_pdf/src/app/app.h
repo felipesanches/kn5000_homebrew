@@ -63,13 +63,6 @@ s32 file_raw_open(const char* name, PfRawFile* f);                   /* game tas
 s32 file_raw_read(const PfRawFile* f, u32 offset, void* dst, u32 bytes);  /* game task: waits */
 extern volatile u32 file_busy;  /* 1 while the firmware fills a buffer of ours */
 
-/* borrow.c: firmware RAM lent to the program, its contents kept in display memory meanwhile */
-int borrow_regions(PfRegion* list, int room);
-void borrow_save(void);
-void borrow_restore(void);
-u32 borrow_bytes(void);
-extern u32 borrow_bad;
-
 /* folder.c: on the main task (the entry) */
 s32 folder_list(const char* path, PfFile* files, u32 max);
 s32 folder_open(const char* path, const char* name, PfRawFile* f);
@@ -101,10 +94,10 @@ extern u32 screen_proc_skipped;
 /* entry.c */
 extern char prefix[24];
 extern u32 calls;  /* converter calls so far */
-int bank_send(const u32* rec, u32 bytes, u32 words, u32 sum, u32 id);  /* game task: PfHost::dspSend */
 void wheel_led(int blink);  /* PfHost::wheelLed (entry.c) */
 extern u8 panel_real[0x40];
-void wheel_scan(void);       /* PfHost::panelScan: the ring's frames, the switches and the wheel taken from the firmware */  /* the switches as the panel reports them, kept from the firmware (entry.c panel_scan) */
+void wheel_scan(void);       /* PfHost::panelScan: the ring's frames, the switches and the wheel taken from the firmware */
+void panel_take(const u8* mask);  /* PfHost::panelTake: the switches taken from the firmware */
 extern volatile s32 wheel_steps;  /* the TEMPO/PROGRAM wheel's detents so far, signed (entry.c wheel_scan) */
 void set_status(const char* s);
 /* The diagnostic build (`make DIAG=1`, README.md "If it does not start"): the text the converter calls answer, which
@@ -115,34 +108,5 @@ void set_status(const char* s);
 #define DIAG_STATUS(s) ((void)0)
 #endif
 s32 file_read_now(const char* name, void* dst, u32 max);  /* files.c: on the main task (the entry), whole */
-
-/* dsp.c: the effects DSP (Another World's mixer) */
-#define DFB_WAIT 1
-#define DFB_REGS 2
-#define DFB_IDX 4
-#define DFB_DATA 8
-#define DFB_WRITE 0x10
-#define DFB_ALL 0x1F
-enum { DS_NONE, DS_BANK, DS_READY, DS_OFF, DS_IDLE };  /* DS_IDLE: the mixer hooked, no bank in hand */
-enum { DF_NOTFOUND = 1, DF_DEAD, DF_NOTDOWN, DF_STATE, DF_SLOT, DF_VERIFY, DF_HOOK, DF_FILE, DF_STALL, DF_RUNDEAD,
-       DF_WATCH, DF_RUNTIME, DF_SUM, DF_BANKTAB };
-typedef struct Dsp {
-  u32 found, dwait, regwr, regrd, idxwr, datard, datawr, dead, down;  /* the firmware's routines (dsp_find) */
-  u32 state, fail, ready, hooked, u9, sent;
-  u32 syscon, dmac0, iiep0, imep0, cep0, dmastat, slot0, slot9, hb0;
-  u32 want_words, want_sum, want_id;                           /* what dsp_bank_step brings into SDRAM, checked */
-  u32 rec_lo, rec_bytes, to_send;                              /* its coded blocks in RAM (and the words they fill) */
-  u32 ptr, len, done, stalls, buf, held, phase, t0, ms;        /* the bank's upload */
-  u32 pend, busy, flushes;                                     /* the voices */
-  u32 cmds[8 * 5];
-} Dsp;
-extern Dsp dsp;
-void dsp_find(void);
-int dsp_prepare(void);
-int dsp_bank_begin(const u32* rec, u32 bytes, u32 words, u32 sum, u32 id);
-int dsp_bank_step(void);
-void dsp_quit(void);
-void dsp_set(u32 voice, const PfVoice* v, u32 how);
-void dsp_flush(void);
 
 #endif

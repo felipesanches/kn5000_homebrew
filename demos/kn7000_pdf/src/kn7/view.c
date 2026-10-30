@@ -85,6 +85,7 @@ int view_height(int page_no, int width) {
     set_error(ctx->error->message);
   }
   if (page) fz_free_page(doc, page);
+  pdf_clear_xref((pdf_document*)doc);
   return h;
 }
 
@@ -106,6 +107,7 @@ int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out
   fz_try(ctx) {
     fz_bbox box;
     page = fz_load_page(doc, page_no);
+    pdf_clear_xref((pdf_document*)doc);  /* (what loading it parsed and did not keep: LilyPond's hundreds of links) */
     const fz_matrix ctm = page_ctm(page, width, &box);
     if (st) st->load_ms = clock_ms() - t, t = clock_ms();
     list = fz_new_display_list(ctx);

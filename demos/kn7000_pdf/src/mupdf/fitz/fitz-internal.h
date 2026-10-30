@@ -739,6 +739,13 @@ void fz_convert_color(fz_context *ctx, fz_colorspace *dsts, float *dstv, fz_colo
 
 char *ft_error_string(int err);
 
+#ifdef KN7PDF
+/* KN7PDF: memory slow to read but plentiful (the KN7000's display memory, src/kn7/main.c), for data read seldom: a
+ * font's file, which FreeType reads a glyph's outline from once and the glyph cache keeps. NULL: none. */
+extern void *(*fz_kn7_slow_malloc)(unsigned int size);
+extern void (*fz_kn7_slow_free)(void *p);
+#endif
+
 struct fz_font_s
 {
 	int refs;
@@ -752,6 +759,9 @@ struct fz_font_s
 
 	/* origin of font data */
 	char *ft_file;
+#ifdef KN7PDF
+	int ft_data_slow; /* ft_data is fz_kn7_slow_malloc's */
+#endif
 	unsigned char *ft_data;
 	int ft_size;
 

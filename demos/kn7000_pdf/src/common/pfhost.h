@@ -2,20 +2,21 @@
  * Licensed under the terms of the GNU General Public License v3 or later
  *
  * pfhost.h -- between KN7APP.BIN (the platform: firmware search, files, task, panel, keybed, DSP) and the program it
- * runs, DOOM.BIN (Chocolate Doom). It is ProTracker's (kn7000_protracker), which is the Pinball Fantasies port's
+ * runs, PDF.BIN (the PDF viewer). It is Doom's (kn7000_doom), which is ProTracker's and the Pinball Fantasies port's
  * interface (Pinball kn7000/src/common/pfhost.h) with ABI 10 added: the program codes its own sample bank in RAM and the
  * platform sends it to the DSP (dspSend); ABI 12 lists the program's folder (list); ABI 13 (Doom) reads a file anywhere
- * in it (rawOpen, rawRead) and loads the program where its header says (PfGameHeader::base). KN7APP.BIN loads the
- * program, checks its header, clears its bss, runs its constructors and calls its entry on the game task, with a
- * PfHost. The program returns when the player leaves it. */
+ * in it (rawOpen, rawRead) and loads the program where its header says (PfGameHeader::base); ABI 14 (the viewer) loads
+ * segments of the program to other regions as well (PfSegment). KN7APP.BIN loads the program, checks its header,
+ * clears its bss, runs its constructors and calls its entry on the game task, with a PfHost. The program returns when
+ * the player leaves it. */
 #ifndef PF_PFHOST_H
 #define PF_PFHOST_H
 #include "kn7.h"
 
-#define PFHOST_ABI 13
+#define PFHOST_ABI 14
 #define PFGAME_MAGIC 0x4D474650u  /* "PFGM" */
 #define PFHOST_MAGIC 0x54534850u  /* "PHST" */
-#define DOOM_PROGRAM 0x44  /* PfGameHeader::table of DOOM.BIN */
+#define PDF_PROGRAM 0x50  /* PfGameHeader::table of PDF.BIN */
 
 #ifdef __cplusplus
 extern "C" {
@@ -131,15 +132,22 @@ typedef struct PfHost {
    * the firmware's main task, as load is; the program's task waits. */
   s32 (*rawOpen)(const char* name, PfRawFile* f);
   s32 (*rawRead)(const PfRawFile* f, u32 offset, void* dst, u32 bytes);
+  /* ABI 14: the switches the program takes from the firmware (a bitmap laid out as `panel`): those the firmware never
+   * sees change; every other switch acts as the firmware makes it act, and reads in `panel` as ever. Until the program
+   * calls this, it takes them all (but CONTRAST UP and DOWN). Program 893 only, as panelScan. */
+  void (*panelTake)(const u8* mask);
 } PfHost;
 
 /* The header at the start of the program's file, which is read to `base` (ABI 13: PT.BIN was read to GAME_BASE; DOOM.BIN
- * is linked to ARENA2 with its bss at GAME_BASE). */
+ * is linked to ARENA2 with its bss at GAME_BASE). ABI 14: reserved[0] is how many segments follow the main image in the
+ * file, in the order of the table of PfSegment right after the header (at base + 0x40); each is read to its address,
+ * which lies in one of the regions (PfHost::regions), and checked by its CRC-32. The header's crc covers the main image
+ * from 0x40 on, the table with it. */
 typedef struct PfGameHeader {
   u32 magic;                  /* PFGAME_MAGIC */
   u32 abi;                    /* PFHOST_ABI */
   u32 size;                   /* bytes in the file */
-  u32 table;                  /* DOOM_PROGRAM (the Pinball port's table number) */
+  u32 table;                  /* PDF_PROGRAM (the Pinball port's table number) */
   u32 bssLo, bssHi;           /* cleared before the entry */
   u32 initLo, initHi;         /* the constructors: void (*)(void), run in order */
   u32 end;                    /* the first byte past everything it uses (image and bss) */
@@ -148,6 +156,14 @@ typedef struct PfGameHeader {
   u32 base;                   /* ABI 13: where the file is read to (the header's own address) */
   u32 reserved[4];
 } PfGameHeader;
+
+#define PF_MAX_SEGMENTS 8
+typedef struct PfSegment {
+  u32 addr;   /* where it is read to */
+  u32 bytes;
+  u32 crc;    /* CRC-32 of its bytes */
+  u32 pad;
+} PfSegment;
 
 #ifdef __cplusplus
 }

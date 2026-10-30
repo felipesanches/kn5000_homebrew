@@ -2,7 +2,8 @@
  * Licensed under the terms of the GNU Affero General Public License v3 or later
  *
  * fontfile.c -- MuPDF's base 14 fonts (pdf_fontfile.c's lookups) as files in the viewer's folder instead of in its
- * image: each read in when a page first uses it, and kept until the viewer ends (MuPDF takes the bytes as static).
+ * image: each read in when a page first uses it, into the slow memory where there is one (fz_kn7_slow_malloc), and kept
+ * until the viewer ends (MuPDF takes the bytes as static).
  * The files are MuPDF 1.1's fonts/*.cff (URW's Nimbus fonts, GPL), renamed to 8.3 names (Makefile: card-dir). A
  * document whose fonts are all embedded, as LilyPond's, MuseScore's and Chrome's are, reads none of them. */
 #include <fcntl.h>
@@ -38,12 +39,14 @@ static unsigned char* load(int i, unsigned int* len) {
     const int fd = open(path, O_RDONLY);
     if (fd < 0) return NULL;
     const off_t n = lseek(fd, 0, SEEK_END);
-    unsigned char* p = n > 0 ? fz_malloc_no_throw(fontfile_ctx, (unsigned)n) : NULL;
+    const int slow = fz_kn7_slow_malloc != NULL;
+    unsigned char* p = n <= 0 ? NULL : slow ? fz_kn7_slow_malloc((unsigned)n) : fz_malloc_no_throw(fontfile_ctx, (unsigned)n);
     if (p && lseek(fd, 0, SEEK_SET) == 0 && read(fd, p, (size_t)n) == n) {
       data[i] = p;
       bytes[i] = (unsigned)n;
     } else if (p) {
-      fz_free(fontfile_ctx, p);
+      if (slow) fz_kn7_slow_free(p);
+      else fz_free(fontfile_ctx, p);
     }
     close(fd);
   }

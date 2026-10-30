@@ -13,7 +13,7 @@
 #include <string.h>
 #include <time.h>
 #include <execinfo.h>
-#include "fitz.h"
+#include "fitz-internal.h"
 #include "view.h"
 
 static size_t in_use, peak, limit, failed;
@@ -24,6 +24,7 @@ static size_t in_use, peak, limit, failed;
 static int sites_on;
 static void* site_pc[SITES][SITE_DEPTH];
 static size_t site_live[SITES], site_at_peak[SITES], top_peak;
+static int refused_seen;  /* with HEAP_KB: the sites are those in use at the first refused allocation, not the peak */
 
 static unsigned site_of(void) {
   void* bt[SITE_DEPTH + 3];
@@ -46,7 +47,7 @@ static unsigned site_of(void) {
 static void site_add(size_t* p, long n) {
   if (!sites_on) return;
   site_live[p[1]] += n;
-  if (in_use > top_peak) {
+  if (in_use > top_peak && !refused_seen) {
     top_peak = in_use;
     memcpy(site_at_peak, site_live, sizeof site_live);
   }
@@ -55,6 +56,11 @@ static void site_add(size_t* p, long n) {
 static void* count_malloc(void* user, unsigned n) {
   (void)user;
   if (limit && in_use + n > limit) {
+    if (sites_on && !refused_seen++) {
+      memcpy(site_at_peak, site_live, sizeof site_live);
+      top_peak = in_use;
+      fprintf(stderr, "first refusal: %u bytes with %zu in use\n", n, in_use);
+    }
     ++failed;
     return NULL;
   }
@@ -96,6 +102,23 @@ static void* count_realloc(void* user, void* q, unsigned n) {
 
 static fz_alloc_context counting = {NULL, count_malloc, count_realloc, count_free};
 
+/* the slow memory (display memory on the KN7000: fz_kn7_slow_malloc), counted apart from the heap and not limited */
+static size_t slow_in_use, slow_peak;
+static void* slow_malloc(unsigned n) {
+  size_t* p = malloc(n + 8);
+  if (!p) return NULL;
+  *p = n;
+  slow_in_use += n;
+  if (slow_in_use > slow_peak) slow_peak = slow_in_use;
+  return (char*)p + 8;
+}
+static void slow_free(void* q) {
+  if (!q) return;
+  size_t* p = (size_t*)((char*)q - 8);
+  slow_in_use -= *p;
+  free(p);
+}
+
 static unsigned ms(void) {
   struct timespec t;
   clock_gettime(CLOCK_MONOTONIC, &t);
@@ -122,6 +145,8 @@ int main(int argc, char** argv) {
   const char* out = argc > 5 && strcmp(argv[5], "-") ? argv[5] : NULL;
   limit = argc > 6 ? (size_t)atoi(argv[6]) * 1024 : 0;
   view_clock = ms;
+  fz_kn7_slow_malloc = slow_malloc;
+  fz_kn7_slow_free = slow_free;
   sites_on = getenv("KN7PDF_SITES") != NULL;
   if (view_init(&counting, store) < 0) {
     printf("init: %s\n", view_error());
@@ -171,7 +196,8 @@ int main(int argc, char** argv) {
     }
     free(page_buf);
   }
-  printf("worst heap peak %zu KB; %d page errors; %zu allocations refused\n", worst / 1024, errors, failed);
+  printf("worst heap peak %zu KB; %d page errors; %zu allocations refused; slow memory peak %zu KB\n", worst / 1024,
+         errors, failed, slow_peak / 1024);
   if (sites_on) {
     printf("in use at the highest peak (%zu KB), by site:\n", top_peak / 1024);
     for (int k = 0; k < 25; ++k) {

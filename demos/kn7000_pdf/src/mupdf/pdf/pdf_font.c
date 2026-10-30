@@ -285,6 +285,32 @@ pdf_load_embedded_font(pdf_document *xref, pdf_font_desc *fontdesc, char *fontna
 		fz_throw(ctx, "cannot load font stream (%d %d R)", pdf_to_num(stmref), pdf_to_gen(stmref));
 	}
 
+#ifdef KN7PDF
+	/* the font's file into the slow memory, where there is room (fz_kn7_slow_malloc) */
+	{
+		unsigned char *slow = fz_kn7_slow_malloc ? fz_kn7_slow_malloc(buf->len) : NULL;
+		if (slow)
+		{
+			memcpy(slow, buf->data, buf->len);
+			fz_free(ctx, buf->data);
+			buf->data = slow;
+		}
+		fz_try(ctx)
+		{
+			fontdesc->font = fz_new_font_from_memory(ctx, fontname, buf->data, buf->len, 0, 1);
+		}
+		fz_catch(ctx)
+		{
+			if (slow)
+				fz_kn7_slow_free(slow);
+			else
+				fz_free(ctx, buf->data);
+			fz_free(ctx, buf);
+			fz_throw(ctx, "cannot load embedded font (%d %d R)", pdf_to_num(stmref), pdf_to_gen(stmref));
+		}
+		fontdesc->font->ft_data_slow = slow != NULL;
+	}
+#else
 	fz_try(ctx)
 	{
 		fontdesc->font = fz_new_font_from_memory(ctx, fontname, buf->data, buf->len, 0, 1);
@@ -294,6 +320,7 @@ pdf_load_embedded_font(pdf_document *xref, pdf_font_desc *fontdesc, char *fontna
 		fz_drop_buffer(ctx, buf);
 		fz_throw(ctx, "cannot load embedded font (%d %d R)", pdf_to_num(stmref), pdf_to_gen(stmref));
 	}
+#endif
 	fontdesc->size += buf->len;
 
 	/* save the buffer so we can free it later */
