@@ -1,5 +1,11 @@
 #include "fitz-internal.h"
 
+#ifdef KN7PDF
+/* KN7PDF: a curve flattened to 0.6 of a pixel, not 0.3: with anti-aliasing of 4 bits (src/kn7/view.c) the difference
+ * does not show, and the flattening's floating point was much of a page's time on the KN7000 */
+#define KN7_FLATNESS 0.6f
+#endif
+
 #define QUANT(x,a) (((int)((x) * (a))) / (a))
 #define HSUBPIX 5.0
 #define VSUBPIX 5.0
@@ -254,7 +260,11 @@ fz_draw_fill_path(fz_device *devp, fz_path *path, int even_odd, fz_matrix ctm,
 {
 	fz_draw_device *dev = devp->user;
 	float expansion = fz_matrix_expansion(ctm);
+#ifdef KN7PDF
+	float flatness = KN7_FLATNESS / expansion;
+#else
 	float flatness = 0.3f / expansion;
+#endif
 	unsigned char colorbv[FZ_MAX_COLORS + 1];
 	float colorfv[FZ_MAX_COLORS];
 	fz_bbox bbox;
@@ -301,7 +311,11 @@ fz_draw_stroke_path(fz_device *devp, fz_path *path, fz_stroke_state *stroke, fz_
 {
 	fz_draw_device *dev = devp->user;
 	float expansion = fz_matrix_expansion(ctm);
+#ifdef KN7PDF
+	float flatness = KN7_FLATNESS / expansion;
+#else
 	float flatness = 0.3f / expansion;
+#endif
 	float linewidth = stroke->linewidth;
 	unsigned char colorbv[FZ_MAX_COLORS + 1];
 	float colorfv[FZ_MAX_COLORS];
@@ -357,7 +371,11 @@ fz_draw_clip_path(fz_device *devp, fz_path *path, fz_rect *rect, int even_odd, f
 {
 	fz_draw_device *dev = devp->user;
 	float expansion = fz_matrix_expansion(ctm);
+#ifdef KN7PDF
+	float flatness = KN7_FLATNESS / expansion;
+#else
 	float flatness = 0.3f / expansion;
+#endif
 	fz_bbox bbox;
 	fz_draw_state *state = push_stack(dev);
 	fz_colorspace *model = state->dest->colorspace;
@@ -405,7 +423,11 @@ fz_draw_clip_stroke_path(fz_device *devp, fz_path *path, fz_rect *rect, fz_strok
 {
 	fz_draw_device *dev = devp->user;
 	float expansion = fz_matrix_expansion(ctm);
+#ifdef KN7PDF
+	float flatness = KN7_FLATNESS / expansion;
+#else
 	float flatness = 0.3f / expansion;
+#endif
 	float linewidth = stroke->linewidth;
 	fz_bbox bbox;
 	fz_draw_state *state = push_stack(dev);

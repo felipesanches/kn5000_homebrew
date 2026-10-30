@@ -158,8 +158,16 @@ fz_render_glyph(fz_context *ctx, fz_font *font, int gid, fz_matrix ctm, fz_color
 	key.b = ctm.b * 65536;
 	key.c = ctm.c * 65536;
 	key.d = ctm.d * 65536;
+#ifdef KN7PDF
+	/* KN7PDF: the glyph's place to a quarter pixel across and half a pixel down, not 1/256: noteheads set anywhere on
+	 * the page were each a new glyph to FreeType, and the cache held few twice; on an LCD of 16 grays a glyph moved by
+	 * an eighth of a pixel looks the same */
+	key.e = (int)((ctm.e - floorf(ctm.e)) * 4) * 64;
+	key.f = (int)((ctm.f - floorf(ctm.f)) * 2) * 128;
+#else
 	key.e = (ctm.e - floorf(ctm.e)) * 256;
 	key.f = (ctm.f - floorf(ctm.f)) * 256;
+#endif
 	key.aa = fz_aa_level(ctx);
 
 	ctm.e = floorf(ctm.e) + key.e / 256.0f;

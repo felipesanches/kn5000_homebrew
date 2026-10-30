@@ -136,9 +136,15 @@ local co = coroutine.create(function()
   press("CPR_SEG5", 0x10)                               -- R1: OPEN (the first file)
   E("OPEN")
   local count, total, t0, nextSnap = {}, 0, now(), now() + 20
+  callers = {}
   while now() - t0 < PROFILE_S and s32("_pageH") <= 0 do
     local pc = cpu.state["PC"].value
     count[pc] = (count[pc] or 0) + 1
+    local fn = fname(pc)
+    if fn:match("sf3$") or fn:match("sf2$") or fn:match("sqrtf") then  -- (a soft-float routine: who called it, from MDR)
+      local mdr = cpu.state["MDR"] and cpu.state["MDR"].value or 0
+      callers[mdr] = (callers[mdr] or 0) + 1
+    end
     total = total + 1
     if now() >= nextSnap then snap(string.format("+%.0f s, yields %d", now() - t0, u32("_yields"))); nextSnap = nextSnap + 20 end
     coroutine.yield()
@@ -151,6 +157,10 @@ local co = coroutine.create(function()
   pf:write(string.format("%d samples over %.1f s, yields %d\n", total, now() - t0, u32("_yields")))
   for i = 1, #list do pf:write(string.format("%6d %08X %s\n", list[i][2], list[i][1], fname(list[i][1]))) end
   pf:close()
+  local cf = io.open(OUT .. "/callers.txt", "w")
+  cf:write("caller samples (MDR while the PC was in a soft-float routine)\n")
+  for k, v in pairs(callers) do cf:write(string.format("%6d %08X %s\n", v, k, fname(k))) end
+  cf:close()
   snap("end of sampling")
   E("end")
   ev:close()

@@ -97,7 +97,7 @@ SOFTFP_FN := __addsf3 __subsf3 __mulsf3 __divsf3 __negsf2 __eqsf2 __nesf2 __gesf
 
 $(OUT)/softfp/%.o: src/third/softfp/%.c $(wildcard src/third/softfp/*.h)
 	@mkdir -p $(dir $@)
-	$(CROSS)gcc -O2 -ffunction-sections -w -Isrc/third/softfp -c $< -o $@
+	$(CROSS)gcc -O2 -g -ffunction-sections -w -Isrc/third/softfp -c $< -o $@
 
 # the same sources on the PC, each function renamed t_..., against the PC's float and double
 $(OUT)/softfp-host/%.o: src/third/softfp/%.c $(wildcard src/third/softfp/*.h)

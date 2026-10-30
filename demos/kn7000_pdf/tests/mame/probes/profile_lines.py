@@ -11,12 +11,25 @@ for line in open(prof).read().splitlines()[1:]:
     rows.append((int(c), int(pc, 16)))
 total = sum(c for c, _ in rows)
 A2L = '/home/fsanches/compartilhado/tools/mn10300-elf-kn7000/bin/mn10300-elf-addr2line'
+NM = '/home/fsanches/compartilhado/tools/mn10300-elf-kn7000/bin/mn10300-elf-nm'
+import bisect
+funcs = []  # (address, name) of the ELFs' function symbols, for code without line information (libgcc, newlib)
+for elf in elfs:
+    for line in subprocess.run([NM, '-n', elf], capture_output=True, text=True).stdout.splitlines():
+        p = line.split()
+        if len(p) == 3 and p[1] in 'Tt' and not p[2].startswith('.'):
+            funcs.append((int(p[0], 16), p[2]))
+funcs.sort()
+def func_of(pc):
+    i = bisect.bisect_right(funcs, (pc, '\uffff')) - 1
+    return funcs[i][1] if i >= 0 else '??'
 where = {}
 for elf in elfs:
     pcs = [pc for _, pc in rows if pc not in where]
     out = subprocess.run([A2L, '-f', '-s', '-e', elf] + [hex(p) for p in pcs], capture_output=True, text=True).stdout.split('\n')
     for i, pc in enumerate(pcs):
         fn, ln = out[2 * i], out[2 * i + 1]
+        if fn.startswith('.'): fn = func_of(pc)
         if fn != '??': where[pc] = (fn, ln)
 byfn, byline = collections.Counter(), collections.Counter()
 for c, pc in rows:

@@ -12,6 +12,7 @@
 
 unsigned (*view_clock)(void);
 unsigned (*view_failures)(void);
+int view_aa_bits = 4;
 extern fz_context* fontfile_ctx;  /* (fontfile.c) */
 void pdf_close_image_windows(fz_context* ctx);  /* (MuPDF's pdf_image.c and pdf_xref.c, KN7PDF) */
 typedef struct pdf_document_s pdf_document;
@@ -39,6 +40,9 @@ int view_init(fz_alloc_context* alloc, unsigned store) {
     return -1;
   }
   fontfile_ctx = ctx;
+  /* anti-aliasing of 4 bits (5 x 3 samples a pixel, not 17 x 15): the LCD shows 16 grays, and the edge list's work, a
+   * sixth of a page's time on the KN7000 at 8 bits, goes down with the samples */
+  fz_set_aa_level(ctx, view_aa_bits);
   return 0;
 }
 

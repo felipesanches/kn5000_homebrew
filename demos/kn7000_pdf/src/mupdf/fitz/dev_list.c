@@ -46,6 +46,10 @@ struct fz_display_node_s
 	fz_colorspace *colorspace;
 	float alpha;
 	float color[FZ_MAX_COLORS];
+#ifdef KN7PDF
+	fz_bbox kn7_bbox; /* rect covered in whole pixels, once (kn7_have): what each band's visibility test reads */
+	int kn7_have;
+#endif
 };
 
 struct fz_display_list_s
@@ -679,6 +683,11 @@ fz_run_display_list(fz_display_list *list, fz_device *dev, fz_matrix top_ctm, fz
 	int progress = 0;
 	fz_context *ctx = dev->ctx;
 
+#ifdef KN7PDF
+	const int kn7_identity = top_ctm.a == 1 && top_ctm.b == 0 && top_ctm.c == 0 && top_ctm.d == 1 && top_ctm.e == 0 &&
+		top_ctm.f == 0;
+#endif
+
 	if (cookie)
 	{
 		cookie->progress_max = list->last - list->first;
@@ -704,6 +713,20 @@ fz_run_display_list(fz_display_list *list, fz_device *dev, fz_matrix top_ctm, fz
 		{
 			empty = 0;
 		}
+#ifdef KN7PDF
+		/* KN7PDF: with no transform (the viewer's bands), the node's pixels once, then integer tests: the floating
+		 * point here, every node for every band, was much of a page's time on the KN7000, which has no FPU */
+		else if (kn7_identity)
+		{
+			if (!node->kn7_have)
+			{
+				node->kn7_bbox = fz_bbox_covering_rect(node->rect);
+				node->kn7_have = 1;
+			}
+			bbox = fz_intersect_bbox(node->kn7_bbox, scissor);
+			empty = fz_is_empty_bbox(bbox);
+		}
+#endif
 		else
 		{
 			bbox = fz_bbox_covering_rect(fz_transform_rect(top_ctm, node->rect));
@@ -744,7 +767,11 @@ fz_run_display_list(fz_display_list *list, fz_device *dev, fz_matrix top_ctm, fz
 		}
 
 visible:
+#ifdef KN7PDF
+		ctm = kn7_identity ? node->ctm : fz_concat(node->ctm, top_ctm);
+#else
 		ctm = fz_concat(node->ctm, top_ctm);
+#endif
 
 		fz_try(ctx)
 		{

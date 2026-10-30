@@ -33,6 +33,8 @@ int view_height(int page, int width);
 const char* view_error(void);
 /* the caller's millisecond clock, for ViewStats (0 when there is none) */
 extern unsigned (*view_clock)(void);
+/* MuPDF's anti-aliasing (bits; 4 by default: the KN7000's LCD shows 16 grays), before view_init */
+extern int view_aa_bits;
 /* the allocations the platform's heap has refused so far (MuPDF had given back what it could first) */
 extern unsigned (*view_failures)(void);
 

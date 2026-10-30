@@ -156,6 +156,7 @@ int main(int argc, char** argv) {
   limit = argc > 6 ? (size_t)atoi(argv[6]) * 1024 : 0;
   view_clock = ms;
   view_failures = refused;
+  if (getenv("KN7PDF_AA")) view_aa_bits = atoi(getenv("KN7PDF_AA"));
   fz_kn7_slow_malloc = slow_malloc;
   fz_kn7_slow_free = slow_free;
   sites_on = getenv("KN7PDF_SITES") != NULL;
