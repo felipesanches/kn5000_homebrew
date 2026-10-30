@@ -140,9 +140,39 @@ static struct {
   PfSegment seg[PF_MAX_SEGMENTS];
 } head;
 
+/* PDF.BIN read in RAW_MAX pieces by the program menu's FAT16 reader (folder.c, files.c file_raw_read): each piece one
+ * request, which the converter entry serves inside its rest, so the firmware's main task goes on decoding the panel
+ * between the pieces; the firmware's file routines read the whole file in one call (739 KB: 3.1 s in MAME, longer on
+ * the instrument's card). The bounce buffer and the cluster chain are in ARENA6 meanwhile, which becomes the program's
+ * heap afterwards. Without the raw sector read, or off programs 893 and 941, the firmware's routines read it. */
+#define LOAD_BOUNCE_SECTORS 16
+static PfRawFile raw;
+static int raw_ok;
+
+static void raw_try(void) {
+  raw_ok = 0;
+  if (fw.build != 893 && fw.build != 941) return;
+  raw.bounce = (u8*)ARENA6_LO;
+  raw.bounceSectors = LOAD_BOUNCE_SECTORS;
+  raw.chain = (u32*)(ARENA6_LO + LOAD_BOUNCE_SECTORS * 512);
+  raw.maxClusters = (ARENA6_HI - (u32)raw.chain) / 4;
+  const s32 r = file_raw_open(PROGRAM_FILE, &raw);
+  diag("load: raw open -> %d (%u bytes, %u clusters of %u bytes)", r, raw.bytes, raw.clusters, raw.clusterBytes);
+  raw_ok = r == 0;
+}
+
+/* `bytes` of PDF.BIN from `offset` into dst, by the raw reads -> the bytes read, or < 0 */
+static s32 raw_part(u32 offset, void* dst, u32 bytes) {
+  const u32 t0 = now_ms();
+  const s32 got = file_raw_read(&raw, offset, dst, bytes);
+  diag("load: raw %d of %u bytes at %u to %08X, %u ms", got, bytes, offset, (u32)dst, now_ms() - t0);
+  return got;
+}
+
 static const char* load_program(void) {
   PfPiece piece = {&head, sizeof head};
-  const s32 got = file_load(PROGRAM_FILE, &piece, 1);
+  raw_try();
+  const s32 got = raw_ok ? raw_part(0, &head, sizeof head) : file_load(PROGRAM_FILE, &piece, 1);
   diag("load: the header: %d bytes", got);
   if (got < (s32)sizeof head.h) return "ITS PROGRAM (PDF.BIN) IS NOT ON THE CARD";
   const PfGameHeader* const hd = &head.h;
@@ -157,9 +187,6 @@ static const char* load_program(void) {
     return "PDF.BIN IS DAMAGED (SIZE)";
   for (u32 i = 0; i < nseg; ++i)
     if (!in_region(head.seg[i].addr, head.seg[i].addr + head.seg[i].bytes)) return "PDF.BIN DOES NOT FIT THIS FIRMWARE";
-  diag("load: the whole file, %u bytes", hd->size + (nseg ? head.seg[0].bytes : 0) + (nseg > 1 ? head.seg[1].bytes : 0) +
-       (nseg > 2 ? head.seg[2].bytes : 0));
-  diag_save();  /* (before the long read: if it never returns, the log says so) */
   PfPiece pieces[1 + PF_MAX_SEGMENTS];
   u32 total = hd->size;
   pieces[0] = (PfPiece){(void*)hd->base, hd->size};
@@ -167,7 +194,20 @@ static const char* load_program(void) {
     pieces[1 + i] = (PfPiece){(void*)head.seg[i].addr, head.seg[i].bytes};
     total += head.seg[i].bytes;
   }
-  const s32 read = file_load(PROGRAM_FILE, pieces, 1 + nseg);
+  diag("load: the whole file, %u bytes, %s", total, raw_ok ? "by raw reads" : "by the firmware's file routines");
+  diag_save();  /* (before the long read: if it never returns, the log says so) */
+  s32 read = 0;
+  if (raw_ok) {
+    u32 at = 0;
+    for (u32 i = 0; i < 1 + nseg && read >= 0; ++i) {
+      const s32 r = raw_part(at, pieces[i].dst, pieces[i].bytes);
+      read = r < 0 ? r : read + r;
+      at += pieces[i].bytes;
+      if (r != (s32)pieces[i].bytes) break;
+    }
+  } else {
+    read = file_load(PROGRAM_FILE, pieces, 1 + nseg);
+  }
   diag("load: %d of %u bytes read", read, total);
   if (read != (s32)total) return "PDF.BIN IS DAMAGED (SIZE)";
   const PfGameHeader* h = (const PfGameHeader*)hd->base;

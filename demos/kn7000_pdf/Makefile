@@ -63,7 +63,17 @@ APP_OBJ := $(APP_C:src/app/%.c=$(OUT)/app/%.o) $(OUT)/app/glue.o $(OUT)/app/font
 
 $(OUT)/app/%.o: src/app/%.c src/app/app.h src/common/kn7.h src/common/pfhost.h
 	@mkdir -p $(dir $@)
-	$(CROSS)gcc $(APP_CFLAGS) -c $< -o $@
+	$(CROSS)gcc $(APP_CFLAGS) -I$(OUT)/app -c $< -o $@
+
+# the build's name in the log (diag.c): git describe of the tree, rewritten only when it changes
+$(OUT)/app/entry.o: $(OUT)/app/build_id.h
+$(OUT)/app/build_id.h: FORCE
+	@mkdir -p $(dir $@)
+	@echo '#define BUILD_ID "'"$$(git describe --always --dirty 2>/dev/null || echo unknown)"'"' | cmp -s - $@ || \
+	  echo '#define BUILD_ID "'"$$(git describe --always --dirty 2>/dev/null || echo unknown)"'"' > $@
+
+.PHONY: FORCE
+FORCE:
 
 $(OUT)/app/glue.o: src/app/glue.S
 	@mkdir -p $(dir $@)

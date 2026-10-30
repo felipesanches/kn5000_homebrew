@@ -13,6 +13,7 @@
  * (Doom's entry.c, which is the Pinball Fantasies port's, without the effects DSP: the viewer leaves the instrument's
  * sound alone; and with the switches the program takes named by it, PfHost::panelTake.) */
 #include "app.h"
+#include "build_id.h"
 
 #define QUIT_HOLD_MS 1500
 #define FAIL_CALLS 200         /* about 10 s of calls: a run that cannot start ends when EXIT cannot be read */
@@ -317,7 +318,7 @@ int cnv_entry(void) {
     case S_FIRST:
       lcdc_save();
       launch_folder();
-      diag("KN7APP.BIN (PDF viewer) starts; folder \"%s\"", prefix);
+      diag("KN7APP.BIN (PDF viewer, build %s) starts; folder \"%s\"", BUILD_ID, prefix);
       state = S_SEARCH;
       progress("Looking for the firmware's routines...", 0, FW_STEPS);
       /* fall through */
