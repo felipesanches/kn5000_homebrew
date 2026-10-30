@@ -10,7 +10,7 @@ TOOLS   ?= $(HOME)/compartilhado/tools/mn10300-elf-kn7000/bin
 CROSS   := $(TOOLS)/mn10300-elf-
 OUT     ?= build
 PYTHON  ?= python3
-HOSTCC  ?= gcc -m32
+HOSTCC  ?= gcc -m32 -no-pie -fno-pie
 
 # ---- MuPDF 1.1 and its libraries (src/UPSTREAM) ----
 MU      := src/mupdf
@@ -32,15 +32,36 @@ MU_C    := $(filter-out $(MU)/fitz/image_jpx.c $(MU)/fitz/memento.c,$(wildcard $
            $(filter-out $(MU)/pdf/pdf_fontfile.c,$(wildcard $(MU)/pdf/*.c))
 THIRD_C := $(FT_C) $(ZLIB_C) $(JPEG_C) $(JBIG2_C)
 MU_INC  := -I$(MU)/fitz -I$(MU)/pdf -I$(FT) -I$(FT)/include -Isrc/third/zlib -Isrc/third/libjpeg -Isrc/third/jbig2dec
-MU_DEFS := -DNOCJK -DFT2_BUILD_LIBRARY -DFT_CONFIG_MODULES_H=\"slimftmodules.h\" \
+MU_DEFS := -DKN7PDF -DNOCJK -DFT2_BUILD_LIBRARY -DFT_CONFIG_MODULES_H=\"slimftmodules.h\" \
            -DFT_CONFIG_OPTIONS_H=\"slimftoptions.h\" -DHAVE_STDINT_H
 MU_HDR  := $(wildcard $(MU)/fitz/*.h $(MU)/pdf/*.h)
 
+# the base 14 fonts as the viewer reads them from its folder (src/kn7/fontfile.c): MuPDF's file, its 8.3 name
+FONT_MAP := NimbusMonL-Regu:COUR NimbusMonL-Bold:COURB NimbusMonL-ReguObli:COURI NimbusMonL-BoldObli:COURBI \
+            NimbusSanL-Regu:HELV NimbusSanL-Bold:HELVB NimbusSanL-ReguItal:HELVI NimbusSanL-BoldItal:HELVBI \
+            NimbusRomNo9L-Regu:TIMES NimbusRomNo9L-Medi:TIMESB NimbusRomNo9L-ReguItal:TIMESI \
+            NimbusRomNo9L-MediItal:TIMESBI StandardSymL:SYMBOL Dingbats:DINGBATS
+FONT_FILES := $(foreach m,$(FONT_MAP),$(word 2,$(subst :, ,$(m))).CFF)
 # ---- the PC build (tests/host/) ----
-HOST_CFLAGS := -O2 -g -std=gnu99 -w $(MU_INC) $(MU_DEFS) -Isrc/kn7
+HOST_CFLAGS := -O2 -g -fno-omit-frame-pointer -std=gnu99 -w $(MU_INC) $(MU_DEFS) -Isrc/kn7
 HOST_OBJ := $(MU_C:src/%.c=$(OUT)/host/%.o) $(THIRD_C:src/%.c=$(OUT)/host/%.o) $(ZLIB_DEFLATE_C:src/%.c=$(OUT)/host/%.o)
 
-host: $(OUT)/host/mudraw
+host: $(OUT)/host/mudraw $(OUT)/host/kn7pdf $(FONT_FILES:%=$(OUT)/fonts/%)
+
+define font_rule
+$(OUT)/fonts/$(2).CFF: $(MU)/fonts/$(1).cff
+	@mkdir -p $$(dir $$@)
+	cp $$< $$@
+endef
+$(foreach m,$(FONT_MAP),$(eval $(call font_rule,$(word 1,$(subst :, ,$(m))),$(word 2,$(subst :, ,$(m))))))
+
+KN7PDF_C := src/kn7/view.c src/kn7/fontfile.c src/kn7/left_out.c
+$(OUT)/host/kn7pdf: $(OUT)/host/tests/kn7pdf.o $(KN7PDF_C:src/%.c=$(OUT)/host/%.o) $(HOST_OBJ)
+	$(HOSTCC) $^ -lm -o $@
+
+$(OUT)/host/tests/%.o: tests/host/%.c $(MU_HDR) src/kn7/view.h
+	@mkdir -p $(dir $@)
+	$(HOSTCC) $(HOST_CFLAGS) -c $< -o $@
 
 $(OUT)/host/%.o: src/%.c $(MU_HDR)
 	@mkdir -p $(dir $@)

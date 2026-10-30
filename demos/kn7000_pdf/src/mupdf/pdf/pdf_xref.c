@@ -1363,3 +1363,25 @@ pdf_open_document_no_run(fz_context *ctx, const char *filename)
 	}
 	return doc;
 }
+
+#ifdef KN7PDF
+int pdf_obj_refs(pdf_obj *obj);
+
+/* KN7PDF: the objects parsed so far that nothing but the xref holds, dropped (as MuPDF's later pdf_clear_xref): MuPDF
+ * 1.1 keeps every object it parses until the document is closed, and the viewer has room for a page's. */
+void
+pdf_clear_xref(pdf_document *xref)
+{
+	int i;
+
+	for (i = 0; i < xref->len; i++)
+	{
+		pdf_xref_entry *x = &xref->table[i];
+		if (x->obj && pdf_obj_refs(x->obj) == 1)
+		{
+			pdf_drop_obj(x->obj);
+			x->obj = NULL;
+		}
+	}
+}
+#endif

@@ -360,7 +360,9 @@ pdf_load_page(pdf_document *xref, int number)
 	obj = pdf_dict_gets(pageobj, "Annots");
 	if (obj)
 	{
+#ifndef KN7PDF /* (the viewer follows no links: LilyPond puts one on every note) */
 		page->links = pdf_load_link_annots(xref, obj, page->ctm);
+#endif
 		page->annots = pdf_load_annots(xref, obj);
 	}
 

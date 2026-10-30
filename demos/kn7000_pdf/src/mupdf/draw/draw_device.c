@@ -925,6 +925,43 @@ fz_transform_pixmap(fz_context *ctx, fz_pixmap *image, fz_matrix *ctm, int x, in
 	return NULL;
 }
 
+#ifdef KN7PDF
+/* KN7PDF: an image drawn upright as only the rows of it that `clip` needs (fz_image::get_window): the viewer draws a
+ * page a band at a time, and the whole image, decoded, would not fit in the KN7000's memory. *ctm is made to draw
+ * those rows where they lie in the whole image, *dy the rows' height. Otherwise, and when the image keeps itself
+ * whole, the whole image as before. */
+static fz_pixmap *
+kn7_image_rows(fz_context *ctx, fz_image *image, fz_matrix *ctm, fz_bbox clip, int *dx, int *dy)
+{
+	if (image->get_window && ctm->b == 0 && ctm->c == 0 && ctm->d != 0 && !fz_is_empty_bbox(clip))
+	{
+		float v0 = (clip.y0 - ctm->f) / ctm->d;
+		float v1 = (clip.y1 - ctm->f) / ctm->d;
+		int r0, r1, got0, got1;
+		fz_pixmap *pix;
+
+		if (v0 > v1)
+		{
+			float t = v0;
+			v0 = v1;
+			v1 = t;
+		}
+		/* (two rows more each side, for the scaler's filter) */
+		r0 = fz_clampi((int)floorf(v0 * image->h) - 2, 0, image->h - 1);
+		r1 = fz_clampi((int)ceilf(v1 * image->h) + 2, r0 + 1, image->h);
+		pix = image->get_window(ctx, image, *dx, *dy, r0, r1, &got0, &got1);
+		if (pix)
+		{
+			ctm->f += ctm->d * got0 / image->h;
+			ctm->d = ctm->d * (got1 - got0) / image->h;
+			*dy = fabsf(ctm->d);
+			return pix;
+		}
+	}
+	return fz_image_to_pixmap(ctx, image, *dx, *dy);
+}
+#endif
+
 static void
 fz_draw_fill_image(fz_device *devp, fz_image *image, fz_matrix ctm, float alpha)
 {
@@ -956,7 +993,11 @@ fz_draw_fill_image(fz_device *devp, fz_image *image, fz_matrix ctm, float alpha)
 	dx = sqrtf(ctm.a * ctm.a + ctm.b * ctm.b);
 	dy = sqrtf(ctm.c * ctm.c + ctm.d * ctm.d);
 
+#ifdef KN7PDF
+	pixmap = kn7_image_rows(ctx, image, &ctm, clip, &dx, &dy);
+#else
 	pixmap = fz_image_to_pixmap(ctx, image, dx, dy);
+#endif
 	orig_pixmap = pixmap;
 
 	/* convert images with more components (cmyk->rgb) before scaling */
@@ -1051,7 +1092,11 @@ fz_draw_fill_image_mask(fz_device *devp, fz_image *image, fz_matrix ctm,
 
 	dx = sqrtf(ctm.a * ctm.a + ctm.b * ctm.b);
 	dy = sqrtf(ctm.c * ctm.c + ctm.d * ctm.d);
+#ifdef KN7PDF
+	pixmap = kn7_image_rows(ctx, image, &ctm, clip, &dx, &dy);
+#else
 	pixmap = fz_image_to_pixmap(ctx, image, dx, dy);
+#endif
 	orig_pixmap = pixmap;
 
 	fz_try(ctx)
@@ -1142,7 +1187,11 @@ fz_draw_clip_image_mask(fz_device *devp, fz_image *image, fz_rect *rect, fz_matr
 
 	dx = sqrtf(ctm.a * ctm.a + ctm.b * ctm.b);
 	dy = sqrtf(ctm.c * ctm.c + ctm.d * ctm.d);
+#ifdef KN7PDF
+	pixmap = kn7_image_rows(ctx, image, &ctm, clip, &dx, &dy);
+#else
 	pixmap = fz_image_to_pixmap(ctx, image, dx, dy);
+#endif
 	orig_pixmap = pixmap;
 
 	fz_try(ctx)

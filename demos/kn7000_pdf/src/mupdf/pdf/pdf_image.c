@@ -226,6 +226,10 @@ decomp_image_from_stream(fz_context *ctx, fz_stream *stm, pdf_image *image, int 
 	return tile;
 }
 
+#ifdef KN7PDF
+static void close_window(fz_context *ctx, pdf_image *image);
+#endif
+
 static void
 pdf_free_image(fz_context *ctx, fz_storable *image_)
 {
@@ -233,6 +237,9 @@ pdf_free_image(fz_context *ctx, fz_storable *image_)
 
 	if (image == NULL)
 		return;
+#ifdef KN7PDF
+	close_window(ctx, image);
+#endif
 	fz_drop_pixmap(ctx, image->tile);
 	fz_drop_buffer(ctx, image->buffer);
 	fz_drop_colorspace(ctx, image->base.colorspace);
@@ -286,8 +293,217 @@ pdf_image_get_pixmap(fz_context *ctx, fz_image *image_, int w, int h)
 	/* We need to make a new one. */
 	stm = pdf_open_image_decomp_stream(ctx, image->buffer, &image->params, &factor);
 
+#ifdef KN7PDF
+	/* (an indexed image has its compressed data kept too: pdf_load_image_imp) */
+	return decomp_image_from_stream(ctx, stm, image, 0,
+		image->base.colorspace && !strcmp(image->base.colorspace->name, "Indexed"), factor, 1);
+#else
 	return decomp_image_from_stream(ctx, stm, image, 0, 0, factor, 1);
+#endif
 }
+
+#ifdef KN7PDF
+/* KN7PDF: an image decoded a band of rows at a time (fz_image::get_window, the draw device's kn7_image_rows). The
+ * viewer draws a page in bands, and a whole decoded image would not fit in the KN7000's memory: a page scanned at
+ * 300 dpi, 2500 x 3500, is 17 MB as MuPDF unpacks it. The decoder stays open between the bands, which come top first,
+ * so the image is decoded once; a band above where it stands opens it afresh. The image is reduced while it is decoded,
+ * by any whole factor that leaves it at least as large as it is drawn (MuPDF 1.1 reduces only JPEGs, by libjpeg's
+ * powers of 2), and its colours are made gray, as the viewer draws in gray. Images smaller than WINDOW_MIN_BYTES so
+ * reduced go the usual way: whole, and kept in the store. */
+#define WINDOW_MIN_BYTES (48 << 10)
+static pdf_image *open_windows;
+
+static void
+close_window(fz_context *ctx, pdf_image *image)
+{
+	pdf_image **p;
+
+	if (!image->win_stm)
+		return;
+	fz_close(image->win_stm);
+	image->win_stm = NULL;
+	for (p = &open_windows; *p; p = &(*p)->win_next)
+		if (*p == image)
+		{
+			*p = image->win_next;
+			break;
+		}
+	image->win_next = NULL;
+}
+
+void
+pdf_close_image_windows(fz_context *ctx)
+{
+	while (open_windows)
+		close_window(ctx, open_windows);
+}
+
+/* the decoder's next row, padded with 0 where the data ends early */
+static void
+window_read_row(pdf_image *image, unsigned char *raw, int stride)
+{
+	int len = 0, n;
+
+	while (len < stride)
+	{
+		n = fz_read(image->win_stm, raw + len, stride - len);
+		if (n <= 0)
+			break;
+		len += n;
+	}
+	if (len < stride)
+		memset(raw + len, 0, stride - len);
+	image->win_row++;
+}
+
+static fz_pixmap *
+pdf_image_get_window(fz_context *ctx, fz_image *image_, int w, int h, int r0, int r1, int *got0, int *got1)
+{
+	pdf_image *image = (pdf_image *)image_;
+	int indexed = image->base.colorspace && !strcmp(image->base.colorspace->name, "Indexed");
+	fz_colorspace *outcs = image->base.colorspace ? fz_device_gray : NULL;
+	int n_out = outcs ? 2 : 1;
+	int factor, dec, sub, eff, dw, dh, ow, oh, o0, o1, stride, y, x, c, k, rows;
+	fz_pixmap *tile = NULL, *row = NULL, *conv = NULL, *gray = NULL, *src;
+	unsigned char *raw = NULL, *s, *d;
+	int *acc = NULL;
+
+	if (!image->buffer)
+		return NULL;
+	if (w > image->base.w)
+		w = image->base.w;
+	if (h > image->base.h)
+		h = image->base.h;
+	if (w < 1)
+		w = 1;
+	if (h < 1)
+		h = 1;
+	/* the largest whole reduction that leaves at least w x h */
+	for (factor = 1; image->base.w / (factor + 1) >= w && image->base.h / (factor + 1) >= h && factor < 64; factor++)
+		;
+	if (image->win_stm && image->win_factor != factor)
+		close_window(ctx, image);
+	if (!image->win_stm)
+	{
+		/* (a JPEG's decoder reduces by 1, 2, 4 or 8 itself; the others by 1) */
+		for (dec = 1; dec * 2 <= factor && dec < 8; dec *= 2)
+			;
+		sub = factor / dec;
+		eff = dec * sub;
+		ow = (image->base.w + eff - 1) / eff;
+		oh = (image->base.h + eff - 1) / eff;
+		if (ow * oh * n_out < WINDOW_MIN_BYTES)
+			return NULL;
+		image->win_stm = pdf_open_image_decomp_stream(ctx, image->buffer, &image->params, &dec);
+		image->win_factor = factor;
+		image->win_dec = dec;
+		image->win_row = 0;
+		image->win_next = open_windows;
+		open_windows = image;
+	}
+	dec = image->win_dec;
+	sub = factor / dec;
+	eff = dec * sub;
+	dw = (image->base.w + dec - 1) / dec;
+	dh = (image->base.h + dec - 1) / dec;
+	ow = (dw + sub - 1) / sub;
+	oh = (dh + sub - 1) / sub;
+	o0 = r0 / eff;
+	o1 = (r1 + eff - 1) / eff;
+	if (o0 > oh - 1)
+		o0 = oh - 1;
+	if (o1 > oh)
+		o1 = oh;
+	if (o1 <= o0)
+		o1 = o0 + 1;
+	if (image->win_row > o0 * sub)
+	{
+		/* (above where the decoder stands: from the top again) */
+		close_window(ctx, image);
+		return pdf_image_get_window(ctx, image_, w, h, r0, r1, got0, got1);
+	}
+	stride = (dw * image->n * image->bpc + 7) / 8;
+
+	fz_var(tile);
+	fz_var(row);
+	fz_var(conv);
+	fz_var(gray);
+	fz_var(raw);
+	fz_var(acc);
+	fz_try(ctx)
+	{
+		tile = fz_new_pixmap(ctx, outcs, ow, o1 - o0);
+		tile->interpolate = image->interpolate;
+		row = fz_new_pixmap(ctx, image->base.colorspace, dw, 1);
+		raw = fz_malloc(ctx, stride);
+		acc = fz_malloc_array(ctx, ow * n_out, sizeof(int));
+		while (image->win_row < o0 * sub)
+			window_read_row(image, raw, stride);
+		for (y = 0; y < o1 - o0; y++)
+		{
+			memset(acc, 0, ow * n_out * sizeof(int));
+			for (rows = 0; rows < sub && image->win_row < dh; rows++)
+			{
+				window_read_row(image, raw, stride);
+				if (image->imagemask)
+					for (k = 0; k < stride; k++)
+						raw[k] = ~raw[k];
+				fz_unpack_tile(row, raw, image->n, image->bpc, stride, indexed);
+				if (image->usecolorkey)
+					pdf_mask_color_key(row, image->n, image->colorkey);
+				src = row;
+				if (indexed)
+				{
+					fz_decode_indexed_tile(row, image->decode, (1 << image->bpc) - 1);
+					conv = pdf_expand_indexed_pixmap(ctx, row);
+					src = conv;
+				}
+				else
+					fz_decode_tile(row, image->decode);
+				if (outcs && src->colorspace != fz_device_gray)
+				{
+					if (!gray)
+						gray = fz_new_pixmap(ctx, fz_device_gray, dw, 1);
+					fz_convert_pixmap(ctx, gray, src);
+					src = gray;
+				}
+				s = src->samples;
+				for (x = 0; x < dw; x++)
+					for (c = 0; c < n_out; c++)
+						acc[(x / sub) * n_out + c] += *s++;
+				fz_drop_pixmap(ctx, conv);
+				conv = NULL;
+			}
+			if (rows == 0)
+				rows = 1;
+			d = tile->samples + y * ow * n_out;
+			for (x = 0; x < ow; x++)
+			{
+				int cols = dw - x * sub < sub ? dw - x * sub : sub;
+				for (c = 0; c < n_out; c++)
+					*d++ = acc[x * n_out + c] / (cols * rows);
+			}
+		}
+	}
+	fz_always(ctx)
+	{
+		fz_drop_pixmap(ctx, row);
+		fz_drop_pixmap(ctx, conv);
+		fz_drop_pixmap(ctx, gray);
+		fz_free(ctx, raw);
+		fz_free(ctx, acc);
+	}
+	fz_catch(ctx)
+	{
+		fz_drop_pixmap(ctx, tile);
+		close_window(ctx, image);
+		fz_rethrow(ctx);
+	}
+	*got0 = o0 * eff;
+	*got1 = o1 == oh ? image->base.h : o1 * eff;
+	return tile;
+}
+#endif
 
 static pdf_image *
 pdf_load_image_imp(pdf_document *xref, pdf_obj *rdb, pdf_obj *dict, fz_stream *cstm, int forcemask)
@@ -419,6 +635,9 @@ pdf_load_image_imp(pdf_document *xref, pdf_obj *rdb, pdf_obj *dict, fz_stream *c
 		image->params.type = PDF_IMAGE_RAW;
 		FZ_INIT_STORABLE(&image->base, 1, pdf_free_image);
 		image->base.get_pixmap = pdf_image_get_pixmap;
+#ifdef KN7PDF
+		image->base.get_window = pdf_image_get_window;
+#endif
 		image->base.w = w;
 		image->base.h = h;
 		image->n = n;
@@ -428,7 +647,11 @@ pdf_load_image_imp(pdf_document *xref, pdf_obj *rdb, pdf_obj *dict, fz_stream *c
 		image->usecolorkey = usecolorkey;
 		image->base.mask = mask;
 		image->params.colorspace = image->base.colorspace; /* Uses the same ref as for the base one */
+#ifdef KN7PDF
+		if (!cstm)
+#else
 		if (!indexed && !cstm)
+#endif
 		{
 			/* Just load the compressed image data now and we can
 			 * decode it on demand. */

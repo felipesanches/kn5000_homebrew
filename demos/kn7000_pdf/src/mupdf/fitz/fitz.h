@@ -223,7 +223,11 @@ struct fz_error_context_s
 	struct {
 		int code;
 		fz_jmp_buf buffer;
+#ifdef KN7PDF
+	} stack[64];
+#else
 	} stack[256];
+#endif
 	char message[256];
 };
 

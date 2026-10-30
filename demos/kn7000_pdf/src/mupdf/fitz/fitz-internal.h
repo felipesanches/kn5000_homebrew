@@ -603,7 +603,11 @@ fz_stream *fz_open_jbig2d(fz_stream *chain, fz_buffer *global);
  * Resources and other graphics related objects.
  */
 
+#ifdef KN7PDF
+enum { FZ_MAX_COLORS = 8 }; /* (a display list node keeps a colour of this many floats) */
+#else
 enum { FZ_MAX_COLORS = 32 };
+#endif
 
 int fz_lookup_blendmode(char *name);
 char *fz_blendmode_name(int blendmode);
@@ -684,6 +688,11 @@ struct fz_image_s
 	fz_image *mask;
 	fz_colorspace *colorspace;
 	fz_pixmap *(*get_pixmap)(fz_context *, fz_image *, int w, int h);
+#ifdef KN7PDF
+	/* rows [r0, r1) of the image (of h) for drawing it w x h pixels large: a pixmap holding rows [*got0, *got1),
+	 * which take in the rows asked for; or NULL, for the whole image from get_pixmap */
+	fz_pixmap *(*get_window)(fz_context *, fz_image *, int w, int h, int r0, int r1, int *got0, int *got1);
+#endif
 };
 
 fz_pixmap *fz_load_jpx(fz_context *ctx, unsigned char *data, int size, fz_colorspace *cs, int indexed);

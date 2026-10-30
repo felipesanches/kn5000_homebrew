@@ -27,6 +27,9 @@ pdf_load_type3_font(pdf_document *xref, pdf_obj *rdb, pdf_obj *dict)
 	pdf_obj *obj;
 	int first, last;
 	int i, k, n;
+#ifdef KN7PDF
+	int j;
+#endif
 	fz_rect bbox;
 	fz_matrix matrix;
 	fz_context *ctx = xref->ctx;
@@ -151,6 +154,18 @@ pdf_load_type3_font(pdf_document *xref, pdf_obj *rdb, pdf_obj *dict)
 			if (estrings[i])
 			{
 				obj = pdf_dict_gets(charprocs, estrings[i]);
+#ifdef KN7PDF
+				/* a glyph procedure that an earlier code names already: shared, not loaded again (Chrome's
+				 * Type3 fonts name /g0 for every code they do not use) */
+				for (j = 0; j < i; j++)
+					if (estrings[j] && fontdesc->font->t3procs[j] && !strcmp(estrings[j], estrings[i]))
+						break;
+				if (j < i)
+				{
+					fontdesc->font->t3procs[i] = fz_keep_buffer(ctx, fontdesc->font->t3procs[j]);
+					continue;
+				}
+#endif
 				if (pdf_is_stream(xref, pdf_to_num(obj), pdf_to_gen(obj)))
 				{
 					fontdesc->font->t3procs[i] = pdf_load_stream(xref, pdf_to_num(obj), pdf_to_gen(obj));

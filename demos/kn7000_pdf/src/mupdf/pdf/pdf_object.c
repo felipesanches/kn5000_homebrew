@@ -20,6 +20,10 @@ struct keyval
 	pdf_obj *v;
 };
 
+#ifdef KN7PDF
+int pdf_obj_refs(pdf_obj *obj);
+#endif
+
 struct pdf_obj_s
 {
 	int refs;
@@ -1459,5 +1463,13 @@ void
 pdf_print_ref(pdf_obj *ref)
 {
 	pdf_print_obj(pdf_resolve_indirect(ref));
+}
+#endif
+
+#ifdef KN7PDF
+int
+pdf_obj_refs(pdf_obj *obj)
+{
+	return obj ? obj->refs : 0;
 }
 #endif

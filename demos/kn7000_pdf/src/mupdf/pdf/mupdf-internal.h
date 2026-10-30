@@ -72,6 +72,13 @@ struct pdf_image_s
 	int imagemask;
 	int interpolate;
 	int usecolorkey;
+#ifdef KN7PDF
+	fz_stream *win_stm; /* the window's decoder (pdf_image_get_window), open between calls */
+	int win_factor;     /* the reduction it gives, of which the decoder makes win_dec */
+	int win_dec;
+	int win_row;        /* the decoder's next row */
+	pdf_image *win_next; /* the images with a decoder open */
+#endif
 };
 
 enum
@@ -106,7 +113,11 @@ enum
 enum
 {
 	PDF_LEXBUF_SMALL = 256,
+#ifdef KN7PDF
+	PDF_LEXBUF_LARGE = 4096 /* (it grows when a token needs more) */
+#else
 	PDF_LEXBUF_LARGE = 65536
+#endif
 };
 
 typedef struct pdf_lexbuf_s pdf_lexbuf;
@@ -263,6 +274,10 @@ unsigned int pdf_function_size(pdf_function *func);
 
 fz_colorspace *pdf_load_colorspace(pdf_document *doc, pdf_obj *obj);
 fz_pixmap *pdf_expand_indexed_pixmap(fz_context *ctx, fz_pixmap *src);
+#ifdef KN7PDF
+void pdf_close_image_windows(fz_context *ctx);
+void pdf_clear_xref(pdf_document *xref);
+#endif
 
 fz_shade *pdf_load_shading(pdf_document *doc, pdf_obj *obj);
 

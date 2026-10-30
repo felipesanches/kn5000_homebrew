@@ -1,7 +1,11 @@
 #include "fitz-internal.h"
 
 #define MAX_GLYPH_SIZE 256
+#ifdef KN7PDF
+#define MAX_CACHE_SIZE (128*1024)
+#else
 #define MAX_CACHE_SIZE (1024*1024)
+#endif
 
 typedef struct fz_glyph_key_s fz_glyph_key;
 

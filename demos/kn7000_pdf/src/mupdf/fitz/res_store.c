@@ -38,7 +38,11 @@ fz_new_store_context(fz_context *ctx, unsigned int max)
 	store = fz_malloc_struct(ctx, fz_store);
 	fz_try(ctx)
 	{
+#ifdef KN7PDF
+		store->hash = fz_new_hash_table(ctx, 256, sizeof(fz_store_hash), FZ_LOCK_ALLOC); /* (it grows) */
+#else
 		store->hash = fz_new_hash_table(ctx, 4096, sizeof(fz_store_hash), FZ_LOCK_ALLOC);
+#endif
 	}
 	fz_catch(ctx)
 	{
