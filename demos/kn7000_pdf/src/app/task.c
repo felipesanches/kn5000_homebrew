@@ -2,17 +2,18 @@
  * Licensed under the terms of the GNU General Public License v3 or later
  *
  * task.c -- the program task. Every firmware task runs at priority 3 and the kernel (micro-ITRON) does not time-slice;
- * the games ran at 3 too and yielded every frame. The viewer's task runs at 4, below them all: the kernel runs it only
- * while no firmware task is ready, and takes the CPU back from it as soon as one is, so the instrument plays on while
- * MuPDF draws a page for seconds (when the kernel refuses 4, at 3, and the drawing holds the firmware off). Slots 10,
+ * the games ran at 3 too and yielded every frame. The viewer's runs at 3 as well and yields every 20 ms while MuPDF
+ * works (src/kn7/viewer.c), so that the instrument plays on while a page is drawn for seconds. (At 4, below the
+ * firmware's tasks, it ran once and never again: in MAME the firmware's tasks give the CPU only to each other, at their
+ * own priority, so one of them is always ready.) Slots 10,
  * then 9, are free (Another World's port: technics-anotherworld kn7000/src/platformcnv.inc). The kernel gives the task
  * a small stack of its own, which the task leaves at once for TASK_STACK bytes here (glue.S task_entry). */
 #include "app.h"
 
 #define TASK_ID_FIRST 10
 #define TASK_ID_LAST 9
-#define TASK_PRI 4      /* below the firmware's tasks */
-#define TASK_PRI_ALSO 3 /* the firmware's, when the kernel refuses 4 */
+#define TASK_PRI 3      /* the firmware's */
+#define TASK_PRI_ALSO 3
 #define TASK_KSTACK 0x800      /* the kernel's stack for it, used only until task_entry leaves it */
 #define TASK_STACK 0x6000  /* (MuPDF: Doom's 24 KB) */
 
@@ -61,6 +62,7 @@ static void watch(void) {
     last_ms = t;
   } else if (t - last_ms >= WATCH_MS && !quit_req) {
     quit_req = 1;
+    borrow_restore();  /* (the program ends at this yield, before it could use the frame buffers again) */
     lcdc_restore();
     fwdraw_unhook();
   }

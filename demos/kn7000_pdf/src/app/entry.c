@@ -306,6 +306,7 @@ int cnv_entry(void) {
   if (quit_req && task_done) {
     led_want = 0;
     led_service();  /* the wheel's LED as the firmware had it */
+    borrow_restore();  /* the firmware's frame buffers back, before its drawing is */
     crash_disarm();  /* the firmware's NMI stub back */
     fwdraw_unhook();  /* its screen procedure */
     lcdc_restore();  /* and its LCD start address */

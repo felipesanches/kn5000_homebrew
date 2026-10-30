@@ -605,6 +605,9 @@ fz_run_display_list(fz_display_list *list, fz_device *dev, fz_matrix top_ctm, fz
 
 	for (node = list->first; node; node = node->next)
 	{
+#ifdef KN7PDF
+		KN7_YIELD();
+#endif
 		/* Check the cookie for aborting */
 		if (cookie)
 		{

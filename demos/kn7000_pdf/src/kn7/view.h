@@ -13,7 +13,9 @@ typedef void (*view_band_fn)(void* user, int y, int h, int w, const unsigned cha
 
 typedef struct ViewStats {
   unsigned load_ms, list_ms, draw_ms;  /* (the caller's clock, view_clock) */
-  int list_items;
+  unsigned bands;
+  int direct;      /* 1: no display list (memory ran short making it): the page's content ran once a band */
+  int incomplete;  /* 1: memory ran short while the bands were drawn: something may be missing */
 } ViewStats;
 
 /* MuPDF's context, its allocations through `alloc`; `store` bytes for its cache of fonts, images and objects. 0, or -1
@@ -31,5 +33,9 @@ int view_height(int page, int width);
 const char* view_error(void);
 /* the caller's millisecond clock, for ViewStats (0 when there is none) */
 extern unsigned (*view_clock)(void);
+/* the allocations the platform's heap has refused so far (MuPDF had given back what it could first) */
+extern unsigned (*view_failures)(void);
+/* 1: no display list ever: each band runs the page's content (tests/host: KN7PDF_NO_LIST) */
+extern int view_no_list;
 
 #endif

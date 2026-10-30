@@ -344,6 +344,7 @@ window_read_row(pdf_image *image, unsigned char *raw, int stride)
 {
 	int len = 0, n;
 
+	KN7_YIELD();
 	while (len < stride)
 	{
 		n = fz_read(image->win_stm, raw + len, stride - len);

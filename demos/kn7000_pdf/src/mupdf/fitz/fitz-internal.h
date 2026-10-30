@@ -740,6 +740,12 @@ void fz_convert_color(fz_context *ctx, fz_colorspace *dsts, float *dstv, fz_colo
 char *ft_error_string(int err);
 
 #ifdef KN7PDF
+/* KN7PDF: called often while MuPDF works (each content operator, display list item, image row, piece of a stream
+ * read whole): the viewer lets the KN7000's firmware run there now and then (src/kn7/viewer.c), as its tasks and
+ * ours share the CPU only where a task gives it up. NULL: nothing. */
+extern void (*fz_kn7_yield)(void);
+#define KN7_YIELD() do { if (fz_kn7_yield) fz_kn7_yield(); } while (0)
+
 /* KN7PDF: memory slow to read but plentiful (the KN7000's display memory, src/kn7/main.c), for data read seldom: a
  * font's file, which FreeType reads a glyph's outline from once and the glyph cache keeps. NULL: none. */
 extern void *(*fz_kn7_slow_malloc)(unsigned int size);
@@ -773,6 +779,12 @@ struct fz_font_s
 	void *t3doc; /* a pdf_document for the callback */
 	void (*t3run)(void *doc, void *resources, fz_buffer *contents, fz_device *dev, fz_matrix ctm, void *gstate);
 	void (*t3freeres)(void *doc, void *resources);
+#ifdef KN7PDF
+	/* KN7PDF: a glyph's procedure loaded when it is run, not with the font (t3procs stays NULL): each glyph's object
+	 * (number, generation; 0 none), and the loader (pdf_type3.c) */
+	int *t3nums;
+	fz_buffer *(*t3load)(void *doc, int num, int gen);
+#endif
 
 	fz_rect bbox;	/* font bbox is used only for t3 fonts */
 

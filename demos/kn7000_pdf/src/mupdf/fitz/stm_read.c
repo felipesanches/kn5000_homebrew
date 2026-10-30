@@ -107,6 +107,9 @@ fz_read_all(fz_stream *stm, int initial)
 
 		while (1)
 		{
+#ifdef KN7PDF
+			KN7_YIELD();
+#endif
 			if (buf->len == buf->cap)
 				fz_grow_buffer(ctx, buf);
 

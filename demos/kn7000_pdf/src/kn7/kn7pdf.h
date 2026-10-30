@@ -20,6 +20,7 @@ typedef struct HeapStats {
   unsigned total, used, peak, largest, regions;
 } HeapStats;
 void kn7HeapStats(HeapStats *s);
+unsigned kn7HeapFailures(void);  /* allocations refused so far (view.h view_failures) */
 
 /* main.c: the log (what MuPDF and the viewer print), on the LCD when shown */
 void kn7LogShow(int on);

@@ -10,6 +10,7 @@
 #define MAX_BBOX_TABLE_SIZE 4096
 
 #ifdef KN7PDF
+void (*fz_kn7_yield)(void);
 void *(*fz_kn7_slow_malloc)(unsigned int size);
 void (*fz_kn7_slow_free)(void *p);
 #endif
@@ -109,6 +110,9 @@ fz_drop_font(fz_context *ctx, fz_font *font)
 			if (font->t3procs[i])
 				fz_drop_buffer(ctx, font->t3procs[i]);
 		fz_free(ctx, font->t3procs);
+#ifdef KN7PDF
+		fz_free(ctx, font->t3nums);
+#endif
 		fz_free(ctx, font->t3widths);
 		fz_free(ctx, font->t3flags);
 	}
@@ -874,9 +878,56 @@ fz_new_type3_font(fz_context *ctx, char *name, fz_matrix matrix)
 		font->t3widths[i] = 0;
 		font->t3flags[i] = 0;
 	}
+#ifdef KN7PDF
+	font->t3nums = fz_malloc_array(ctx, 512, sizeof(int));
+	memset(font->t3nums, 0, 512 * sizeof(int));
+#endif
 
 	return font;
 }
+
+#ifdef KN7PDF
+/* KN7PDF: glyph gid's procedure: the font's, or loaded now (*loaded 1: the caller drops it after running it) */
+static fz_buffer *
+t3_contents(fz_context *ctx, fz_font *font, int gid, int *loaded)
+{
+	fz_buffer *buf = NULL;
+
+	*loaded = 0;
+	if (font->t3procs[gid] || !font->t3nums || !font->t3nums[2 * gid] || !font->t3load)
+		return font->t3procs[gid];
+	fz_try(ctx)
+	{
+		buf = font->t3load(font->t3doc, font->t3nums[2 * gid], font->t3nums[2 * gid + 1]);
+	}
+	fz_catch(ctx)
+	{
+		fz_warn(ctx, "cannot load type3 glyph %d: %s", gid, ctx->error->message);
+		buf = NULL;
+	}
+	*loaded = buf != NULL;
+	return buf;
+}
+
+/* font->t3run with a procedure t3_contents loaded, dropped after it ran, also when it throws */
+static void
+t3_run(fz_context *ctx, fz_font *font, fz_buffer *contents, int loaded, fz_device *dev, fz_matrix ctm, void *gstate)
+{
+	fz_try(ctx)
+	{
+		font->t3run(font->t3doc, font->t3resources, contents, dev, ctm, gstate);
+	}
+	fz_always(ctx)
+	{
+		if (loaded)
+			fz_drop_buffer(ctx, contents);
+	}
+	fz_catch(ctx)
+	{
+		fz_rethrow(ctx);
+	}
+}
+#endif
 
 static fz_rect
 fz_bound_t3_glyph(fz_context *ctx, fz_font *font, int gid, fz_matrix trm)
@@ -887,12 +938,30 @@ fz_bound_t3_glyph(fz_context *ctx, fz_font *font, int gid, fz_matrix trm)
 	fz_bbox bbox;
 	fz_device *dev;
 
+#ifdef KN7PDF
+	int loaded;
+	contents = t3_contents(ctx, font, gid, &loaded);
+#else
 	contents = font->t3procs[gid];
+#endif
 	if (!contents)
 		return fz_transform_rect(trm, fz_empty_rect);
 
 	ctm = fz_concat(font->t3matrix, trm);
+#ifdef KN7PDF
+	fz_try(ctx)
+	{
+		dev = fz_new_bbox_device(ctx, &bbox);
+	}
+	fz_catch(ctx)
+	{
+		if (loaded)
+			fz_drop_buffer(ctx, contents);
+		fz_rethrow(ctx);
+	}
+#else
 	dev = fz_new_bbox_device(ctx, &bbox);
+#endif
 	dev->flags = FZ_DEVFLAG_FILLCOLOR_UNDEFINED |
 			FZ_DEVFLAG_STROKECOLOR_UNDEFINED |
 			FZ_DEVFLAG_STARTCAP_UNDEFINED |
@@ -901,7 +970,19 @@ fz_bound_t3_glyph(fz_context *ctx, fz_font *font, int gid, fz_matrix trm)
 			FZ_DEVFLAG_LINEJOIN_UNDEFINED |
 			FZ_DEVFLAG_MITERLIMIT_UNDEFINED |
 			FZ_DEVFLAG_LINEWIDTH_UNDEFINED;
+#ifdef KN7PDF
+	fz_try(ctx)
+	{
+		t3_run(ctx, font, contents, loaded, dev, ctm, NULL);
+	}
+	fz_catch(ctx)
+	{
+		fz_free_device(dev);
+		fz_rethrow(ctx);
+	}
+#else
 	font->t3run(font->t3doc, font->t3resources, contents, dev, ctm, NULL);
+#endif
 	font->t3flags[gid] = dev->flags;
 	fz_free_device(dev);
 
@@ -925,9 +1006,16 @@ fz_render_t3_glyph(fz_context *ctx, fz_font *font, int gid, fz_matrix trm, fz_co
 	if (gid < 0 || gid > 255)
 		return NULL;
 
+#ifdef KN7PDF
+	/* (only that it has one: it is loaded where it runs, below, after fz_bound_glyph has run it for the flags) */
+	if (!font->t3procs[gid] && !(font->t3nums && font->t3nums[2 * gid]))
+		return NULL;
+	contents = NULL;
+#else
 	contents = font->t3procs[gid];
 	if (!contents)
 		return NULL;
+#endif
 
 	if (font->t3flags[gid] & FZ_DEVFLAG_MASK)
 	{
@@ -958,9 +1046,34 @@ fz_render_t3_glyph(fz_context *ctx, fz_font *font, int gid, fz_matrix trm, fz_co
 	fz_clear_pixmap(ctx, glyph);
 
 	ctm = fz_concat(font->t3matrix, trm);
+#ifdef KN7PDF
+	{
+		int loaded;
+		fz_var(glyph);
+		dev = NULL;
+		fz_try(ctx)
+		{
+			contents = t3_contents(ctx, font, gid, &loaded);
+			dev = fz_new_draw_device_type3(ctx, glyph);
+			if (contents)
+				t3_run(ctx, font, contents, loaded, dev, ctm, NULL);
+		}
+		fz_always(ctx)
+		{
+			if (dev)
+				fz_free_device(dev);
+		}
+		fz_catch(ctx)
+		{
+			fz_drop_pixmap(ctx, glyph);
+			fz_rethrow(ctx);
+		}
+	}
+#else
 	dev = fz_new_draw_device_type3(ctx, glyph);
 	font->t3run(font->t3doc, font->t3resources, contents, dev, ctm, NULL);
 	fz_free_device(dev);
+#endif
 
 	if (!model)
 	{
@@ -982,7 +1095,12 @@ fz_render_t3_glyph_direct(fz_context *ctx, fz_device *dev, fz_font *font, int gi
 	if (gid < 0 || gid > 255)
 		return;
 
+#ifdef KN7PDF
+	int loaded;
+	contents = t3_contents(ctx, font, gid, &loaded);
+#else
 	contents = font->t3procs[gid];
+#endif
 	if (!contents)
 		return;
 
@@ -1000,7 +1118,11 @@ fz_render_t3_glyph_direct(fz_context *ctx, fz_device *dev, fz_font *font, int gi
 	}
 
 	ctm = fz_concat(font->t3matrix, trm);
+#ifdef KN7PDF
+	t3_run(ctx, font, contents, loaded, dev, ctm, gstate);
+#else
 	font->t3run(font->t3doc, font->t3resources, contents, dev, ctm, gstate);
+#endif
 }
 
 #ifndef NDEBUG

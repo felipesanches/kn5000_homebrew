@@ -2583,6 +2583,9 @@ pdf_run_stream(pdf_csi *csi, pdf_obj *rdb, fz_stream *file, pdf_lexbuf *buf)
 					}
 					csi->cookie->progress++;
 				}
+#ifdef KN7PDF
+				KN7_YIELD();
+#endif
 
 				tok = pdf_lex(file, buf);
 

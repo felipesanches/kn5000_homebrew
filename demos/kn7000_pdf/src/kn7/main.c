@@ -39,8 +39,12 @@ const PfHost *host;
 #define MAX_POOLS 24
 #define MIN_POOL 0x1000  /* smaller pieces are left unused */
 static tlsf_t heap;
+static pool_t pools[MAX_POOLS];
 static unsigned heap_total, heap_regions;
 static size_t heap_used, heap_peak;
+static unsigned heap_failed;  /* allocations refused (MuPDF had given back what its store held first) */
+
+unsigned kn7HeapFailures(void) { return heap_failed; }
 
 /* What the program itself takes of the regions: its main image, its segments and its bss. */
 #define OWN (2 + PF_MAX_SEGMENTS)
@@ -50,10 +54,12 @@ static void pool(u32 lo, u32 hi) {
   lo = (lo + 15) & ~15u;
   hi &= ~15u;
   if (hi <= lo || hi - lo < MIN_POOL || heap_regions >= MAX_POOLS) return;
-  if (!heap)
+  if (!heap) {
     heap = tlsf_create_with_pool((void *)lo, hi - lo);
-  else
-    tlsf_add_pool(heap, (void *)lo, hi - lo);
+    pools[heap_regions] = tlsf_get_pool(heap);
+  } else {
+    pools[heap_regions] = tlsf_add_pool(heap, (void *)lo, hi - lo);
+  }
   heap_total += hi - lo;
   ++heap_regions;
 }
@@ -72,8 +78,12 @@ static void place(u32 lo, u32 hi, int from) {
 static void memoryInit(void) {
   ownLo[0] = pdf_header.base, ownHi[0] = (u32)__image_end;
   ownLo[1] = (u32)__bss_lo, ownHi[1] = ((u32)__game_end + 15) & ~15u;
-  for (u32 i = 0; i < pdf_header.reserved[0] && i < PF_MAX_SEGMENTS; ++i)
-    ownLo[2 + i] = pdf_segments[i].addr, ownHi[2 + i] = (pdf_segments[i].addr + pdf_segments[i].bytes + 15) & ~15u;
+  /* (read through volatile: mkpdf.py fills in the count and the table after the link, and to the compiler both are
+   * constant zeros, so it read neither and the heap took the segments' code: FreeType's, in ARENA4, was overwritten) */
+  const u32 nseg = ((const volatile PfGameHeader *)&pdf_header)->reserved[0];
+  const volatile PfSegment *seg = pdf_segments;
+  for (u32 i = 0; i < nseg && i < PF_MAX_SEGMENTS; ++i)
+    ownLo[2 + i] = seg[i].addr, ownHi[2 + i] = (seg[i].addr + seg[i].bytes + 15) & ~15u;
   heap = NULL;
   heap_total = heap_regions = 0;
   heap_used = heap_peak = 0;
@@ -89,7 +99,7 @@ static void count(void *p, int sign) {
 void *malloc(size_t n) {
   void *p = heap ? tlsf_malloc(heap, n ? n : 1) : NULL;
   count(p, 1);
-  if (!p) errno = ENOMEM;
+  if (!p) errno = ENOMEM, ++heap_failed;
   return p;
 }
 
@@ -112,6 +122,7 @@ void *realloc(void *p, size_t n) {
     count(q, 1);
   } else {
     errno = ENOMEM;
+    ++heap_failed;
   }
   return q;
 }
@@ -141,8 +152,8 @@ void kn7HeapStats(HeapStats *s) {
   s->used = heap_used;
   s->peak = heap_peak;
   s->regions = heap_regions;
-  if (heap)
-    for (pool_t p = tlsf_get_pool(heap); p; p = NULL) tlsf_walk_pool(p, largest_walker, &largest);
+  for (unsigned i = 0; heap && i < heap_regions; ++i)
+    if (pools[i]) tlsf_walk_pool(pools[i], largest_walker, &largest);
   s->largest = largest;
 }
 

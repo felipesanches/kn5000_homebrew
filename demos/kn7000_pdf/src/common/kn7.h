@@ -58,6 +58,9 @@ typedef int32_t s32;
 #define LCD_FRAME 0x50000u
 #define LCD_BORROW 0x76000u
 #define LCD_FREE 0x108000u
+/* the PDF viewer: its page from LCD_FRAME up, as tall as fits below LCD_KEEP, where KN7APP keeps the borrowed frame
+ * buffers' contents (borrow.c: 0x49000 bytes) up to the ink layer */
+#define LCD_KEEP (LCD_INK - 0x49000u)
 #define LCD_INK 0x136000u
 #define FB_W 640
 #define FB_H 240

@@ -5,8 +5,8 @@
  * main image in ARENA2 and its segments in other regions (src/kn7/pdf.ld, pfhost.h PfSegment), checked, started with a
  * PfHost; when it returns, the conversion ends. Holding EXIT ends everything as well (entry.c). The firmware draws
  * nothing on the LCD meanwhile (task.c, fwdraw.c). Doom's game.c (ProTracker's, the Pinball port's), with the segments
- * added and without the effects DSP and the firmware RAM Doom borrowed: the instrument plays on while the viewer runs,
- * so its RAM stays its own. */
+ * added, without the effects DSP, and with only the frame buffers of the firmware RAM Doom borrowed: the instrument
+ * plays on while the viewer runs, so the rest stays its own. */
 #include "app.h"
 
 extern const unsigned char font8x13[95][13];
@@ -17,9 +17,9 @@ extern const unsigned char font8x13[95][13];
 
 #define PROGRAM_FILE "PDF.BIN"
 
-/* The RAM the program may use, its own image, segments and bss included (it takes them out: src/kn7/main.c). ARENA3 is
- * left out on program 942 (its SD plug-in lives there), ARENA5-7 on all but 893 and 941. The list ends at the first
- * {0, 0}. */
+/* The RAM the program may use, its own image, segments and bss included (it takes them out: src/kn7/main.c), and on
+ * programs 893 and 941 the firmware's frame buffers (borrow.c). ARENA3 is left out on program 942 (its SD plug-in lives
+ * there), ARENA5-7 on all but 893 and 941. The list ends at the first {0, 0}. */
 static PfRegion regions[24];
 
 static void regions_make(void) {
@@ -35,6 +35,7 @@ static void regions_make(void) {
     regions[n++] = (PfRegion){ARENA6_LO, ARENA6_HI};
     regions[n++] = (PfRegion){ARENA7_LO, ARENA7_HI};
   }
+  n += borrow_regions(regions + n, (int)(sizeof regions / sizeof *regions) - n - 1);
   regions[n] = (PfRegion){0, 0};
 }
 static u32 host_ms(void) { return now_ms(); }
@@ -178,6 +179,7 @@ void game_task(void) {
   lcd_fill(0, 0, FB_W, FB_H, 0);
   lcd_text("PDF VIEWER", 280, 100, WHITE, 0);
   lcd_text("Loading...", 280, 120, GREY, 0);
+  borrow_save();  /* (the firmware drew last before fwdraw_settle returned) */
   const char* why = load_program();
   if (why) {
     int n = 0;

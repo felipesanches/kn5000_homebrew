@@ -6,8 +6,9 @@
  * drawn and the time taken; with an output directory, writes each page as a PGM (<dir>/<n>.pgm, 1 first).
  *   kn7pdf FILE.PDF [WIDTH=640] [BAND_ROWS=32] [STORE_KB=64] [OUT_DIR] [HEAP_KB=0: no limit]
  * With HEAP_KB, an allocation that would take the heap in use over it fails, as it would on the instrument.
- * With KN7PDF_SITES=1 in the environment, the bytes in use at the run's highest peak are printed by where they were
- * allocated (return addresses: addr2line -f -e kn7pdf ADDR names them). */
+ * With KN7PDF_SITES=1 in the environment, the bytes in use at the run's highest peak (with HEAP_KB: at the first
+ * allocation refused; with KN7PDF_SITES_END=1 too: after the last page) are printed by where they were allocated
+ * (return addresses: addr2line -f -e kn7pdf ADDR names them). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +56,13 @@ static void site_add(size_t* p, long n) {
 
 static void* count_malloc(void* user, unsigned n) {
   (void)user;
+  if (n > (1u << 20) && getenv("KN7PDF_BIG")) {  /* (where a request over 1 MB comes from: addr2line names these) */
+    void* bt[8];
+    const int k = backtrace(bt, 8);
+    fprintf(stderr, "big allocation %u:", n);
+    for (int i = 0; i < k; ++i) fprintf(stderr, " %p", bt[i]);
+    fprintf(stderr, "\n");
+  }
   if (limit && in_use + n > limit) {
     if (sites_on && !refused_seen++) {
       memcpy(site_at_peak, site_live, sizeof site_live);
@@ -119,6 +127,8 @@ static void slow_free(void* q) {
   free(p);
 }
 
+static unsigned refused(void) { return (unsigned)failed; }
+
 static unsigned ms(void) {
   struct timespec t;
   clock_gettime(CLOCK_MONOTONIC, &t);
@@ -145,6 +155,8 @@ int main(int argc, char** argv) {
   const char* out = argc > 5 && strcmp(argv[5], "-") ? argv[5] : NULL;
   limit = argc > 6 ? (size_t)atoi(argv[6]) * 1024 : 0;
   view_clock = ms;
+  view_failures = refused;
+  view_no_list = getenv("KN7PDF_NO_LIST") != NULL;
   fz_kn7_slow_malloc = slow_malloc;
   fz_kn7_slow_free = slow_free;
   sites_on = getenv("KN7PDF_SITES") != NULL;
@@ -161,7 +173,7 @@ int main(int argc, char** argv) {
   printf("%s: %d pages; context %zu KB, after open %zu KB (peak %zu KB)\n", argv[1], pages, base / 1024, in_use / 1024,
          peak / 1024);
   size_t worst = 0;
-  int errors = 0;
+  int errors = 0, incomplete = 0;
   for (int p = 0; p < pages; ++p) {
     const int h = view_height(p, width);
     if (h <= 0) {
@@ -181,8 +193,10 @@ int main(int argc, char** argv) {
       printf("page %d: %s\n", p + 1, view_error());
       ++errors;
     }
-    printf("page %2d: %dx%d, heap peak %4zu KB, after %4zu KB; %u ms (load %u, list %u, bands %u)\n", p + 1, width, h,
-           peak / 1024, in_use / 1024, t, st.load_ms, st.list_ms, st.draw_ms);
+    printf("page %2d: %dx%d, heap peak %4zu KB, after %4zu KB; %u ms (load %u, list %u, bands %u: %u%s)%s\n", p + 1,
+           width, h, peak / 1024, in_use / 1024, t, st.load_ms, st.list_ms, st.draw_ms, st.bands,
+           st.direct ? ", no list" : "", st.incomplete ? " INCOMPLETE" : "");
+    incomplete += st.incomplete;
     if (peak > worst) worst = peak;
     if (out) {
       char name[512];
@@ -196,8 +210,12 @@ int main(int argc, char** argv) {
     }
     free(page_buf);
   }
-  printf("worst heap peak %zu KB; %d page errors; %zu allocations refused; slow memory peak %zu KB\n", worst / 1024,
-         errors, failed, slow_peak / 1024);
+  printf("worst heap peak %zu KB; %d page errors, %d incomplete; %zu allocations refused; slow memory peak %zu KB\n",
+         worst / 1024, errors, incomplete, failed, slow_peak / 1024);
+  if (sites_on && getenv("KN7PDF_SITES_END")) {  /* what stays in use after the last page, instead */
+    memcpy(site_at_peak, site_live, sizeof site_live);
+    top_peak = in_use;
+  }
   if (sites_on) {
     printf("in use at the highest peak (%zu KB), by site:\n", top_peak / 1024);
     for (int k = 0; k < 25; ++k) {
@@ -212,5 +230,5 @@ int main(int argc, char** argv) {
     }
   }
   view_close();
-  return errors ? 1 : 0;
+  return errors || incomplete ? 1 : 0;
 }

@@ -15,6 +15,15 @@ pdf_t3_free_resources(void *doc, void *rdb_)
 }
 
 
+#ifdef KN7PDF
+/* KN7PDF: a glyph's procedure, when its glyph is run (fz_font::t3load) */
+static fz_buffer *
+pdf_t3_load(void *doc, int num, int gen)
+{
+	return pdf_load_stream((pdf_document *)doc, num, gen);
+}
+#endif
+
 pdf_font_desc *
 pdf_load_type3_font(pdf_document *xref, pdf_obj *rdb, pdf_obj *dict)
 {
@@ -27,9 +36,7 @@ pdf_load_type3_font(pdf_document *xref, pdf_obj *rdb, pdf_obj *dict)
 	pdf_obj *obj;
 	int first, last;
 	int i, k, n;
-#ifdef KN7PDF
-	int j;
-#endif
+
 	fz_rect bbox;
 	fz_matrix matrix;
 	fz_context *ctx = xref->ctx;
@@ -140,6 +147,9 @@ pdf_load_type3_font(pdf_document *xref, pdf_obj *rdb, pdf_obj *dict)
 
 		fontdesc->font->t3doc = xref;
 		fontdesc->font->t3run = pdf_run_glyph_func;
+#ifdef KN7PDF
+		fontdesc->font->t3load = pdf_t3_load;
+#endif
 
 		/* CharProcs */
 
@@ -155,16 +165,14 @@ pdf_load_type3_font(pdf_document *xref, pdf_obj *rdb, pdf_obj *dict)
 			{
 				obj = pdf_dict_gets(charprocs, estrings[i]);
 #ifdef KN7PDF
-				/* a glyph procedure that an earlier code names already: shared, not loaded again (Chrome's
-				 * Type3 fonts name /g0 for every code they do not use) */
-				for (j = 0; j < i; j++)
-					if (estrings[j] && fontdesc->font->t3procs[j] && !strcmp(estrings[j], estrings[i]))
-						break;
-				if (j < i)
+				/* the glyph's procedure is loaded when the glyph is run (res_font.c t3_contents): only its object
+				 * here, so that a font, whose procedures were all loaded with it, takes a little memory */
+				if (pdf_is_stream(xref, pdf_to_num(obj), pdf_to_gen(obj)))
 				{
-					fontdesc->font->t3procs[i] = fz_keep_buffer(ctx, fontdesc->font->t3procs[j]);
-					continue;
+					fontdesc->font->t3nums[2 * i] = pdf_to_num(obj);
+					fontdesc->font->t3nums[2 * i + 1] = pdf_to_gen(obj);
 				}
+				continue;
 #endif
 				if (pdf_is_stream(xref, pdf_to_num(obj), pdf_to_gen(obj)))
 				{

@@ -6,9 +6,13 @@
  * list's items that lie outside the band, so the page costs its content once and the bands little more, and the
  * memory a page needs is the list's and one band's, not a whole page's pixmap (640 x 906 gray with alpha: 1.1 MB). */
 #include "fitz-internal.h"
+#include <string.h>
+
 #include "view.h"
 
 unsigned (*view_clock)(void);
+unsigned (*view_failures)(void);
+int view_no_list;
 extern fz_context* fontfile_ctx;  /* (fontfile.c) */
 void pdf_close_image_windows(fz_context* ctx);  /* (MuPDF's pdf_image.c and pdf_xref.c, KN7PDF) */
 typedef struct pdf_document_s pdf_document;
@@ -19,6 +23,7 @@ static fz_document* doc;
 static char error[96];
 
 static unsigned clock_ms(void) { return view_clock ? view_clock() : 0; }
+static unsigned failures(void) { return view_failures ? view_failures() : 0; }
 
 static void set_error(const char* s) {
   int i = 0;
@@ -89,6 +94,44 @@ int view_height(int page_no, int width) {
   return h;
 }
 
+/* A band of `rows` rows from y: a pixmap (kept in *band while it is that tall), white, drawn by the list or, without
+ * one, by the page's content run again, then handed to `out`. */
+static void draw_band(fz_display_list* list, fz_page* page, fz_matrix ctm, fz_bbox box, int y, int rows,
+                      fz_pixmap** band, view_band_fn out, void* user) {
+  fz_device* dev = NULL;
+  const fz_bbox b = {0, y, box.x1, y + rows};
+  if (!*band || fz_pixmap_height(ctx, *band) != rows) {
+    if (*band) fz_drop_pixmap(ctx, *band);
+    *band = NULL;
+    *band = fz_new_pixmap_with_bbox(ctx, fz_device_gray, b);
+  }
+  (*band)->x = 0, (*band)->y = y;
+  fz_clear_pixmap_with_value(ctx, *band, 255);
+  fz_var(dev);
+  fz_try(ctx) {
+    dev = fz_new_draw_device(ctx, *band);
+    if (list)
+      fz_run_display_list(list, dev, fz_identity, b, NULL);
+    else
+      fz_run_page(doc, page, dev, ctm, NULL);
+  }
+  fz_always(ctx) {
+    if (dev) fz_free_device(dev);
+  }
+  fz_catch(ctx) {
+    fz_rethrow(ctx);
+  }
+  if (out) out(user, y, rows, box.x1, fz_pixmap_samples(ctx, *band), 2 * box.x1);
+}
+
+/* The page is run once into a display list, which then draws each band. When memory ran short while the list was
+ * made (an allocation the platform refused: view_failures), the list is incomplete: it goes, and each band runs the
+ * page's content again instead, in bands of DIRECT_ROWS, slower but with the list's memory free. A band that runs short
+ * of memory is drawn again half as tall, down to MIN_ROWS; when even that ran short, the page may lack something:
+ * stats say so (ViewStats::incomplete). */
+#define DIRECT_ROWS 256
+#define MIN_ROWS 16
+
 int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out, void* user, ViewStats* st) {
   fz_page* page = NULL;
   fz_display_list* list = NULL;
@@ -96,6 +139,10 @@ int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out
   fz_pixmap* band = NULL;
   int h = -1;
   unsigned t = clock_ms();
+  const unsigned f0 = failures();
+  ViewStats dummy;
+  if (!st) st = &dummy;
+  memset(st, 0, sizeof *st);
   if (!doc) {
     set_error("no document");
     return -1;
@@ -109,33 +156,46 @@ int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out
     page = fz_load_page(doc, page_no);
     pdf_clear_xref((pdf_document*)doc);  /* (what loading it parsed and did not keep: LilyPond's hundreds of links) */
     const fz_matrix ctm = page_ctm(page, width, &box);
-    if (st) st->load_ms = clock_ms() - t, t = clock_ms();
-    list = fz_new_display_list(ctx);
-    dev = fz_new_list_device(ctx, list);
-    fz_run_page(doc, page, dev, ctm, NULL);
-    fz_free_device(dev);
-    dev = NULL;
-    fz_free_page(doc, page);  /* (the list holds what the page's drawing needs) */
-    page = NULL;
-    if (st) st->list_ms = clock_ms() - t, t = clock_ms();
-    h = box.y1 < max_h ? box.y1 : max_h;
-    for (int y = 0; y < h; y += band_rows) {
-      const int rows = h - y < band_rows ? h - y : band_rows;
-      const fz_bbox b = {0, y, box.x1, y + rows};
-      if (!band || fz_pixmap_height(ctx, band) != rows) {
-        if (band) fz_drop_pixmap(ctx, band);
-        band = NULL;
-        band = fz_new_pixmap_with_bbox(ctx, fz_device_gray, b);
-      }
-      band->x = 0, band->y = y;
-      fz_clear_pixmap_with_value(ctx, band, 255);
-      dev = fz_new_draw_device(ctx, band);
-      fz_run_display_list(list, dev, fz_identity, b, NULL);
+    st->load_ms = clock_ms() - t, t = clock_ms();
+    if (!view_no_list) {
+      list = fz_new_display_list(ctx);
+      dev = fz_new_list_device(ctx, list);
+      fz_run_page(doc, page, dev, ctm, NULL);
       fz_free_device(dev);
       dev = NULL;
-      out(user, y, rows, box.x1, fz_pixmap_samples(ctx, band), 2 * box.x1);  /* (gray and alpha: the gray in byte 0) */
     }
-    if (st) st->draw_ms = clock_ms() - t;
+    if (view_no_list || failures() != f0) {  /* the list is incomplete: the page's content once a band */
+      if (list) fz_free_display_list(ctx, list);
+      list = NULL;
+      st->direct = 1;
+    } else {
+      fz_free_page(doc, page);  /* (the list holds what the page's drawing needs) */
+      page = NULL;
+    }
+    st->list_ms = clock_ms() - t, t = clock_ms();
+    h = box.y1 < max_h ? box.y1 : max_h;
+    /* a band that ran short of memory is drawn again half as tall, down to MIN_ROWS; only then is it incomplete */
+    int rows = st->direct ? DIRECT_ROWS : band_rows;
+    for (int y = 0; y < h;) {
+      const unsigned f1 = failures();
+      const int n = h - y < rows ? h - y : rows;
+      int ok = 1;
+      fz_try(ctx) { draw_band(list, page, ctm, box, y, n, &band, NULL, NULL); }
+      fz_catch(ctx) { ok = 0; }
+      ++st->bands;
+      if ((!ok || failures() != f1) && rows > MIN_ROWS) {
+        rows /= 2;
+        if (band) fz_drop_pixmap(ctx, band);
+        band = NULL;
+        pdf_close_image_windows(ctx);  /* (its images' decoders, from their tops again) */
+        continue;
+      }
+      if (!ok) fz_throw(ctx, "%s", ctx->error->message);
+      st->incomplete |= failures() != f1;
+      out(user, y, n, box.x1, fz_pixmap_samples(ctx, band), 2 * box.x1);  /* (gray and alpha: the gray in byte 0) */
+      y += n;
+    }
+    st->draw_ms = clock_ms() - t;
   }
   fz_catch(ctx) {
     set_error(ctx->error->message);

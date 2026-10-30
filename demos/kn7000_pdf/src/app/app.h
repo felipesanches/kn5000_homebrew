@@ -63,6 +63,12 @@ s32 file_raw_open(const char* name, PfRawFile* f);                   /* game tas
 s32 file_raw_read(const PfRawFile* f, u32 offset, void* dst, u32 bytes);  /* game task: waits */
 extern volatile u32 file_busy;  /* 1 while the firmware fills a buffer of ours */
 
+/* borrow.c: the firmware's frame buffers lent to the program, their contents kept in display memory meanwhile */
+int borrow_regions(PfRegion* list, int room);
+void borrow_save(void);
+void borrow_restore(void);
+extern u32 borrow_bad;
+
 /* folder.c: on the main task (the entry) */
 s32 folder_list(const char* path, PfFile* files, u32 max);
 s32 folder_open(const char* path, const char* name, PfRawFile* f);

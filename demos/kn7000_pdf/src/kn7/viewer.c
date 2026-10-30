@@ -18,9 +18,11 @@
 #include "kn7pdf.h"
 #include "view.h"
 
+extern void (*fz_kn7_yield)(void);  /* (MuPDF's, KN7PDF) */
+
 #define LCDC(r) (*(volatile u8 *)(0x9CC00000u + (r)))
 #define PITCH FB_W
-#define PAGE_ROWS ((LCD_INK - LCD_FRAME) / PITCH)  /* the tallest page display memory holds: 1,478 lines */
+#define PAGE_ROWS ((LCD_KEEP - LCD_FRAME) / PITCH)  /* the tallest page display memory holds: 1,004 lines */
 #define INK LCD_INK
 #define INK_PITCH (FB_W / 4)
 #define VNDP_SPIN 2000
@@ -277,10 +279,11 @@ static int drawPage(int n) {
   pageH = h < FB_H ? FB_H : h;
   HeapStats hs;
   kn7HeapStats(&hs);
-  printf("page %d: %d lines, %lu ms (load %u, list %u, bands %u); heap %u KB of %u, peak %u\n", n + 1, h,
-         (unsigned long)(host->ms() - t0), st.load_ms, st.list_ms, st.draw_ms, hs.used >> 10, hs.total >> 10,
-         hs.peak >> 10);
-  snprintf(t, sizeof t, "%s  page %d of %d", docName, n + 1, pages);
+  printf("page %d: %d lines, %lu ms (load %u, list %u, bands %u: %u%s)%s; heap %u KB of %u, peak %u\n", n + 1, h,
+         (unsigned long)(host->ms() - t0), st.load_ms, st.list_ms, st.draw_ms, st.bands, st.direct ? ", no list" : "",
+         st.incomplete ? " INCOMPLETE" : "", hs.used >> 10, hs.total >> 10, hs.peak >> 10);
+  snprintf(t, sizeof t, "%s  page %d of %d%s", docName, n + 1, pages,
+           st.incomplete ? "  (memory ran short: it may lack something)" : "");
   status(t);
   return 0;
 }
@@ -360,6 +363,21 @@ static void viewDoc(const PfFile *f) {
   pageNo = 0, pageH = 0;
 }
 
+static unsigned clockMs(void) { return (unsigned)host->ms(); }
+
+/* MuPDF's yield (fz_kn7_yield): the firmware's tasks get the CPU at least every YIELD_MS while a page is drawn; the
+ * keybed and the panel go on being served meanwhile */
+#define YIELD_MS 20
+static u32 yieldAt;
+u32 yields;
+static void yieldNow(void) {
+  const u32 t = *(volatile u32 *)host->msCounter;
+  if (t - yieldAt < YIELD_MS) return;
+  host->yield(1);
+  yieldAt = *(volatile u32 *)host->msCounter;
+  ++yields;
+}
+
 int viewer_main(void) {
   printf("PDF viewer: MuPDF 1.1 on the KN7000\n");
   HeapStats hs;
@@ -367,6 +385,9 @@ int viewer_main(void) {
   printf("heap: %u KB in %u regions\n", hs.total >> 10, hs.regions);
   takeKeys();
   host->status("PDF VIEWER: HOLD EXIT TO QUIT");
+  view_clock = clockMs;
+  fz_kn7_yield = yieldNow;
+  view_failures = kn7HeapFailures;
   if (view_init(NULL, STORE_BYTES) < 0) {
     printf("%s\n", view_error());
     return 1;

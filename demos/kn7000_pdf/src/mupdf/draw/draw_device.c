@@ -956,10 +956,13 @@ fz_transform_pixmap(fz_context *ctx, fz_pixmap *image, fz_matrix *ctm, int x, in
 /* KN7PDF: an image drawn upright as only the rows of it that `clip` needs (fz_image::get_window): the viewer draws a
  * page a band at a time, and the whole image, decoded, would not fit in the KN7000's memory. *ctm is made to draw
  * those rows where they lie in the whole image, *dy the rows' height. Otherwise, and when the image keeps itself
- * whole, the whole image as before. */
+ * whole, the whole image as before. NULL when none of the image lies in `clip`: nothing to draw (the page's bands
+ * below and above an image's). */
 static fz_pixmap *
 kn7_image_rows(fz_context *ctx, fz_image *image, fz_matrix *ctm, fz_bbox clip, int *dx, int *dy)
 {
+	if (fz_is_empty_bbox(fz_intersect_bbox(fz_bbox_covering_rect(fz_transform_rect(*ctm, fz_unit_rect)), clip)))
+		return NULL;
 	if (image->get_window && ctm->b == 0 && ctm->c == 0 && ctm->d != 0 && !fz_is_empty_bbox(clip))
 	{
 		float v0 = (clip.y0 - ctm->f) / ctm->d;
@@ -1022,6 +1025,8 @@ fz_draw_fill_image(fz_device *devp, fz_image *image, fz_matrix ctm, float alpha)
 
 #ifdef KN7PDF
 	pixmap = kn7_image_rows(ctx, image, &ctm, clip, &dx, &dy);
+	if (!pixmap)
+		return;
 #else
 	pixmap = fz_image_to_pixmap(ctx, image, dx, dy);
 #endif
@@ -1121,6 +1126,8 @@ fz_draw_fill_image_mask(fz_device *devp, fz_image *image, fz_matrix ctm,
 	dy = sqrtf(ctm.c * ctm.c + ctm.d * ctm.d);
 #ifdef KN7PDF
 	pixmap = kn7_image_rows(ctx, image, &ctm, clip, &dx, &dy);
+	if (!pixmap)
+		return;
 #else
 	pixmap = fz_image_to_pixmap(ctx, image, dx, dy);
 #endif
@@ -1216,6 +1223,13 @@ fz_draw_clip_image_mask(fz_device *devp, fz_image *image, fz_rect *rect, fz_matr
 	dy = sqrtf(ctm.c * ctm.c + ctm.d * ctm.d);
 #ifdef KN7PDF
 	pixmap = kn7_image_rows(ctx, image, &ctm, clip, &dx, &dy);
+	if (!pixmap)
+	{
+		/* (none of the image in the band: a clip to nothing, as for an empty image above) */
+		state[1].scissor = fz_empty_bbox;
+		state[1].mask = NULL;
+		return;
+	}
 #else
 	pixmap = fz_image_to_pixmap(ctx, image, dx, dy);
 #endif

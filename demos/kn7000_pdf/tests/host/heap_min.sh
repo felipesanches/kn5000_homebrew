@@ -1,14 +1,16 @@
 #!/bin/sh
 # heap_min.sh KN7PDF FILE.PDF SCRATCH_DIR [WIDTH=640] [BAND=32] -- the smallest heap (KB, to 16 KB) with which kn7pdf draws
-# every page of FILE.PDF exactly as it does with no limit (the PGMs compared byte for byte), the store unlimited
-# (MuPDF frees what it caches when an allocation fails). A page drawn differently, or an error, counts as not enough.
+# every page of FILE.PDF as it does with no limit, the store unlimited (MuPDF frees what it caches when an allocation
+# fails). Not enough: an error, a page drawn incomplete (memory ran short while its bands were drawn), or a page that
+# differs from the unlimited one (pgmdiff.py: over 0.1% of its pixels by more than 32 of 255; where memory changes the
+# bands' height, the pictures differ a little at their edges).
 K=${1:?kn7pdf}; F=${2:?pdf}; S=${3:?scratch}; W=${4:-640}; B=${5:-32}
 mkdir -p "$S/ref" "$S/try"
 "$K" "$F" "$W" "$B" 1048576 "$S/ref" > "$S/ref.txt" || { echo "no limit: errors"; exit 1; }
 ok() {  # ok KB: 0 when all pages come out the same
   rm -f -- "$S"/try/*.pgm
   "$K" "$F" "$W" "$B" 1048576 "$S/try" "$1" > "$S/try.txt" 2>&1 || return 1
-  for p in "$S"/ref/*.pgm; do cmp -s "$p" "$S/try/$(basename "$p")" || return 1; done
+  for p in "$S"/ref/*.pgm; do python3 -I "$(dirname "$0")/pgmdiff.py" "$p" "$S/try/$(basename "$p")" > /dev/null || return 1; done
 }
 lo=64; hi=$(awk '/worst heap peak/ {print $4 + 16}' "$S/ref.txt")
 ok "$hi" || { echo "not even at $hi KB"; exit 1; }

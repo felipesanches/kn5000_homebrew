@@ -87,8 +87,27 @@ pdf_load_embedded_cmap(pdf_document *xref, pdf_obj *stmobj)
 /*
  * Create an Identity-* CMap (for both 1 and 2-byte encodings)
  */
+#ifdef KN7PDF
+/* KN7PDF: one identity CMap of each kind, made once and shared (every Type3 font made its own, a few KB each: the
+ * manual's pages use a dozen), never changed by its users */
+static pdf_cmap *identity_made[2][3];
+static pdf_cmap *pdf_new_identity_cmap_imp(fz_context *ctx, int wmode, int bytes);
+
 pdf_cmap *
 pdf_new_identity_cmap(fz_context *ctx, int wmode, int bytes)
+{
+	pdf_cmap **made = &identity_made[wmode != 0][bytes == 1 ? 1 : bytes == 2 ? 2 : 0];
+	if (!*made)
+		*made = pdf_new_identity_cmap_imp(ctx, wmode, bytes);
+	return pdf_keep_cmap(ctx, *made);
+}
+
+static pdf_cmap *
+pdf_new_identity_cmap_imp(fz_context *ctx, int wmode, int bytes)
+#else
+pdf_cmap *
+pdf_new_identity_cmap(fz_context *ctx, int wmode, int bytes)
+#endif
 {
 	pdf_cmap *cmap = pdf_new_cmap(ctx);
 	fz_try(ctx)

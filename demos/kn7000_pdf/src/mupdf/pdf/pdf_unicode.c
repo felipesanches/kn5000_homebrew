@@ -14,7 +14,13 @@ pdf_load_to_unicode(pdf_document *xref, pdf_font_desc *font,
 	int i;
 	fz_context *ctx = xref->ctx;
 
+#ifdef KN7PDF
+	/* KN7PDF: a font's ToUnicode CMap serves text extraction, which the viewer does not do, and parsing it took memory
+	 * a page needs (and, for a CID font, 65,536 lookups): left out */
+	if (0)
+#else
 	if (pdf_is_stream(xref, pdf_to_num(cmapstm), pdf_to_gen(cmapstm)))
+#endif
 	{
 		cmap = pdf_load_embedded_cmap(xref, cmapstm);
 
