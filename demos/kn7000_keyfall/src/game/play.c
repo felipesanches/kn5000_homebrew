@@ -351,7 +351,7 @@ static u32 judgeUntil, progressX;
 static void hud_field(char *cache, const char *s, int x, int w, u8 fg) {
   if (!kf_streq_ci(cache, s) || !cache[0]) {
     fill8(x, 1, w, 13, C_HUD);
-    text8(s, x, 2, fg, C_HUD);
+    text8(s, x, 1, fg, C_HUD);
     kf_strcpy(cache, s, 24);
   }
 }
@@ -405,7 +405,7 @@ static u16 out_channels(const Chart *c) {
 static void all_notes_off(u16 chans) {
   for (int ch = 0; ch < 16; ++ch)
     if ((chans >> ch) & 1) {
-      const u8 a[3] = {(u8)(0xB0 | ch), 64, 0}, b[3] = {(u8)(0xB0 | ch), 123, 0};
+      const u8 a[3] = {(u8)(0xB0 | ch), 121, 0}, b[3] = {(u8)(0xB0 | ch), 123, 0};  /* Reset All Controllers, All Notes Off */
       for (int tries = 0; tries < 50 && host->midiIn(a, 3); ++tries) host->yield(2);
       for (int tries = 0; tries < 50 && host->midiIn(b, 3); ++tries) host->yield(2);
     }

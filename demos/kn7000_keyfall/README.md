@@ -7,7 +7,8 @@ parts are the accompaniment, which the instrument plays as it plays what a seque
 KN7000 program loader (`KN7LOAD.CNV`, DISK MENU > STYLE CONVERT) from the program menu's folder `KEYFALL\`, in its Games
 folder, as "Keyfall (piano game)".
 
-> **Status (2026-10-30): in MAME (program 893), not yet tried on the instrument.**
+> **Status (2026-10-30): plays in MAME (program 893), every check passing ([What was checked](#what-was-checked)); not
+> yet tried on the instrument.**
 
 ## Playing it
 
@@ -82,6 +83,22 @@ bank select (MSB 121, drums 120), its program, volume 100, pan centre and expres
 labels in its ink layer. Display memory is slow, so only what changes is drawn: the lanes are cut into segments at every
 key's edge, and each frame only the rows a note's edges crossed in its lane, and a beat line's old and new row, are drawn
 again (`play.c`).
+
+## The manual
+
+`manual/keyfall-kn7000-manual.pdf` (6 pages, in the style of the instrument's Operating Instructions, as ProTracker's)
+is printed from `manual/keyfall-kn7000-manual.html` by `manual/build.sh` (headless Chromium); its pictures are the LCD
+cut out of the MAME snapshots by `manual/mkimg.py`.
+
+## What was checked
+
+In MAME (program 893), each through the program menu as on the instrument (`tests/mame/`, the runs in
+`tests/results/README.md`): a song played by the script striking MAME's keybed at the chart's times, its results'
+counts checked against what was struck (Twinkle 42 of 42 PERFECT; notes left out MISSED, stray keys WRONG KEY); WAIT
+and DEMO; the accompaniment alone heard (-36.8 dBFS against silence) and never read as keys; every key from C2 to C7
+read with AUTO PLAY CHORD off, only C4 and up with it on. With the 10 ms converter rest while a song plays, the keys
+reached the game 26-48 ms after the script struck them and the firmware took the accompaniment 0.3-17 ms after the game
+put it in (with 100 ms: 23-146 and 1-178). On the PC: `make check` (`tests/host/`). Not yet tried on the instrument.
 
 ## Building
 

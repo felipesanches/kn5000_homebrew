@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Keyfall for the KN7000 - Operating Instructions</title>
+<!--
+  The manual, laid out as the instrument's own Operating Instructions are (kn7000_users_manual.pdf): fixed A4 pages,
+  each a <div class="page"> with data-part (the running head's left), data-head (its right), data-tab (the thumb tab's
+  text) and data-tabpos (its place down the edge). The script at the end adds the running heads, the thumb tabs, the
+  page numbers, the contents' page numbers, the panel locators (data-x: where on the panel, 0 left to 1 right) and the
+  soft-key bezels round the LCD pictures; and it marks any page whose text does not fit (build.sh refuses the PDF then).
+  Fonts: Nimbus Sans (the system's Helvetica) for the text; Archivo (fonts/, SIL OFL 1.1) for the headings.
+-->
+<style>
+  @font-face { font-family: "Archivo"; src: url("fonts/Archivo-VF.ttf"); font-weight: 100 900; font-stretch: 62% 125%; font-style: normal; }
+  @font-face { font-family: "Archivo"; src: url("fonts/Archivo-Italic-VF.ttf"); font-weight: 100 900; font-stretch: 62% 125%; font-style: italic; }
+  @page { size: A4; margin: 0; }
+  html { font-family: "Nimbus Sans", "Helvetica", "Liberation Sans", sans-serif; font-size: 9.4pt; color: #000; }
+  body { margin: 0; line-height: 1.36; }
+  * { box-sizing: border-box; }
+
+  /* the page */
+  .page { width: 210mm; height: 297mm; position: relative; overflow: hidden; break-after: page; background: #fff; }
+  .body { position: absolute; top: 26mm; bottom: 24mm; left: 21mm; right: 21mm; overflow: hidden; }
+  .page.first .body { top: 18mm; }
+  .rh { position: absolute; top: 12mm; left: 21mm; right: 21mm; display: flex; justify-content: space-between;
+        font: 900 12.5pt "Archivo"; font-stretch: 62%; border-bottom: 0.8pt solid #000; padding-bottom: 1.2mm; }
+  .tab { position: absolute; width: 9.5mm; height: 40mm; background: #000; color: #fff; display: flex; align-items: center;
+         justify-content: center; font: bold 8.6pt "Nimbus Sans"; }
+  .odd .tab { right: 0; }
+  .even .tab { left: 0; }
+  .tab span { writing-mode: vertical-rl; white-space: nowrap; }
+  .even .tab span { transform: rotate(180deg); }
+  .folio { position: absolute; bottom: 11mm; line-height: 1.1; }
+  .odd .folio { right: 21mm; text-align: right; }
+  .even .folio { left: 21mm; }
+  .folio .pn { display: block; font-size: 13pt; }
+  .folio .code { display: block; font-size: 6.5pt; letter-spacing: 0.2pt; }
+  .cont { position: absolute; bottom: 19mm; right: 21mm; font-style: italic; font-size: 8.6pt; }
+
+  /* titles, as the Operating Instructions set them */
+  .opener { font: italic 900 25pt "Archivo"; margin: 0 0 3mm; padding-bottom: 2mm; border-bottom: 0.8pt solid #000; letter-spacing: -0.2pt; }
+  .opensub { font: italic 900 15pt "Archivo"; margin: 0 0 4mm; padding-bottom: 2mm; border-bottom: 0.8pt solid #000; }
+  .title { display: flex; justify-content: space-between; align-items: flex-end; margin: 4mm 0 4mm; }
+  .title h1 { font: 900 27pt "Archivo"; font-stretch: 62%; margin: 0; letter-spacing: 0.2pt; }
+  h2 { font: 900 15pt "Archivo"; font-stretch: 62%; margin: 4mm 0 2mm; break-after: avoid; letter-spacing: 0.2pt; }
+  h2.ruled { border-top: 0.8pt solid #000; padding-top: 3mm; margin-top: 5mm; }
+  h3 { font-size: 9.6pt; font-weight: bold; margin: 3mm 0 1mm; break-after: avoid; }
+  h3::before { content: "\25A0"; margin-right: 1.6mm; font-size: 9pt; }
+  p { margin: 0 0 2mm; text-align: justify; hyphens: auto; }
+  .lead { margin-bottom: 4mm; }
+  b, .k { font-weight: bold; }
+  code { font-family: inherit; font-size: inherit; }
+  ul { margin: 0 0 2mm; padding-left: 4mm; list-style: none; }
+  ul li { position: relative; margin-bottom: 0.9mm; text-align: justify; hyphens: auto; }
+  ul li::before { content: "\2022"; position: absolute; left: -3.6mm; }
+  .cols { column-count: 2; column-gap: 8mm; }
+  .cols > * { break-inside: avoid; }
+  .cols > ul { break-inside: auto; }
+  .cols > ul > li { break-inside: avoid; }
+  .cols h2 { break-inside: avoid; }
+
+  /* steps: the big numeral and its bar */
+  .step { display: grid; grid-template-columns: minmax(9mm, auto) 1fr; column-gap: 3mm; margin: 0 0 4mm; break-inside: avoid; }
+  .step .n { font: 900 25pt/0.95 "Archivo"; font-stretch: 75%; border-right: 2.2pt solid #000; padding-right: 1.5mm; text-align: right; }
+  .step .t > :last-child { margin-bottom: 0; }
+  .step .t p { text-align: left; }
+
+  /* figures */
+  figure { margin: 2mm 0 3mm; break-inside: avoid; }
+  figcaption { font-size: 8.2pt; margin-top: 1.2mm; }
+  .lcd { display: grid; grid-template-columns: 5mm 1fr 5mm; column-gap: 2mm; align-items: stretch; border: 0.9pt solid #000;
+         border-radius: 1.5mm; padding: 2.2mm 2.5mm 1.6mm; width: 100%; margin: 0 auto; }
+  .lcd img { width: 100%; display: block; image-rendering: pixelated; border: 0.6pt solid #000; }
+  .lcd .sk { display: flex; flex-direction: column; justify-content: space-around; padding: 1.5mm 0; }
+  .lcd .sk i { display: block; height: 2.4mm; border: 0.7pt solid #000; border-radius: 0.6mm; }
+  .lcd .mute { grid-column: 2; display: flex; justify-content: space-between; margin-top: 1.4mm; }
+  .lcd .mute i { display: block; width: 2.2mm; height: 2.2mm; border: 0.7pt solid #000; border-radius: 50%; }
+  .lcd.half { width: 82%; }
+  .loc svg { width: 46mm; display: block; }
+
+  /* the panel maps: the drawings of before, in black and white */
+  figure.panel svg { width: 100%; display: block; }
+  figure.panel svg rect { fill: #fff; stroke: #000; stroke-width: 0.9; }
+  figure.panel svg rect[fill="var(--left)"] { fill: #cfcfcf; }
+  figure.panel svg rect[fill="#2b2b30"] { fill: #fff; stroke-width: 1.6; }
+  figure.panel svg rect[fill="#101018"] { fill: #ececec; }
+  figure.panel svg text { fill: #000; font-family: "Nimbus Sans", sans-serif; }
+  figure.panel svg circle { fill: #fff; stroke: #000; stroke-width: 0.9; }
+
+  /* tables */
+  table { border-collapse: collapse; width: 100%; margin: 1.5mm 0 3mm; font-size: 8.9pt; }
+  th, td { border: 0.6pt solid #000; padding: 0.9mm 1.6mm; vertical-align: top; text-align: left; }
+  th { font-weight: bold; background: #e4e4e4; }
+  td.k { font-weight: bold; white-space: nowrap; }
+  table.dense { font-size: 8.4pt; margin-top: 0; }
+  table.dense td, table.dense th { padding: 0.45mm 1.6mm; }
+  tr { break-inside: avoid; }
+
+  /* the contents */
+  .toc { margin: 2mm 0 0; padding: 0; list-style: none; }
+  .toc .part { font-weight: bold; margin: 3.4mm 0 1.2mm; text-transform: uppercase; letter-spacing: 0.3pt; }
+  .toc li::before { content: none; }
+  .toc li { display: flex; align-items: baseline; margin: 0 0 0.9mm 3mm; }
+  .toc li .dots { flex: 1; border-bottom: 0.9pt dotted #000; margin: 0 1.2mm; transform: translateY(-0.6mm); }
+  .toc a { color: #000; text-decoration: none; }
+  .box { border: 0.8pt solid #000; padding: 2.5mm 3mm; margin: 4mm 0; break-inside: avoid; }
+  .box > :last-child { margin-bottom: 0; }
+  .boxhead { font: 900 11pt "Archivo"; font-stretch: 62%; margin-bottom: 1.5mm; letter-spacing: 0.3pt; }
+
+  /* the cover */
+  .cover { background: #d6d6d6; }
+  .cover .bars { position: absolute; left: 0; top: 22mm; width: 92mm; }
+  .cover .bars i { display: block; height: 4.2mm; background: #000; margin-bottom: 3.2mm; }
+  .cover .bars i:nth-child(2) { width: 82%; } .cover .bars i:nth-child(3) { width: 64%; }
+  .cover .bars i:nth-child(4) { width: 46%; } .cover .bars i:nth-child(5) { width: 28%; }
+  .cover .kind { position: absolute; right: 22mm; top: 70mm; font: 600 13pt "Archivo"; font-stretch: 112%; letter-spacing: 1.5pt; }
+  .cover .model { position: absolute; right: 22mm; top: 78mm; text-align: right; }
+  .cover .model .a { font: 300 40pt/1 "Archivo"; font-stretch: 112%; letter-spacing: -0.5pt; }
+  .cover .model .b { font: 300 17pt "Archivo"; font-stretch: 112%; margin-top: 2mm; }
+  .cover .oi { position: absolute; right: 22mm; top: 118mm; font: 300 17pt "Nimbus Sans"; }
+  .cover .shot { position: absolute; left: 30mm; right: 30mm; top: 140mm; background: #fff; }
+  .cover .foot { position: absolute; left: 22mm; right: 22mm; bottom: 16mm; font-size: 8pt; line-height: 1.4;
+                 border-top: 0.8pt solid #000; padding-top: 2.5mm; }
+  .cover .foot b { font-size: 8.6pt; }
+</style>
+<body>
+
+<!-- ============================================================ cover -->
+<div class="page cover">
+  <div class="bars"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="kind">PIANO GAME</div>
+  <div class="model"><div class="a">Keyfall</div><div class="b">for the KN7000</div></div>
+  <div class="oi">Operating Instructions</div>
+  <div class="shot"><div class="lcd"><img src="img/play.png" alt="Keyfall while a song plays"></div></div>
+  <div class="foot">
+    <b>Homebrew software for the Technics SX-KN7000; not a Technics or Panasonic publication.</b><br>
+    Edition of 30 October 2026, for the program in <code>kn5000_homebrew/demos/kn7000_keyfall</code> (the folder
+    <code>KEYFALL\</code> on the SD card). Program and manual: GPLv3 or later. The songs supplied are public-domain
+    pieces arranged for the game. Headings set in Archivo (SIL Open Font License 1.1).
+  </div>
+</div>
+
+<!-- ============================================================ Part I -->
+<div class="page" data-part="Part I" data-head="Getting started" data-tab="Getting started" data-tabpos="0">
+<div class="body">
+  <div class="opener" id="about">Introduction</div>
+  <div class="opensub">Notes fall; you play them</div>
+  <div class="cols">
+    <p>Keyfall shows a keyboard along the bottom of the display, each key right above its own key of the keybed, and
+    a song's notes falling down towards it. Strike each key as its note reaches the keyboard. Every key you strike is
+    judged by its timing: <b>PERFECT</b>, <b>GOOD</b>, <b>OK</b>, or a <b>WRONG KEY</b> if no note was due on it; a
+    note nobody strikes is <b>MISSED</b>. A score, a streak and an accuracy count up as you go, and a results page with
+    a grade follows the song.</p>
+    <p>The songs are Standard MIDI Files on the SD card. You choose the part you play: a track of the song, or both
+    hands when it has a track for each. The other parts are the <i>accompaniment</i>: Keyfall sends them to the
+    instrument as a sequencer on its <b>MIDI IN</b> would, and the instrument plays them with its own sounds.</p>
+    <p>The keybed keeps its sound. Keyfall only listens to it, so whatever sound the panel has chosen for the keybed is
+    what you play the song with, and the rest of the panel works as always.</p>
+    <h3>What goes on the SD card</h3>
+    <p>The folder <code>KEYFALL\</code>, beside the program menu, holds:</p>
+    <table class="dense">
+      <tr><th>file</th><th>what it is</th></tr>
+      <tr><td class="k">KN7APP.BIN</td><td>the link between the game and the instrument's firmware</td></tr>
+      <tr><td class="k">KEYFALL.BIN</td><td>the game</td></tr>
+      <tr><td class="k">MANIFEST.TXT</td><td>its name in the program menu: "Keyfall (piano game)", in Games</td></tr>
+      <tr><td class="k">*.MID</td><td>the songs</td></tr>
+      <tr><td class="k">SCORES.TXT</td><td>the best scores, written by the game</td></tr>
+      <tr><td class="k">KFLOG.TXT</td><td>a log of what the game did, for finding faults</td></tr>
+    </table>
+  </div>
+  <h2 class="ruled" id="start">Starting and leaving</h2>
+  <div class="step"><div class="n">1</div><div class="t"><p>Press <b>DISK MENU</b>, then <b>STYLE CONVERT</b>, and
+    <b>OK</b> with the loader floppy in the drive. The program menu appears.</p></div></div>
+  <div class="step"><div class="n">2</div><div class="t"><p>Open the <b>Games</b> folder, choose
+    "Keyfall (piano game)" with the button beside it, and press <b>RUN</b>. After a few seconds the song list
+    appears.</p></div></div>
+  <div class="step"><div class="n">3</div><div class="t"><p>To leave, hold <b>EXIT</b> for a second and a half. The
+    instrument shows its own message and asks "Continue Next?": <b>NO</b> returns to the instrument, <b>YES</b>
+    starts the program menu again.</p></div></div>
+</div>
+</div>
+
+<div class="page" data-part="Part I" data-head="Getting started" data-tab="Getting started" data-tabpos="0">
+<div class="body">
+  <div class="title"><h1 id="songs">The song list</h1><div class="loc" data-x="0.50"></div></div>
+  <figure>
+    <div class="lcd half"><img src="img/songs.png" alt="The song list"></div>
+    <figcaption style="text-align:center">The song list, Ode to Joy selected.</figcaption>
+  </figure>
+  <p class="lead">The left column lists the MIDI files in the folder; the right one shows the song selected (its
+  title, length and number of parts) and how it will be played. Turn the <b>TEMPO/PROGRAM</b> wheel, or press
+  <b>LCDR 2</b> (UP) and <b>LCDR 3</b> (DOWN), to choose a song; the soft keys set the rest.</p>
+  <table>
+    <tr><th>button</th><th>label</th><th>what it does</th></tr>
+    <tr><td class="k">LCDL 1</td><td>PART</td><td>The part you play. Each track of the song in turn, and
+      "Both hands" when one track is named for the right hand and one for the left.</td></tr>
+    <tr><td class="k">LCDL 2</td><td>TEMPO</td><td>The song's speed: 100%, 90% … 50%. A slower tempo spreads the notes
+      out; the judging's timing stays the same.</td></tr>
+    <tr><td class="k">LCDL 3</td><td>ACCOMP</td><td>The accompaniment (the parts you do not play) on or off.</td></tr>
+    <tr><td class="k">LCDL 4</td><td>MODE</td><td><b>PLAY</b>: the game, judged. <b>WAIT</b>: the song stops at each
+      note until you strike its key (for learning a piece). <b>DEMO</b>: the song plays by itself, your part
+      too.</td></tr>
+    <tr><td class="k">LCDL 5</td><td>SPEED</td><td>How fast the notes fall: 70 to 180 lines a second. Faster shows
+      less of what comes, but spaces the notes more.</td></tr>
+    <tr><td class="k">LCDR 1</td><td>PLAY</td><td>Starts the song.</td></tr>
+    <tr><td class="k">LCDR 5</td><td>LATENCY</td><td>Milliseconds taken off the time of every key before it is judged
+      (-40 to 100). If the results say you are late on average although you play in time, raise it by that
+      much.</td></tr>
+  </table>
+  <div class="box">
+    <div class="boxhead">THE KEYBED'S LEFT SIDE</div>
+    <p>Keyfall reads the keys the keybed sends to <b>MIDI OUT</b> (the parts RIGHT 1, RIGHT 2 and LEFT). While
+    <b>AUTO PLAY CHORD</b> is on, the keys left of the split point are the accompaniment's chord keys and send nothing:
+    parts for the right hand play as they are; for a left-hand part, or both hands, turn <b>AUTO PLAY CHORD</b> off
+    first.</p>
+  </div>
+</div>
+</div>
+
+<!-- ============================================================ Part II -->
+<div class="page" data-part="Part II" data-head="Playing" data-tab="Playing" data-tabpos="1">
+<div class="body">
+  <div class="opener" id="play">Playing a song</div>
+  <figure>
+    <div class="lcd half"><img src="img/play.png" alt="A song playing"></div>
+    <figcaption style="text-align:center">A song playing: the notes of the right hand fall in green; the key that
+    has just been struck correctly is lit green on the keyboard.</figcaption>
+  </figure>
+  <div class="cols">
+    <h3>The screen</h3>
+    <ul>
+      <li><b>The top line</b>: the score, the last judgement (PERFECT, GOOD, OK, MISS, WRONG KEY), the streak with its
+          multiplier, and the accuracy so far. Under it, a thin line grows with the song's progress.</li>
+      <li><b>The lanes</b>: one for each key shown, the black keys' darker. A note's length shows how long it is held.
+          Its lower edge reaches the keyboard at the moment to strike it. The faint lines across are the beats, the
+          brighter ones the first beats of the bars.</li>
+      <li><b>The keyboard</b>: at least two octaves, as many as the part needs. A key turns pale green just before a
+          note is due on it, blue while you hold it, green when you struck a note, red for a wrong key.</li>
+      <li>The first notes start falling two and a half seconds after <b>PLAY</b>. With two parts, the second (the left
+          hand) falls in blue.</li>
+    </ul>
+    <h3>Judging</h3>
+    <table class="dense">
+      <tr><th>key struck</th><th>judgement</th><th>points</th></tr>
+      <tr><td>within 50 ms of the note</td><td>PERFECT</td><td>100</td></tr>
+      <tr><td>within 100 ms</td><td>GOOD</td><td>70</td></tr>
+      <tr><td>within 150 ms</td><td>OK</td><td>40</td></tr>
+      <tr><td>no note due on that key</td><td>WRONG KEY</td><td>0</td></tr>
+      <tr><td>a note not struck in time</td><td>MISS</td><td>0</td></tr>
+    </table>
+    <p>The points are multiplied by 1 plus a tenth of the streak (the notes struck in a row), at most by 4. A miss or a
+    wrong key ends the streak. The accuracy counts each note as 100, 70, 40 or 0 per cent; wrong keys do not lower it.</p>
+    <h3>Stopping</h3>
+    <p>Press <b>EXIT</b> to stop the song at once; the results of what was played follow. Holding <b>EXIT</b> leaves
+    Keyfall altogether.</p>
+    <h3>The accompaniment</h3>
+    <p>The song's other parts go to the instrument's MIDI parts PART 4 to PART 16 (channel 10 the drums), as when a
+    computer plays a song through <b>MIDI IN</b>. Their sounds are the General MIDI ones the song names. Keep the
+    instrument's MIDI settings as they come (MIDI menu, <b>PART SETTING</b>: PART 4 to 16 on channels 4 to 16).</p>
+  </div>
+</div>
+</div>
+
+<div class="page" data-part="Part II" data-head="Playing" data-tab="Playing" data-tabpos="1">
+<div class="body">
+  <div class="title"><h1 id="results">Results and best scores</h1></div>
+  <figure>
+    <div class="lcd half"><img src="img/results.png" alt="The results"></div>
+    <figcaption style="text-align:center">The results of a game: the grade, the score, the counts, the longest streak
+    and the average timing.</figcaption>
+  </figure>
+  <div class="cols">
+    <p>The grade comes from the accuracy: <b>S</b> from 95%, <b>A</b> from 85%, <b>B</b> from 70%, <b>C</b> from 50%,
+    <b>D</b> below. <b>TIMING</b> says how early or late your keys came on average: a steady lateness you cannot hear
+    is better set with <b>LATENCY</b> on the song list.</p>
+    <p>A game played to the end in PLAY mode that beats the best score for that song, part and tempo is saved in
+    <code>SCORES.TXT</code> ("NEW BEST!"); the song list shows the best as <b>BEST</b>. WAIT shows how many notes were
+    played and how many keys were wrong; DEMO, nothing to count.</p>
+    <p><b>LCDR 1</b> (AGAIN) plays the same song again; <b>LCDL 1</b> (SONGS) or <b>EXIT</b> returns to the song list.</p>
+  </div>
+  <h2 class="ruled" id="adding">Adding songs</h2>
+  <div class="cols">
+    <p>Copy any Standard MIDI File (format 0 or 1) into the card's <code>KEYFALL\</code> folder, with a short name
+    ending in <code>.MID</code> (eight letters or digits at most before the dot). Each track's notes on one channel
+    become a part named after the track. A track named "Right hand" (or RH, Melody) is offered first; with one named
+    "Left hand" (or LH) as well, "Both hands" can be chosen.</p>
+    <p>System exclusive messages in a file are left out, so that a song cannot change the instrument's settings.
+    Everything else of the other parts (notes, program changes, volume, pan, the sustain pedal, pitch bend) is sent.</p>
+    <p>The songs supplied: <i>Twinkle, Twinkle, Little Star</i> (traditional), <i>Ode to Joy</i> (Beethoven) and the
+    <i>Minuet in G</i> (Petzold), each with its right hand and an accompaniment. They are written as text and turned
+    into MIDI files by <code>tools/songs/mksong.py</code>, whose README describes the notation.</p>
+  </div>
+</div>
+</div>
+
+<!-- ============================================================ Part III -->
+<div class="page" data-part="Part III" data-head="Reference" data-tab="Reference" data-tabpos="2">
+<div class="body">
+  <div class="opener" id="trouble">Troubleshooting</div>
+  <table>
+    <tr><th>what happens</th><th>why, and what to do</th></tr>
+    <tr><td>Keys of the left side count for nothing.</td><td><b>AUTO PLAY CHORD</b> is on: those keys choose chords
+      and send no notes. Turn it off.</td></tr>
+    <tr><td>Every key comes late (TIMING in the results).</td><td>Raise <b>LATENCY</b> by about that much.</td></tr>
+    <tr><td>The accompaniment is silent or plays odd sounds.</td><td>The MIDI parts PART 4-16 are off or on other
+      channels (MIDI menu, <b>PART SETTING</b>), or <b>LOCAL</b>/receive settings were changed. The initialized MIDI
+      settings play it.</td></tr>
+    <tr><td>"This file cannot be played".</td><td>Not a MIDI file Keyfall reads (SMPTE timing, format 2), or no notes
+      outside the drums.</td></tr>
+    <tr><td>A blue screen.</td><td>The game stopped: photograph the screen, switch the instrument off and on.
+      <code>KFLOG.TXT</code> on the card tells what it did last.</td></tr>
+  </table>
+  <h2 class="ruled" id="changes">What Keyfall changes in the instrument</h2>
+  <div class="cols">
+    <p>Nothing is stored in the instrument: no panel memory, setting or file but <code>SCORES.TXT</code> and
+    <code>KFLOG.TXT</code> in the game's own folder.</p>
+    <p>While the accompaniment plays, the MIDI parts PART 4 to PART 16 receive program changes, bank selects, volume,
+    pan and expression, as from any sequencer. When the song ends, or Keyfall is left, every channel it used gets
+    Reset All Controllers and All Notes Off; the sounds chosen stay on those MIDI parts until they receive others or the
+    instrument is switched off. The keybed's own parts (RIGHT 1, RIGHT 2, LEFT) receive nothing.</p>
+    <p>The TEMPO/PROGRAM wheel and the soft keys beside the display are Keyfall's while it runs: the tempo does not
+    change when the wheel chooses a song.</p>
+  </div>
+</div>
+</div>
+
+<script>
+// The pages' repeated parts, the contents' page numbers, and the overflow check (see the comment at the top).
+(function () {
+  const CODE = "KEYFALL-KN7 2610";
+  const pages = [...document.querySelectorAll(".page")];
+  const pageOf = el => pages.indexOf(el.closest(".page")) + 1;
+  pages.forEach((p, i) => {
+    const n = i + 1;
+    p.classList.add(n % 2 ? "odd" : "even");
+    if (p.classList.contains("cover")) return;
+    p.insertAdjacentHTML("beforeend", `<div class="folio"><span class="pn">${n}</span><span class="code">${CODE}</span></div>`);
+    if (p.dataset.part) {
+      p.insertAdjacentHTML("afterbegin", `<div class="rh"><span>${p.dataset.part}</span><span>${p.dataset.head}</span></div>`);
+      const top = 32 + 41 * Number(p.dataset.tabpos || 0);
+      p.insertAdjacentHTML("beforeend", `<div class="tab" style="top:${top}mm"><span>${p.dataset.tab}</span></div>`);
+    }
+  });
+  // the panel locator: the panel drawn small, a black triangle over the part the page is about
+  document.querySelectorAll(".loc").forEach(l => {
+    const x = 4 + 112 * Number(l.dataset.x);
+    let dots = "";
+    for (let i = 0; i < 9; ++i) dots += `<circle cx="${7 + i * 4.3}" cy="17" r="1.1"/><circle cx="${7 + i * 4.3}" cy="23" r="1.1"/>`;
+    for (let i = 0; i < 8; ++i) dots += `<circle cx="${77 + i * 3.6}" cy="17" r="1.1"/><circle cx="${77 + i * 3.6}" cy="23" r="1.1"/>`;
+    for (let i = 0; i < 12; ++i) dots += `<rect x="${47 + i * 2.3}" y="27.5" width="1.4" height="1.4"/>`;
+    l.innerHTML = `<svg viewBox="0 0 120 34" xmlns="http://www.w3.org/2000/svg">
+      <path d="M${x - 4} 1 h8 l-4 6 z" fill="#000"/>
+      <rect x="1" y="9" width="118" height="23" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.8"/>
+      <rect x="46" y="11" width="28" height="15" fill="#fff" stroke="#000" stroke-width="0.7"/>
+      <rect x="42.5" y="12" width="2" height="12" fill="none" stroke="#000" stroke-width="0.4"/>
+      <rect x="75.5" y="12" width="2" height="12" fill="none" stroke="#000" stroke-width="0.4"/>
+      <g fill="none" stroke="#000" stroke-width="0.45">${dots}</g>
+      <circle cx="111" cy="21" r="5" fill="none" stroke="#000" stroke-width="0.7"/>
+      <rect x="2.5" y="12" width="2" height="14" fill="none" stroke="#000" stroke-width="0.4"/></svg>`;
+  });
+  // the display's bezel: its five soft keys on each side, the MUTE pairs under it
+  document.querySelectorAll(".lcd").forEach(d => {
+    const img = d.querySelector("img");
+    const keys = "<i></i>".repeat(5);
+    d.innerHTML = `<div class="sk">${keys}</div>${img.outerHTML}<div class="sk">${keys}</div><div class="mute">${"<i></i>".repeat(16)}</div>`;
+  });
+  // the contents' page numbers
+  document.querySelectorAll(".toc a").forEach(a => {
+    const t = document.querySelector(a.getAttribute("href"));
+    a.parentElement.querySelector(".pg").textContent = t ? pageOf(t) : "?";
+  });
+  // a page whose text runs past its bottom, or into a third column, is marked; build.sh refuses the PDF then
+  const over = [];
+  pages.forEach((p, i) => p.querySelectorAll(".body, .cols").forEach(b => {
+    if (b.scrollHeight > b.clientHeight + 1 || b.scrollWidth > b.clientWidth + 1)
+      over.push(`${i + 1} (${b.scrollHeight - b.clientHeight} px down, ${b.scrollWidth - b.clientWidth} px across)`);
+  }));
+  document.documentElement.dataset.overflow = [...new Set(over)].join(", ");
+  document.documentElement.dataset.pages = pages.length;
+})();
+</script>
+</body>
+</html>
