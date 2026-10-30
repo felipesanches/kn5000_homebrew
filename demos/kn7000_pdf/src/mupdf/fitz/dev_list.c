@@ -59,9 +59,33 @@ struct fz_display_list_s
 		fz_rect rect;
 	} stack[STACK_SIZE];
 	int tiled;
+#ifdef KN7PDF
+	int kn7_culling;
+	fz_rect kn7_keep;
+#endif
 };
 
 enum { ISOLATED = 1, KNOCKOUT = 2 };
+
+#ifdef KN7PDF
+/* KN7PDF: a list of a region of the page only (fz_kn7_list_keep): what is drawn wholly outside `keep` is left out as
+ * the page is run into the list, before a node is made for it, so that the list of a page too large for the KN7000's
+ * memory can be made a region at a time (src/kn7/view.c). Clips, groups, masks and tiles are always kept: their pairs
+ * must match. */
+void
+fz_kn7_list_keep(fz_display_list *list, fz_rect keep)
+{
+	list->kn7_culling = 1;
+	list->kn7_keep = keep;
+}
+
+static int
+kn7_culled(fz_device *dev, fz_rect r)
+{
+	fz_display_list *list = dev->user;
+	return list->kn7_culling && fz_is_empty_rect(fz_intersect_rect(r, list->kn7_keep));
+}
+#endif
 
 static fz_display_node *
 fz_new_display_node(fz_context *ctx, fz_display_command cmd, fz_matrix ctm,
@@ -223,10 +247,19 @@ fz_list_fill_path(fz_device *dev, fz_path *path, int even_odd, fz_matrix ctm,
 {
 	fz_display_node *node;
 	fz_context *ctx = dev->ctx;
+#ifdef KN7PDF
+	fz_rect r = fz_bound_path(dev->ctx, path, NULL, ctm);
+	if (kn7_culled(dev, r))
+		return;
+#endif
 	node = fz_new_display_node(ctx, FZ_CMD_FILL_PATH, ctm, colorspace, color, alpha);
 	fz_try(ctx)
 	{
+#ifdef KN7PDF
+		node->rect = r;
+#else
 		node->rect = fz_bound_path(dev->ctx, path, NULL, ctm);
+#endif
 		node->item.path = fz_clone_path(dev->ctx, path);
 		node->flag = even_odd;
 	}
@@ -244,10 +277,19 @@ fz_list_stroke_path(fz_device *dev, fz_path *path, fz_stroke_state *stroke, fz_m
 {
 	fz_display_node *node;
 	fz_context *ctx = dev->ctx;
+#ifdef KN7PDF
+	fz_rect r = fz_bound_path(dev->ctx, path, stroke, ctm);
+	if (kn7_culled(dev, r))
+		return;
+#endif
 	node = fz_new_display_node(ctx, FZ_CMD_STROKE_PATH, ctm, colorspace, color, alpha);
 	fz_try(ctx)
 	{
+#ifdef KN7PDF
+		node->rect = r;
+#else
 		node->rect = fz_bound_path(dev->ctx, path, stroke, ctm);
+#endif
 		node->item.path = fz_clone_path(dev->ctx, path);
 		node->stroke = fz_keep_stroke_state(dev->ctx, stroke);
 	}
@@ -309,10 +351,19 @@ fz_list_fill_text(fz_device *dev, fz_text *text, fz_matrix ctm,
 {
 	fz_display_node *node;
 	fz_context *ctx = dev->ctx;
+#ifdef KN7PDF
+	fz_rect r = fz_bound_text(dev->ctx, text, ctm);
+	if (kn7_culled(dev, r))
+		return;
+#endif
 	node = fz_new_display_node(ctx, FZ_CMD_FILL_TEXT, ctm, colorspace, color, alpha);
 	fz_try(ctx)
 	{
+#ifdef KN7PDF
+		node->rect = r;
+#else
 		node->rect = fz_bound_text(dev->ctx, text, ctm);
+#endif
 		node->item.text = fz_clone_text(dev->ctx, text);
 	}
 	fz_catch(ctx)
@@ -329,11 +380,20 @@ fz_list_stroke_text(fz_device *dev, fz_text *text, fz_stroke_state *stroke, fz_m
 {
 	fz_display_node *node;
 	fz_context *ctx = dev->ctx;
+#ifdef KN7PDF
+	fz_rect r = fz_bound_text(dev->ctx, text, ctm);
+	if (kn7_culled(dev, r))
+		return;
+#endif
 	node = fz_new_display_node(ctx, FZ_CMD_STROKE_TEXT, ctm, colorspace, color, alpha);
 	node->item.text = NULL;
 	fz_try(ctx)
 	{
+#ifdef KN7PDF
+		node->rect = r;
+#else
 		node->rect = fz_bound_text(dev->ctx, text, ctm);
+#endif
 		fz_adjust_rect_for_stroke(&node->rect, stroke, &ctm);
 		node->item.text = fz_clone_text(dev->ctx, text);
 		node->stroke = fz_keep_stroke_state(dev->ctx, stroke);
@@ -395,10 +455,19 @@ fz_list_ignore_text(fz_device *dev, fz_text *text, fz_matrix ctm)
 {
 	fz_display_node *node;
 	fz_context *ctx = dev->ctx;
+#ifdef KN7PDF
+	fz_rect r = fz_bound_text(dev->ctx, text, ctm);
+	if (kn7_culled(dev, r))
+		return;
+#endif
 	node = fz_new_display_node(ctx, FZ_CMD_IGNORE_TEXT, ctm, NULL, NULL, 0);
 	fz_try(ctx)
 	{
+#ifdef KN7PDF
+		node->rect = r;
+#else
 		node->rect = fz_bound_text(dev->ctx, text, ctm);
+#endif
 		node->item.text = fz_clone_text(dev->ctx, text);
 	}
 	fz_catch(ctx)
@@ -422,6 +491,11 @@ fz_list_fill_shade(fz_device *dev, fz_shade *shade, fz_matrix ctm, float alpha)
 {
 	fz_display_node *node;
 	fz_context *ctx = dev->ctx;
+#ifdef KN7PDF
+	fz_rect r = fz_bound_shade(ctx, shade, ctm);
+	if (kn7_culled(dev, r))
+		return;
+#endif
 	node = fz_new_display_node(ctx, FZ_CMD_FILL_SHADE, ctm, NULL, NULL, alpha);
 	node->rect = fz_bound_shade(ctx, shade, ctm);
 	node->item.shade = fz_keep_shade(ctx, shade);
@@ -432,6 +506,10 @@ static void
 fz_list_fill_image(fz_device *dev, fz_image *image, fz_matrix ctm, float alpha)
 {
 	fz_display_node *node;
+#ifdef KN7PDF
+	if (kn7_culled(dev, fz_transform_rect(ctm, fz_unit_rect)))
+		return;
+#endif
 	node = fz_new_display_node(dev->ctx, FZ_CMD_FILL_IMAGE, ctm, NULL, NULL, alpha);
 	node->rect = fz_transform_rect(ctm, fz_unit_rect);
 	node->item.image = fz_keep_image(dev->ctx, image);
@@ -443,6 +521,10 @@ fz_list_fill_image_mask(fz_device *dev, fz_image *image, fz_matrix ctm,
 	fz_colorspace *colorspace, float *color, float alpha)
 {
 	fz_display_node *node;
+#ifdef KN7PDF
+	if (kn7_culled(dev, fz_transform_rect(ctm, fz_unit_rect)))
+		return;
+#endif
 	node = fz_new_display_node(dev->ctx, FZ_CMD_FILL_IMAGE_MASK, ctm, colorspace, color, alpha);
 	node->rect = fz_transform_rect(ctm, fz_unit_rect);
 	node->item.image = fz_keep_image(dev->ctx, image);

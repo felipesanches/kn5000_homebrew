@@ -177,7 +177,8 @@ local co = coroutine.create(function()
   turn(TURN)
   CHECK("the wheel scrolls the page", s32("_top") > top0, string.format("top %d -> %d", top0, s32("_top")))
   E("wheel frames %d, late %d (the firmware decoded them first)", u32("_wheel_frames"), u32("_wheel_late"))
-  CHECK("no wheel frame reached the firmware", u32("_wheel_late") == 0, u32("_wheel_late"))
+  CHECK("the tempo left alone: every wheel frame the firmware decoded first taken back", u32("_wheel_late") == u32("_wheel_undone"),
+    string.format("%d late, %d taken back", u32("_wheel_late"), u32("_wheel_undone")))
   snap("page 1, scrolled")
   -- the panel shared: R2 is the viewer's, VARIATION 1 the firmware's
   local r2, var1 = field("CPR_SEG5", 0x20), field("CPL_SEG4", 0x10)
@@ -210,8 +211,8 @@ local co = coroutine.create(function()
       if s32("_pageNo") == 1 then break end
     end
     CHECK("past the end: the next page", wait_until(function() return s32("_pageNo") == 1 and s32("_pageH") > 0 end, 600), state())
-    CHECK("the wheel turned while a page drew: no frame reached the firmware", u32("_wheel_late") == 0,
-      string.format("%d of %d late", u32("_wheel_late"), u32("_wheel_frames")))
+    CHECK("the wheel turned while a page drew: the tempo left alone", u32("_wheel_late") == u32("_wheel_undone"),
+      string.format("%d of %d late, %d taken back", u32("_wheel_late"), u32("_wheel_frames"), u32("_wheel_undone")))
     wait(1)
     snap("page 2")
     E("PAGE UP")

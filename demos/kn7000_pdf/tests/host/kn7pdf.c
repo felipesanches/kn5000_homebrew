@@ -156,7 +156,6 @@ int main(int argc, char** argv) {
   limit = argc > 6 ? (size_t)atoi(argv[6]) * 1024 : 0;
   view_clock = ms;
   view_failures = refused;
-  view_no_list = getenv("KN7PDF_NO_LIST") != NULL;
   fz_kn7_slow_malloc = slow_malloc;
   fz_kn7_slow_free = slow_free;
   sites_on = getenv("KN7PDF_SITES") != NULL;
@@ -193,9 +192,9 @@ int main(int argc, char** argv) {
       printf("page %d: %s\n", p + 1, view_error());
       ++errors;
     }
-    printf("page %2d: %dx%d, heap peak %4zu KB, after %4zu KB; %u ms (load %u, list %u, bands %u: %u%s)%s\n", p + 1,
-           width, h, peak / 1024, in_use / 1024, t, st.load_ms, st.list_ms, st.draw_ms, st.bands,
-           st.direct ? ", no list" : "", st.incomplete ? " INCOMPLETE" : "");
+    printf("page %2d: %dx%d, heap peak %4zu KB, after %4zu KB; %u ms (load %u, lists %u: %u, bands %u: %u%s)%s\n", p + 1,
+           width, h, peak / 1024, in_use / 1024, t, st.load_ms, st.lists, st.list_ms, st.draw_ms, st.bands,
+           st.direct ? ", regions" : "", st.incomplete ? " INCOMPLETE" : "");
     incomplete += st.incomplete;
     if (peak > worst) worst = peak;
     if (out) {

@@ -1903,6 +1903,9 @@ void fz_run_display_list(fz_display_list *list, fz_device *dev, fz_matrix ctm, f
 	Does not throw exceptions.
 */
 void fz_free_display_list(fz_context *ctx, fz_display_list *list);
+#ifdef KN7PDF
+void fz_kn7_list_keep(fz_display_list *list, fz_rect keep);
+#endif
 
 /*
 	Links

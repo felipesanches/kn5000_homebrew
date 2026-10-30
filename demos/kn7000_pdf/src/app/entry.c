@@ -143,8 +143,43 @@ u32 rest_raw;                /* raw reads served during a wait (a converter call
 #define PANEL_RING_LEN 0x5C
 volatile s32 wheel_steps;
 u32 wheel_frames, wheel_late;  /* wheel frames seen; of them, those the firmware had decoded first (the tempo moved) */
+u32 wheel_undone;              /* frames put in the ring to take a late frame's step back */
 static u32 wheel_at;
 static int wheel_on;
+
+/* A wheel frame the firmware decoded before wheel_scan took it moved the tempo by its step: a frame of the opposite step
+ * goes into the ring after the panel's, as the panel would send it, and the tempo goes back (PANEL_RING's write index
+ * moved with interrupts off, as the receive interrupt moves it). wheel_scan passes over the frames it wrote. */
+#define UNDONE_MAX 8
+static u32 undone_at[UNDONE_MAX], undone_n;
+
+static void wheel_undo(signed char step) {
+  if (undone_n >= UNDONE_MAX || !step) return;
+  u32 psw;
+  __asm__ volatile("mov psw,%0\n\tand 0xf7ff,psw\n\tnop\n\tnop" : "=d"(psw)::"memory");
+  volatile u16* const wrp = (volatile u16*)PANEL_RX_WR;
+  const u32 wr = *wrp, rd = *(volatile u16*)PANEL_RX_RD;
+  const u32 filled = (wr + PANEL_RING_LEN - rd) % PANEL_RING_LEN;
+  if (wr < PANEL_RING_LEN && !(wr & 1) && filled + 2 < PANEL_RING_LEN) {
+    volatile u8* const ring = (volatile u8*)PANEL_RING;
+    ring[wr] = 0x17;
+    ring[(wr + 1) % PANEL_RING_LEN] = (u8)(-step);
+    *wrp = (u16)((wr + 2) % PANEL_RING_LEN);
+    undone_at[undone_n++] = wr;
+    ++wheel_undone;
+  }
+  __asm__ volatile("mov %0,psw\n\tnop\n\tnop" ::"d"(psw) : "memory");
+}
+
+/* 1 when the frame at `at` is one wheel_undo wrote (it is forgotten then) */
+static int undone_frame(u32 at) {
+  for (u32 i = 0; i < undone_n; ++i)
+    if (undone_at[i] == at) {
+      undone_at[i] = undone_at[--undone_n];
+      return 1;
+    }
+  return 0;
+}
 
 /* The panel's switches, some kept from the firmware (ProTracker's PLAN-EDITING.md, "Risks"). A switch frame is [ADDR, DATA]:
  * ADDR's bits 7-6 the bank (00 the CPR board, 11 the CPL and CPC boards), bits 3-0 the segment; DATA the segment's
@@ -207,13 +242,18 @@ void wheel_scan(void) {
         panel_late_log[(panel_late % 8) * 2 + 1] = data;
         ++panel_late;
       }
-    } else if (addr == 0x17) {
-      wheel_steps += (signed char)ring[next];
+    } else if (addr == 0x17 && !undone_frame(wheel_at)) {
+      const signed char step = (signed char)ring[next];
+      wheel_steps += step;
       ++wheel_frames;
       /* still to be decoded: between the read index and the write index */
       const u32 ahead = (wheel_at + PANEL_RING_LEN - rd) % PANEL_RING_LEN, filled = (wr + PANEL_RING_LEN - rd) % PANEL_RING_LEN;
-      if (ahead < filled) ring[next] = 0;
-      else ++wheel_late;
+      if (ahead < filled) {
+        ring[next] = 0;
+      } else {
+        ++wheel_late;
+        wheel_undo(step);
+      }
     }
     wheel_at = (wheel_at + 2) % PANEL_RING_LEN;
   }

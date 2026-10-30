@@ -23,7 +23,6 @@ pages come out right, before anything runs in MAME.
 |--------------------|-----------------------------------------------------------------------------------------------------------|
 | `KN7PDF_SITES=1`   | the bytes in use at the highest peak (with `HEAP_KB`: at the first allocation refused) by where they were allocated (`addr2line -f -e build/host/kn7pdf ADDR`) |
 | `KN7PDF_SITES_END=1` | with `KN7PDF_SITES`: what stays in use after the last page instead                                       |
-| `KN7PDF_NO_LIST=1` | never a display list: every band runs the page's content (`view_no_list`)                                 |
 | `KN7PDF_BIG=1`     | a backtrace of every allocation over 1 MB                                                                 |
 
 A heap limit (`HEAP_KB`) refuses an allocation that would take the heap in use over it, as the instrument's heap does;
