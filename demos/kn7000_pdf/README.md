@@ -1,0 +1,126 @@
+# A PDF viewer for the KN7000
+
+Sheet music in PDF on the Technics SX-KN7000's LCD, while the instrument plays on: **MuPDF 1.1** (Artifex, GPL-3.0),
+the "lightweight PDF viewer", run by the KN7000 program loader (`KN7LOAD.CNV`, DISK MENU > STYLE CONVERT) from the
+program menu's folder `PDF\` on the SD card. The page is drawn as wide as the LCD and the TEMPO/PROGRAM wheel scrolls
+it; the keybed and the rest of the panel stay the instrument's.
+
+> **Status (2026-10-30): runs in MAME (program 893); not yet tried on the instrument.** The LilyPond score
+> `Bachianinha_No1_duas_vozes.pdf` and the ProTracker port's manual are on the test card
+> ([What was checked](#what-was-checked)).
+
+Contents: [Using it](#using-it) · [The card](#the-card) · [How it works](#how-it-works) · [Memory](#memory) ·
+[Building](#building) · [What was checked](#what-was-checked) · [Licences](#licences) · [Files](#files)
+
+## Using it
+
+DISK MENU, STYLE CONVERT, `KN7LOAD.CNV`, OK; then the program menu's "PDF viewer (MuPDF)" row, RUN. The folder's PDFs
+are listed; the wheel or UP/DOWN chooses one, OPEN opens it, and its first page is drawn (half a minute for a page of
+music in MAME). The page fills the LCD's width; the LCD shows 240 of its lines at a time.
+
+| control                    | in the list | on a page                                                                 |
+|----------------------------|-------------|---------------------------------------------------------------------------|
+| TEMPO/PROGRAM wheel        | the file    | scrolls the page; past its end the next page, past its top the one before |
+| PAGE UP, PAGE DOWN         |             | the page before, the page after                                           |
+| LCD left 1 (FILES)         |             | back to the list                                                          |
+| LCD left 2, 3 (PREV, NEXT) |             | the page before, the page after                                           |
+| LCD left 4 (FIRST)         |             | the first page                                                            |
+| LCD left 5 (LOG)           | the log     | the log (MuPDF's warnings and errors, the pages' times)                   |
+| LCD right 1                | OPEN        | TOP: the page's top                                                       |
+| LCD right 2, 3             | UP, DOWN    |                                                                           |
+| LCD right 5                |             | END: the page's bottom                                                    |
+| EXIT                       |             | back to the list                                                          |
+| EXIT held 1.5 s            | the end     | the end                                                                   |
+
+Everything else on the panel does what it always does, and the keybed plays, also while a page is drawn (the tempo
+does not change while the wheel scrolls). The status line at the bottom names the file and the page; when memory ran
+short while a page was drawn it says so ("it may lack something").
+
+## The card
+
+| file           | what                                                                                                                    |
+|----------------|-------------------------------------------------------------------------------------------------------------------------|
+| `KN7APP.BIN`   | the platform: firmware search, task, files, the panel shared with the firmware, the frame buffers lent (Doom's, ABI 14) |
+| `PDF.BIN`      | the viewer: MuPDF 1.1, FreeType, zlib, libjpeg, jbig2dec, and `src/kn7/`                                                |
+| `MANIFEST.TXT` | the name the program menu shows and its folder (Tools)                                                                  |
+| `*.CFF`        | the 14 standard PDF fonts (URW's Nimbus, from MuPDF 1.1), read only by a PDF that does not embed them                   |
+| `*.PDF`        | the documents: copy any PDF in (an 8.3 name, as the computer makes it)                                                  |
+
+## How it works
+
+Two programs, as Doom's and ProTracker's (`src/common/pfhost.h` between them):
+
+- **`KN7APP.BIN`** (`src/app/`, Doom's, ABI 14): the loader runs it on each converter call. It starts a task for the
+  viewer and serves its file reads; it takes from the firmware only the switches the viewer names (`panelTake`: the
+  ten soft keys, PAGE UP/DOWN, EXIT) and the wheel, before the firmware decodes them, and leaves it everything else; it
+  keeps the firmware's drawing off; it loads PDF.BIN's image and its segments (`PfSegment`).
+- **`PDF.BIN`** (`src/kn7/`, `src/mupdf/`, `src/third/`): MuPDF 1.1 with its changes behind `KN7PDF`, and the viewer.
+
+**Drawing a page** (`src/kn7/view.c`). The page is run once into MuPDF's display list, then drawn from it 32 lines at
+a time into a gray band, each band copied into the LCD controller's display memory, 8 bits a pixel, its look-up table 16
+grays. When memory runs short while the list is made, each band runs the page's content again instead; a band that runs
+short is drawn again half as tall.
+
+**Showing it** (`src/kn7/viewer.c`). The page lies whole in display memory (up to 1,004 lines at 640 wide: A4 is 906,
+Letter 828); the controller shows 240 lines of it from its start address, so the wheel scrolls without a pixel moving.
+The labels and the status line are in the controller's ink layer (2 bits a dot over the picture), which stays still.
+
+**The instrument meanwhile.** The viewer's task runs at the firmware's priority and MuPDF gives the CPU to the firmware
+every 20 ms of its work (`fz_kn7_yield`), so the keybed sounds, the panel's buttons act and MIDI flows while a page is
+drawn. The firmware's tasks give the CPU only to each other: a task below them (priority 4) ran once and never again.
+
+**What MuPDF 1.1 needed** (each change in `src/mupdf/` behind `#ifdef KN7PDF`):
+
+| change                                                                                                                             | where                                                        |
+|------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|
+| an image decoded a band of rows at a time, reduced and made gray as it decodes; images outside a band not decoded                  | `pdf_image.c`, `draw_device.c`                               |
+| a Type3 glyph's procedure loaded when it is run, shared between the codes that name it                                             | `pdf_type3.c`, `res_font.c`                                  |
+| a page's parsed objects dropped once it is loaded and once it is drawn (as later MuPDF's `pdf_clear_xref`)                         | `pdf_xref.c`, `view.c`                                       |
+| ToUnicode CMaps and link annotations left out; identity CMaps shared                                                               | `pdf_unicode.c`, `pdf_page.c`, `pdf_cmap_load.c`             |
+| the draw device's pops no longer free the parent's picture after a push that ran out of memory                                     | `draw_device.c`                                              |
+| FreeType on MuPDF's allocator, so its allocations make MuPDF free its cache; FreeType trimmed (`kn7ftoptions.h`, `kn7ftmodules.h`) | `res_font.c`                                                 |
+| smaller tables: 8 colour components, the glyph cache 64 KB and 400 glyphs, the store's hash, the lexer's buffer                    | several                                                      |
+| the yield hook                                                                                                                     | `pdf_interpret.c`, `dev_list.c`, `stm_read.c`, `pdf_image.c` |
+
+## Memory
+
+PDF.BIN's code and data are 724 KB, more than any one free region holds, so `src/kn7/pdf.ld` spreads them over
+ARENA2, the program area and ARENA4 (`ld --enable-non-contiguous-regions`); `tools/build/mkpdf.py` writes the main
+image and the segments, and KN7APP.BIN reads each where it goes. The rest of the free regions (kn7.h ARENA1-7) and the
+firmware's frame buffers (292 KB, lent while the firmware's drawing is off, kept meanwhile in display memory: `borrow.c`)
+are one TLSF heap (`src/kn7/main.c`): **844 KB** on program 893. Current MuPDF built the same way needs 1.36 MB of code
+alone (`tools/measure/`).
+
+On the PC (`tests/host/`, the same drawing code, 32-bit), the smallest heap with which every page comes out right: the
+LilyPond score 526 KB, the ProTracker manual 862 KB (its pages are many small paths, and 30 Type3 fonts). Before the
+`KN7PDF` changes the manual peaked at 17 MB and the score at 2 MB.
+
+## Building
+
+    make              # build/KN7APP.BIN and build/PDF.BIN
+    make card-dir     # build/card/PDF/: those, MANIFEST.TXT, the fonts and TEST_PDFS
+    make host         # build/host/kn7pdf and build/host/mudraw: the drawing on the PC (tests/host/)
+    tests/mame/run_pdf.sh ~/compartilhado/tmp/pdf-mame    # a session in MAME (tests/mame/)
+
+It needs the mn10300-elf toolchain the Pinball port builds (GCC patched to make no `(d32,An)` operand) and the KN7000
+loader's tools (technics-roms-disasm `kn7000/tools/cnv_romdump`).
+
+## What was checked
+
+## Licences
+
+MuPDF 1.1 is GPL-3.0 (`src/mupdf/COPYING`) and jbig2dec AGPL-3.0, so the whole is AGPL-3.0; FreeType is used under
+its FTL, zlib, libjpeg (IJG) and TLSF (BSD) under theirs (`src/UPSTREAM` lists each library's version and origin).
+
+## Files
+
+| path                      | what                                                                                                                                |
+|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| `src/mupdf/`              | MuPDF 1.1 (fitz, draw, pdf), its `KN7PDF` changes                                                                                   |
+| `src/third/`              | FreeType, zlib, libjpeg, jbig2dec, TLSF (`src/UPSTREAM`)                                                                            |
+| `src/kn7/`                | the viewer: `viewer.c` (the screen, the controls), `view.c` (drawing a page), `main.c` (memory, files, log), `fontfile.c`, `pdf.ld` |
+| `src/app/`, `src/common/` | KN7APP.BIN and the interface between the two programs                                                                               |
+| `tools/build/`            | `mkpdf.py` (PDF.BIN), `cardname.py`, Doom's `check_d32.py`, `font2c.py`                                                             |
+| `tools/measure/`          | why MuPDF 1.1: the code sizes of MuPDF master and 1.1 for the KN7000                                                                |
+| `tests/host/`             | the drawing on the PC: memory per page, the smallest heap, against current MuPDF                                                    |
+| `tests/mame/`             | the viewer in MAME: `pdf_test.lua`, and probes (profile, stack, panel)                                                              |

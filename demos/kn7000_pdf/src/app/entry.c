@@ -295,8 +295,11 @@ int cnv_entry(void) {
     case S_RUN:
       wheel_scan();
       led_service();
-      if (!file_serve()) rest();
-      else scan_whole();  /* (a file took the call: the ring's frames before the main task's) */
+      /* A part of a file is served inside rest(), which keeps the main task in the call: returned at once, as when
+       * every call served the read waiting for it, the call let the main task decode the frames that came before the
+       * next, and in MAME 80% of the wheel's frames reached the firmware (its tempo) while the viewer drew a page. */
+      if (file_pending() && !file_raw_pending() && file_serve()) scan_whole();
+      else rest();
       break;
     case S_FAILED:
       if (fw.panel ? button(BTN_EXIT) : ++fail_calls >= FAIL_CALLS) quit_req = 1;

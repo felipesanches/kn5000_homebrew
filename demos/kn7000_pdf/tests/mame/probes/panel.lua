@@ -1,7 +1,7 @@
 -- (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
 -- Licensed under the terms of the GNU Affero General Public License v3 or later
 --
--- panel.lua -- what one switch does, with the viewer up (its list): R2, then LCDL 1, then VARIATION 1, each held 1 s, and
+-- panel.lua -- what one switch does, with the viewer up (its list): R2, then LCDL 1, then VARIATION 1, each held 1 s, then R2 and VARIATION 1 together, and
 -- the panel ring's bytes (0x5006BDB0, 0x5C), its indexes, KN7APP's copy of the switches (panel_real) and the
 -- firmware's bitmap logged before and while held. (profile.lua's header follows.)
 --
@@ -141,6 +141,11 @@ local co = coroutine.create(function()
     f:set_value(0); wait(1)
     dump(b[1] .. " let go")
   end
+  local r2, v1 = field("CPR_SEG5", 0x20), field("CPL_SEG4", 0x10)
+  r2:set_value(1); v1:set_value(1); wait(1)
+  dump("R2 and VARIATION 1 held together")
+  r2:set_value(0); v1:set_value(0); wait(1)
+  dump("both let go")
   local knob
   for _, f in pairs(M.ioport.ports[":TEMPO_KNOB"].fields) do knob = f end
   for v = 51, 54 do knob.user_value = v; wait(0.3) end

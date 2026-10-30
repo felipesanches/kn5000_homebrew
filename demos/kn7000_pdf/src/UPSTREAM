@@ -1,13 +1,14 @@
 What is here, unchanged as imported (commit "PDF viewer for the KN7000: pristine MuPDF 1.1 and its libraries"):
 
-| directory       | from                                                        | version                                          | licence                 |
-|-----------------|-------------------------------------------------------------|--------------------------------------------------|-------------------------|
-| mupdf/          | https://github.com/ArtifexSoftware/mupdf.git, tag 1.1       | 6e7b3abc34267f351810bb7b01dafa9586cdd9c8 (2012)  | GPL-3.0 (mupdf/COPYING) |
-| third/freetype/ | MuPDF master's thirdparty/freetype submodule (2026-10-30)   | 0a0221a1347e2f1e07c395263540026e9a0aa7c7 (2.14)  | FTL or GPL-2.0          |
-| third/zlib/     | MuPDF master's thirdparty/zlib submodule                    | da607da739fa6047df13e66a2af6b8bec7c2a498 (1.3.2) | zlib                    |
-| third/libjpeg/  | MuPDF master's thirdparty/libjpeg submodule (IJG libjpeg 9) | 627faae398468d5d11e3d694dc325432f734b5c4         | IJG (README)            |
-| third/jbig2dec/ | MuPDF master's thirdparty/jbig2dec submodule                | dc15c39bbbddc90f79c14563d2eb5a794106be8f         | AGPL-3.0 (COPYING)      |
-| third/tlsf/     | https://github.com/mattconte/tlsf.git (v3.1)                | deff9ab509341f264addbd3c8ada533678591905 (2020)  | BSD (README.md)         |
+| directory       | from                                                                                 | version                                          | licence                                        |
+|-----------------|--------------------------------------------------------------------------------------|--------------------------------------------------|------------------------------------------------|
+| mupdf/          | https://github.com/ArtifexSoftware/mupdf.git, tag 1.1                                | 6e7b3abc34267f351810bb7b01dafa9586cdd9c8 (2012)  | GPL-3.0 (mupdf/COPYING)                        |
+| third/freetype/ | MuPDF master's thirdparty/freetype submodule (2026-10-30)                            | 0a0221a1347e2f1e07c395263540026e9a0aa7c7 (2.14)  | FTL or GPL-2.0                                 |
+| third/zlib/     | MuPDF master's thirdparty/zlib submodule                                             | da607da739fa6047df13e66a2af6b8bec7c2a498 (1.3.2) | zlib                                           |
+| third/libjpeg/  | MuPDF master's thirdparty/libjpeg submodule (IJG libjpeg 9)                          | 627faae398468d5d11e3d694dc325432f734b5c4         | IJG (README)                                   |
+| third/jbig2dec/ | MuPDF master's thirdparty/jbig2dec submodule                                         | dc15c39bbbddc90f79c14563d2eb5a794106be8f         | AGPL-3.0 (COPYING)                             |
+| third/tlsf/     | https://github.com/mattconte/tlsf.git (v3.1)                                         | deff9ab509341f264addbd3c8ada533678591905 (2020)  | BSD (README.md)                                |
+| third/softfp/   | GCC 14.2.0's libgcc/soft-fp and include/longlong.h (gcc-mirror, releases/gcc-14.2.0) | the release tag                                  | GPL-3.0 with the GCC Runtime Library Exception |
 
 MuPDF master was 26b1a9ffc0c2102f25ff489307003143b7a0e564 (2026-10-30). Only part of each tree is here: MuPDF's fitz/,
 draw/, pdf/, apps/mudraw.c, scripts/fontdump.c and cmapdump.c and fonts/ (the base 14 fonts, which go on the card as
@@ -18,3 +19,7 @@ Makelists builds and MuPDF's scripts/libjpeg/jconfig.h; jbig2dec's sources.
 Why MuPDF 1.1: built for the KN7000 (mn10300-elf-gcc -Os, --gc-sections), a viewer that opens a PDF and draws a page
 needs 1.36 MB of code with MuPDF master but 0.85 MB with 1.1, the same libraries in both (README.md, "Memory";
 the measuring scripts are tools/measure/).
+
+third/softfp/sfp-machine.h is ours (Nios II's, libgcc/config/nios2, little-endian): GCC builds the MN10300's libgcc
+with the older fp-bit.c, which took 45% of the CPU while a page was drawn in MAME (tests/mame/probes/profile.lua);
+tests/softfp/test_softfp.c checks these routines against the PC's IEEE arithmetic.

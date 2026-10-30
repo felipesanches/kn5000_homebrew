@@ -108,7 +108,7 @@ for _, f in pairs(M.ioport.ports[":TEMPO_KNOB"].fields) do knob = f end
 local knobAt = 50
 local function turn(n)
   for _ = 1, math.abs(n) do
-    knobAt = knobAt + (n > 0 and 1 or -1)
+    knobAt = (knobAt + (n > 0 and 1 or -1)) % 101  -- (0-100, round: the panel model takes a jump over 50 as a wrap)
     knob.user_value = knobAt  -- (an adjuster: the panel model reads its live value, kn_cpanel.cpp)
     wait(0.15)
   end
@@ -177,13 +177,17 @@ local co = coroutine.create(function()
   turn(TURN)
   CHECK("the wheel scrolls the page", s32("_top") > top0, string.format("top %d -> %d", top0, s32("_top")))
   E("wheel frames %d, late %d (the firmware decoded them first)", u32("_wheel_frames"), u32("_wheel_late"))
+  CHECK("no wheel frame reached the firmware", u32("_wheel_late") == 0, u32("_wheel_late"))
   snap("page 1, scrolled")
   -- the panel shared: R2 is the viewer's, VARIATION 1 the firmware's
   local r2, var1 = field("CPR_SEG5", 0x20), field("CPL_SEG4", 0x10)
-  r2:set_value(1); var1:set_value(1); wait(1)  -- (the panel model sends a frame a scan: half a second was not always enough)
-  local fwR2, fwV1 = fwPanel(5) & 0x20, fwPanel(0x30 + 4) & 0x10
-  local ourR2 = ourPanel(5) & 0x20
-  r2:set_value(0); var1:set_value(0); wait(0.5)
+  -- (one after the other: pressed together, MAME's panel model delivers only one of the two frames, probes/panel.lua)
+  r2:set_value(1); wait(1)
+  local fwR2, ourR2 = fwPanel(5) & 0x20, ourPanel(5) & 0x20
+  r2:set_value(0); wait(1)
+  var1:set_value(1); wait(1)
+  local fwV1 = fwPanel(0x30 + 4) & 0x10
+  var1:set_value(0); wait(1)
   CHECK("R2 reaches the viewer, not the firmware", ourR2 ~= 0 and fwR2 == 0, string.format("ours %02X fw %02X; %s", ourR2,
     fwR2, state()))
   CHECK("VARIATION 1 reaches the firmware", fwV1 ~= 0, string.format("fw %02X", fwV1))
@@ -206,9 +210,13 @@ local co = coroutine.create(function()
       if s32("_pageNo") == 1 then break end
     end
     CHECK("past the end: the next page", wait_until(function() return s32("_pageNo") == 1 and s32("_pageH") > 0 end, 600), state())
+    CHECK("the wheel turned while a page drew: no frame reached the firmware", u32("_wheel_late") == 0,
+      string.format("%d of %d late", u32("_wheel_late"), u32("_wheel_frames")))
     wait(1)
     snap("page 2")
+    E("PAGE UP")
     press("CPC_SEG11", 0x10)                            -- PAGE UP: the page before
+    E("PAGE UP pressed: %s", state())
     CHECK("PAGE UP: the page before", wait_until(function() return s32("_pageNo") == 0 end, 600), state())
     wait(1)
     snap("page 1 again")

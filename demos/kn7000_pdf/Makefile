@@ -84,11 +84,35 @@ $(OUT)/KN7APP.BIN: $(OUT)/app/kn7app.elf $(LOADER)/mkapp.py
 	$(CROSS)objcopy -O binary -j .header -j .text -j .rodata -j .data $< $(OUT)/app/kn7app.bin
 	$(PYTHON) -I $(LOADER)/mkapp.py $(OUT)/app/kn7app.bin $@
 
+# ---- GCC's soft-fp (src/third/softfp/, src/UPSTREAM) in place of libgcc's fp-bit.c: -O2, as MuPDF's floats spend the
+# CPU there. tests/softfp/test_softfp.c checks them against the PC's (make softfp-test). ----
+SOFTFP  := addsf3 subsf3 mulsf3 divsf3 negsf2 eqsf2 gesf2 lesf2 unordsf2 fixsfsi fixunssfsi floatsisf floatunsisf \
+           adddf3 subdf3 muldf3 divdf3 negdf2 eqdf2 gedf2 ledf2 unorddf2 fixdfsi fixunsdfsi floatsidf floatunsidf \
+           extendsfdf2 truncdfsf2
+SOFTFP_OBJ := $(SOFTFP:%=$(OUT)/softfp/%.o)
+SOFTFP_FN := __addsf3 __subsf3 __mulsf3 __divsf3 __negsf2 __eqsf2 __nesf2 __gesf2 __gtsf2 __lesf2 __ltsf2 \
+             __unordsf2 __fixsfsi __fixunssfsi __floatsisf __floatunsisf __adddf3 __subdf3 __muldf3 __divdf3 \
+             __negdf2 __eqdf2 __nedf2 __gedf2 __gtdf2 __ledf2 __ltdf2 __unorddf2 __fixdfsi __fixunsdfsi __floatsidf \
+             __floatunsidf __extendsfdf2 __truncdfsf2
+
+$(OUT)/softfp/%.o: src/third/softfp/%.c $(wildcard src/third/softfp/*.h)
+	@mkdir -p $(dir $@)
+	$(CROSS)gcc -O2 -ffunction-sections -w -Isrc/third/softfp -c $< -o $@
+
+# the same sources on the PC, each function renamed t_..., against the PC's float and double
+$(OUT)/softfp-host/%.o: src/third/softfp/%.c $(wildcard src/third/softfp/*.h)
+	@mkdir -p $(dir $@)
+	gcc -m32 -O2 -msse2 -mfpmath=sse -w -Isrc/third/softfp $(foreach f,$(SOFTFP_FN),-D$(f)=t_$(f:__%=%)) -c $< -o $@
+
+softfp-test: $(SOFTFP:%=$(OUT)/softfp-host/%.o) tests/softfp/test_softfp.c
+	gcc -m32 -O2 -msse2 -mfpmath=sse tests/softfp/test_softfp.c $(SOFTFP:%=$(OUT)/softfp-host/%.o) -lm -o $(OUT)/test_softfp
+	$(OUT)/test_softfp
+
 # ---- PDF.BIN: MuPDF 1.1 and its libraries, and the KN7000 side (src/kn7/) ----
 KN7_C   := $(addprefix src/kn7/,main.c viewer.c view.c fontfile.c left_out.c fmt.c) src/third/tlsf/tlsf.c
 PDF_CFLAGS := -Os -g -ffunction-sections -fdata-sections -std=gnu99 -w $(MU_INC) $(MU_DEFS) -Isrc/kn7 -Isrc/common \
               -Isrc/third/tlsf
-PDF_OBJ := $(MU_C:src/%.c=$(OUT)/pdf/%.o) $(THIRD_C:src/%.c=$(OUT)/pdf/%.o) $(KN7_C:src/%.c=$(OUT)/pdf/%.o)
+PDF_OBJ := $(MU_C:src/%.c=$(OUT)/pdf/%.o) $(THIRD_C:src/%.c=$(OUT)/pdf/%.o) $(KN7_C:src/%.c=$(OUT)/pdf/%.o) $(SOFTFP_OBJ)
 
 $(OUT)/pdf/%.o: src/%.c $(MU_HDR) $(wildcard src/kn7/*.h src/common/*.h)
 	@mkdir -p $(dir $@)
@@ -176,4 +200,4 @@ mame-media: card-dir
 clean:
 	test -n "$(OUT)" && rm -rf -- "$(OUT)"
 
-.PHONY: all host card-dir mame-media clean
+.PHONY: all host card-dir mame-media clean softfp-test
