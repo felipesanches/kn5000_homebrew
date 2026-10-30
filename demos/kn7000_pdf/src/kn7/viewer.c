@@ -20,6 +20,7 @@
 
 extern void (*fz_kn7_yield)(void);  /* (MuPDF's, KN7PDF) */
 static u32 beatAt;  /* the log's last heartbeat (yieldNow) */
+volatile u32 hang_test;  /* (tests/mame/hang.lua sets it: the viewer loops without yielding, for KN7APP's watchdog) */
 
 #define LCDC(r) (*(volatile u8 *)(0x9CC00000u + (r)))
 #define PITCH FB_W
@@ -350,6 +351,7 @@ static void viewDoc(const PfFile *f) {
     }
     s32 w;
     const u32 p = pressed(&w);
+    while (hang_test) {}
     if (p & (1u << K_EXIT | 1u << K_L1)) break;
     if (p & (1u << K_L5)) {
       showLog();

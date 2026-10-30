@@ -112,3 +112,24 @@ _crash_selftest_load:
     movbu   (_crash_fw,a0),d0       /* fc 4x, displacement 0x502Bxxxx */
     rets
 #endif
+
+/* The watchdog's tick (crash.c wd_arm): the firmware's level-6 system-tick entry (the scheduler's, 1 kHz) begins
+ * `movm [d2,d3,a2,a3,other],(sp); add -12,sp; mov psw,d3` (7 bytes, the same on programs 893-942), and wd_arm puts a jmp
+ * here in their place. These do them, call wd_check with the address of the PSW and the PC the CPU pushed (above the
+ * 48 bytes the movm pushed and the 12), and go back to the entry's eighth byte (the jmp's displacement written by
+ * wd_arm). D0, D1, A0 and A1 are the movm's saved copies by then, as the firmware's entry leaves them. */
+    .global _wd_tick
+    .global _wd_back
+_wd_tick:
+    movm    [d2,d3,a2,a3,other],(sp)
+    add     -12,sp
+    mov     sp,a0
+    add     60,a0
+    mov     a0,d0
+    add     -12,sp
+    call    _wd_check,[],0
+    add     12,sp
+    mov     psw,d3
+_wd_back:
+    .byte   0xDC
+    .long   0

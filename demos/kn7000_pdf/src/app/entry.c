@@ -361,6 +361,7 @@ int cnv_entry(void) {
     diag("the end: converter calls %u", calls);
     led_want = 0;
     led_service();  /* the wheel's LED as the firmware had it */
+    wd_disarm();
     borrow_restore();  /* the firmware's frame buffers back, before its drawing is */
     crash_disarm();  /* the firmware's NMI stub back */
     fwdraw_unhook();  /* its screen procedure */

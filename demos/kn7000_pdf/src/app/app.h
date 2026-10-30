@@ -39,6 +39,7 @@ void lcd_fill(int x, int y, int w, int h, u16 colour);
 void lcd_text(const char* s, int x, int y, u16 fg, u16 bg);
 void lcdc_save(void);     /* the LCD controller's start address and line offset, as the firmware has them */
 void lcdc_restore(void);  /* ... back (a table left, the end, the crash screen) */
+void lcd_away(u32 off);   /* then the screen drawn and shown `off` bytes further into display memory */
 #define RGB565(r, g, b) ((u16)((((r) >> 3) << 11) | (((g) >> 2) << 5) | ((b) >> 3)))
 
 /* notes.c */
@@ -92,6 +93,9 @@ void caches_sync(void);  /* the data cache written back, the instruction cache e
 void crash_arm(void);
 void crash_disarm(void);
 void crash_selftest_load(void);  /* glue.S, PF_CRASH_SELFTEST only */
+void wd_arm(void);     /* the watchdog: where the program task is when it stops yielding (crash.c) */
+void wd_disarm(void);
+extern volatile u32 wd_last;
 
 /* fwdraw.c: the firmware's screen without its wallpaper repaints while the game task runs */
 void fwdraw_hook(void);

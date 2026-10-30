@@ -8,7 +8,8 @@
 
 extern const unsigned char font8x13[95][13];
 
-static volatile u16* px(int x, int y) { return (volatile u16*)(FB + (u32)y * FB_STRIDE + (u32)x * 2); }
+static u32 fb = FB;
+static volatile u16* px(int x, int y) { return (volatile u16*)(fb + (u32)y * FB_STRIDE + (u32)x * 2); }
 
 void lcd_fill(int x, int y, int w, int h, u16 colour) {
   if (x < 0) w += x, x = 0;
@@ -59,4 +60,13 @@ void lcdc_save(void) {
 void lcdc_restore(void) {
   if (!lcdc_have) return;
   for (u32 i = 0; i < LCDC_N; ++i) LCDC_REG(lcdc_regs[i]) = lcdc_saved[i];
+}
+
+/* After lcdc_restore: the screen `off` bytes further into display memory, drawn and shown there, where the
+ * firmware, still running, does not repaint it (the watchdog's screen, over the viewer's page). */
+void lcd_away(u32 off) {
+  if (!lcdc_have) return;
+  fb = FB + off;
+  const u32 w = (lcdc_saved[1] | (u32)lcdc_saved[2] << 8 | (u32)lcdc_saved[3] << 16) + off / 2;
+  LCDC_REG(0x42) = (u8)w, LCDC_REG(0x43) = (u8)(w >> 8), LCDC_REG(0x44) = (u8)(w >> 16);
 }

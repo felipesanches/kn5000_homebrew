@@ -66,7 +66,7 @@ $(OUT)/app/%.o: src/app/%.c src/app/app.h src/common/kn7.h src/common/pfhost.h
 	$(CROSS)gcc $(APP_CFLAGS) -I$(OUT)/app -c $< -o $@
 
 # the build's name in the log (diag.c): git describe of the tree, rewritten only when it changes
-$(OUT)/app/entry.o: $(OUT)/app/build_id.h
+$(OUT)/app/entry.o $(OUT)/app/crash.o: $(OUT)/app/build_id.h
 $(OUT)/app/build_id.h: FORCE
 	@mkdir -p $(dir $@)
 	@echo '#define BUILD_ID "'"$$(git describe --always --dirty 2>/dev/null || echo unknown)"'"' | cmp -s - $@ || \

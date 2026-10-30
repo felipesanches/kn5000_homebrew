@@ -255,6 +255,7 @@ void game_task(void) {
   }
   const PfGameHeader* h = (const PfGameHeader*)head.h.base;
   diag("PDF.BIN loaded: its entry %08X", (u32)h->entry);
+  wd_arm();
   diag_save();
   h->entry(&host);
   diag("PDF.BIN returned");

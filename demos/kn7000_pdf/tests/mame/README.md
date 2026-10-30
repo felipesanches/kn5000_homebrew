@@ -21,11 +21,21 @@ bitmap and VARIATION 1 (the firmware's) in it; the wheel on past the page's end 
 to the list; EXIT held, the end. Each check is a `CHECK ok` or `CHECK FAIL` line in `events.txt`, and the last lines
 count them.
 
-| variable    | default              | what                                                     |
-|-------------|----------------------|----------------------------------------------------------|
-| `PDF_FILE`  | the first listed     | the file to open, by its 8.3 name on the card            |
-| `PDF_TURN`  | 4                    | detents of the wheel for the scroll check                |
-| `PDF_NAME`  | `PDF viewer (MuPDF)` | the program menu's row                                   |
-| `BIOS`      | `v13`                | the firmware: `v13` program 893 (the owner's), `v16` 941 |
-| `TIMEOUT`   | 3600                 | seconds of host time before MAME is stopped              |
-| `MAKEVARS`  |                      | variables for `make` (`TEST_PDFS=...`)                   |
+| variable   | default              | what                                                     |
+|------------|----------------------|----------------------------------------------------------|
+| `PDF_FILE` | the first listed     | the file to open, by its 8.3 name on the card            |
+| `PDF_TURN` | 4                    | detents of the wheel for the scroll check                |
+| `PDF_NAME` | `PDF viewer (MuPDF)` | the program menu's row                                   |
+| `BIOS`     | `v13`                | the firmware: `v13` program 893 (the owner's), `v16` 941 |
+| `TIMEOUT`  | 3600                 | seconds of host time before MAME is stopped              |
+| `MAKEVARS` |                      | variables for `make` (`TEST_PDFS=...`)                   |
+
+The other scripts, each run as `run_pdf.sh OUT SCRIPT.lua`:
+
+| script      | answers                                                                                                                                                                                                                                                                                                                                      |
+|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `quick.lua` | a short session (about 2.5 minutes of host time): the list, the first file opened, its first page or `$PDF_QUICK_S` s, EXIT held; with `KEEP_SD=1`, `tools/card/fatget.py OUT/sd_after.img PDF/PDFLOG.TXT` reads the log the viewer saved                                                                                                    |
+| `hang.lua`  | whether KN7APP's watchdog (`src/app/crash.c`) finds a viewer that stops yielding: with the first page drawn it sets `hang_test` (`viewer.c`), and CHECKs that the watchdog's screen comes up; `events.txt` lists the 16 PCs it sampled (all in the viewer's loop but those that land in firmware interrupt code), and `snap/` has the screen |
+
+Result (2026-10-30, program 893, `wd8`): the watchdog's screen up 5.6 s after `hang_test` was set, 14 of the 16 PCs in
+the viewer's loop (`0x503BE444`-`0x503BE44C`), 2 in the firmware's flash, the stack taken at the first sample.

@@ -63,6 +63,7 @@ static void watch(void) {
     last_ms = t;
   } else if (t - last_ms >= WATCH_MS && !quit_req) {
     quit_req = 1;
+    wd_disarm();
     borrow_restore();  /* (the program ends at this yield, before it could use the frame buffers again) */
     lcdc_restore();
     fwdraw_unhook();
@@ -70,6 +71,7 @@ static void watch(void) {
 }
 
 void task_yield(u32 ms) {
+  wd_last = now_ms();  /* (the watchdog: crash.c) */
   watch();
   if (quit_req) {
     keys_sound(1);  /* the keybed sounds again, whatever the game did with it */
