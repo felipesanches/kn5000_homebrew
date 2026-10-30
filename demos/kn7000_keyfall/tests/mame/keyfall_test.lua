@@ -8,7 +8,7 @@
 --     off when $KF_ACCOMP=0, $KF_MODE (PLAY, WAIT, DEMO) by MODE (L4); a snapshot;
 --   * PLAY (R1): the chart read from the game's memory (play.c play_chart), and each of its notes struck on the keybed
 --     (MAME's keybed fields) when the game's clock (play_clock) reaches its time less $KF_LEAD ms, held for 70% of it
---     (60 to 400 ms); $KF_SKIP notes left out (the 6th, the 16th, ...) and $KF_WRONG keys struck that strike no note
+--     (60 to 400 ms); in WAIT mode $KF_WAIT_DELAY s (0.3) after the clock has stopped at it; $KF_SKIP notes left out (the 6th, the 16th, ...) and $KF_WRONG keys struck that strike no note
 --     (halfway between two notes, a key above the chart's); $KF_NOPRESS=1 strikes nothing;
 --   * meanwhile, write taps on MIDI IN 1's ring header (KN7APP fw.midiIn1): each time the game moves the write pointer
 --     and each time the firmware's reader catches up, so the accompaniment's latency (from the game's message into the
@@ -34,6 +34,7 @@ local SKIP = tonumber(os.getenv("KF_SKIP") or "") or 0
 local WRONG = tonumber(os.getenv("KF_WRONG") or "") or 0
 local NOPRESS = os.getenv("KF_NOPRESS") == "1"
 local SNAP = tonumber(os.getenv("KF_SNAP") or "") or 8
+local WAIT_DELAY = tonumber(os.getenv("KF_WAIT_DELAY") or "") or 0.3
 local menuV, V_NPROG, ORDER, PR_NAME = 0x502C0000, 0x502C0034, 0x502C3800, 0x40   -- the menu's (kn7menu menu.inc)
 
 local SYM = {}
@@ -65,7 +66,16 @@ local function CHECK(what, ok, got)
   E("CHECK %s %s%s", ok and "ok  " or "FAIL", what, got and (" (" .. tostring(got) .. ")") or "")
   if not ok then fails = fails + 1 end
 end
-local function snap(what) M.video:snapshot(); E("snapshot: %s", what) end
+-- a snapshot of the whole artwork, and of the LCD alone (snap/lcd-N.png, 640 x 240: the manual's pictures)
+local screen
+for _, sc in pairs(M.screens) do screen = screen or sc end
+local nLcd = 0
+local function snap(what)
+  M.video:snapshot()
+  if screen then screen:snapshot(string.format("lcd-%02d.png", nLcd)) end
+  E("snapshot: %s (lcd-%02d.png)", what, nLcd)
+  nLcd = nLcd + 1
+end
 
 -- the soft keys (kn7.h BTN_LCD*) and EXIT
 local L = { { "CPL_SEG0", 0x02 }, { "CPL_SEG0", 0x08 }, { "CPL_SEG0", 0x20 }, { "CPL_SEG0", 0x01 }, { "CPL_SEG0", 0x04 } }
@@ -185,6 +195,7 @@ local co = coroutine.create(function()
     end
   end)
   local nextI, wi, held, pressedN, struck = 1, 1, {}, 0, 0
+  local reachedAt = nil
   local lastSnap = now()
   while u32("_play_state") == 1 do
     local clock = s32("_play_clock")
@@ -192,7 +203,11 @@ local co = coroutine.create(function()
     for k, r in pairs(held) do
       if t >= r then KEYN[k]:set_value(0); held[k] = nil end
     end
-    while not NOPRESS and nextI <= cn and clock >= notes[nextI].t - LEAD do
+    -- (WAIT: the clock stops at each note; the key is struck $KF_WAIT_DELAY s after it has)
+    if MODE == "WAIT" and nextI <= cn and clock >= notes[nextI].t and not reachedAt then reachedAt = t end
+    while not NOPRESS and nextI <= cn and clock >= notes[nextI].t - (MODE == "WAIT" and 0 or LEAD) and
+          (MODE ~= "WAIT" or (reachedAt and t - reachedAt >= WAIT_DELAY)) do
+      reachedAt = nil
       local x = notes[nextI]
       if not skip[nextI] then
         local f = KEYN[x.note]
@@ -263,6 +278,9 @@ local co = coroutine.create(function()
     CHECK("the wrong keys were wrong keys", judge("wrong") == (NOPRESS and 0 or #wrongAt), counts())
   elseif mode == 1 then
     CHECK("WAIT: every note struck", judge("perfect") + judge("good") + judge("ok") == cn, counts())
+    local clockS = s32("_play_clock") / 1000 + 2.5  -- (the clock starts 2.5 s before the song)
+    CHECK("WAIT: the clock stopped at the notes", playS > clockS + 0.5 * cn * WAIT_DELAY,
+      string.format("%.1f s played, the clock went %.1f s", playS, clockS))
   end
   CHECK("every accompaniment message went into the ring", u32("_play_out_sent") == cnOut,
     string.format("%d of %d (ring full %d times)", u32("_play_out_sent"), cnOut, u32("_play_out_full")))

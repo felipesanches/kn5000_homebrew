@@ -436,6 +436,8 @@ int play_run(Chart *c, int m, const char *title, Judge *j) {
   host->panelLatch[BTN_EXIT >> 8] &= (u8) ~(BTN_EXIT & 0xFF);
   int aborted = 0;
   PfKeyEvent ev[32];
+  host->pollNotes();
+  while (host->keyEvents(ev, 32) == 32) {}  /* (what came before the song: not judged) */
   kf_log("play: %u notes, keys %u-%u, %u messages on %u channels, mode %d, speed %u", nNotes, c->lo, c->hi, c->nOut,
          c->outCh, m, kf_speed);
   host->restMs(kf_rest);

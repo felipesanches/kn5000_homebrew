@@ -1,0 +1,37 @@
+  58.067 menu: up, 1 programs, "Keyfall (piano game)" at 0
+  60.350 RUN
+  67.250 CHECK ok   the songs are up (6.9 s after RUN, text "KEYFALL: HOLD EXIT TO QUIT")
+  67.250 song 0: MINUETG.MID, 943 bytes
+  67.250 song 1: ODEJOY.MID, 3213 bytes
+  67.250 song 2: TWINKLE.MID, 953 bytes
+  67.250 CHECK ok   MIDI files listed, MINUETG.MID among them (3)
+  68.767 CHECK ok   MINUETG.MID selected and read (sel 0, songOk 0)
+  70.400 choices: parts 1, tempo 100, accompaniment 1, mode 1
+  70.400 snapshot: the songs (lcd-00.png)
+  71.033 CHECK ok   the game starts (frames 231, loop max 4 ms, draw max 7 ms, rows 178, messages 0 (ring full 0), key-ons 0, clock -2115)
+  71.033 chart: 64 notes, keys 60-84, 60 messages out
+  79.050 snapshot: playing, clock 3099; perfect 8 good 0 ok 0 miss 0 wrong 0, score 800, streak 8 (longest 8) (lcd-01.png)
+  87.067 snapshot: playing, clock 7270; perfect 19 good 0 ok 0 miss 0 wrong 0, score 2900, streak 19 (longest 19) (lcd-02.png)
+  95.083 snapshot: playing, clock 11088; perfect 31 good 0 ok 0 miss 0 wrong 0, score 6700, streak 31 (longest 31) (lcd-03.png)
+ 103.100 snapshot: playing, clock 15965; perfect 40 good 0 ok 0 miss 0 wrong 0, score 10300, streak 40 (longest 40) (lcd-04.png)
+ 111.117 snapshot: playing, clock 20147; perfect 51 good 0 ok 0 miss 0 wrong 0, score 14700, streak 51 (longest 51) (lcd-05.png)
+ 119.133 snapshot: playing, clock 23972; perfect 63 good 0 ok 0 miss 0 wrong 0, score 19500, streak 63 (longest 63) (lcd-06.png)
+ 123.750 game over after 51.7 s: state 2; perfect 64 good 0 ok 0 miss 0 wrong 0, score 19900, streak 64 (longest 64); frames 24178, loop max 17 ms, draw max 16 ms, rows 83580, messages 60 (ring full 0), key-ons 64, clock 27203
+ 123.750 snapshot: the results (lcd-07.png)
+ 123.750 judged at (key's time less the note's, ms): min 0 median 0 max 0 mean 0.0, of 64 notes (lead 0 ms)
+ 123.750   dt    0..   9 ms: 64
+ 123.750 accompaniment: 62 writes into MIDI IN 1's ring taken by the firmware 0.5-13.5 ms later, median 3.4, mean 4.3; 0 not taken
+ 123.750 CHECK ok   the song played to its end (frames 24178, loop max 17 ms, draw max 16 ms, rows 83580, messages 60 (ring full 0), key-ons 64, clock 27203)
+ 123.750 CHECK ok   every key struck reached the game (64 struck, 64 key-ons)
+ 123.750 CHECK ok   WAIT: every note struck (perfect 64 good 0 ok 0 miss 0 wrong 0, score 19900, streak 64 (longest 64))
+ 123.750 CHECK ok   WAIT: the clock stopped at the notes (51.7 s played, the clock went 29.7 s)
+ 123.750 CHECK ok   every accompaniment message went into the ring (60 of 60 (ring full 0 times))
+ 123.750 CHECK ok   the firmware took everything put into MIDI IN 1's ring (read 5001ECD8 write 5001ECD8)
+ 125.767 results: perfect 64 good 0 ok 0 miss 0 wrong 0, score 19900, streak 64 (longest 64)
+ 126.400 CHECK ok   SONGS: the song list again
+ 127.417 snapshot: the songs again (lcd-08.png)
+ 127.417 keyfall: 11 checks, 0 failed
+ 129.933 CHECK ok   EXIT held: the end
+ 132.950 snapshot: after the end (lcd-09.png)
+ 132.950 keyfall: 12 checks, 0 failed
+ 132.950 end

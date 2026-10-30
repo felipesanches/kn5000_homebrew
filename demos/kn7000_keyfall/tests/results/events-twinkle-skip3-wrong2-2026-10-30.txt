@@ -1,0 +1,38 @@
+  58.067 menu: up, 1 programs, "Keyfall (piano game)" at 0
+  60.350 RUN
+  67.267 CHECK ok   the songs are up (6.9 s after RUN, text "KEYFALL: HOLD EXIT TO QUIT")
+  67.267 song 0: MINUETG.MID, 943 bytes
+  67.267 song 1: ODEJOY.MID, 3213 bytes
+  67.267 song 2: TWINKLE.MID, 953 bytes
+  67.267 CHECK ok   MIDI files listed, TWINKLE.MID among them (3)
+  70.450 CHECK ok   TWINKLE.MID selected and read (sel 2, songOk 0)
+  71.467 choices: parts 1, tempo 100, accompaniment 1, mode 0
+  71.467 snapshot: the songs
+  72.083 CHECK ok   the game starts (frames 214, loop max 3 ms, draw max 6 ms, rows 178, messages 0 (ring full 0), key-ons 0, clock -2134)
+  72.083 chart: 42 notes, keys 52-76, 106 messages out
+  80.100 snapshot: playing, clock 5878; perfect 8 good 0 ok 0 miss 1 wrong 1, score 800, streak 3 (longest 4)
+  88.117 snapshot: playing, clock 13891; perfect 19 good 0 ok 0 miss 2 wrong 2, score 1900, streak 5 (longest 8)
+  96.133 snapshot: playing, clock 21904; perfect 28 good 0 ok 0 miss 3 wrong 2, score 2800, streak 5 (longest 9)
+ 104.150 snapshot: playing, clock 29915; perfect 39 good 0 ok 0 miss 3 wrong 2, score 4600, streak 16 (longest 16)
+ 106.750 game over after 33.6 s: state 2; perfect 39 good 0 ok 0 miss 3 wrong 2, score 4600, streak 16 (longest 16); frames 12817, loop max 19 ms, draw max 17 ms, rows 61191, messages 106 (ring full 0), key-ons 41, clock 31486
+ 106.750 snapshot: the results
+ 106.750 judged at (key's time less the note's, ms): min 24 median 34 max 47 mean 34.6, of 39 notes (lead 0 ms)
+ 106.750   dt   20..  29 ms: 12
+ 106.750   dt   30..  39 ms: 17
+ 106.750   dt   40..  49 ms: 10
+ 106.750 accompaniment: 108 writes into MIDI IN 1's ring taken by the firmware 1.0-11.2 ms later, median 2.9, mean 3.9; 0 not taken
+ 106.750 CHECK ok   the song played to its end (frames 12817, loop max 19 ms, draw max 17 ms, rows 61191, messages 106 (ring full 0), key-ons 41, clock 31486)
+ 106.750 CHECK ok   every key struck reached the game (41 struck, 41 key-ons)
+ 106.750 CHECK ok   the notes struck were struck (perfect 39 good 0 ok 0 miss 3 wrong 2, score 4600, streak 16 (longest 16))
+ 106.750 CHECK ok   the notes left out were missed (perfect 39 good 0 ok 0 miss 3 wrong 2, score 4600, streak 16 (longest 16))
+ 106.750 CHECK ok   the wrong keys were wrong keys (perfect 39 good 0 ok 0 miss 3 wrong 2, score 4600, streak 16 (longest 16))
+ 106.750 CHECK ok   every accompaniment message went into the ring (106 of 106 (ring full 0 times))
+ 106.750 CHECK ok   the firmware took everything put into MIDI IN 1's ring (read 5001ED62 write 5001ED62)
+ 108.767 results: perfect 39 good 0 ok 0 miss 3 wrong 2, score 4600, streak 16 (longest 16)
+ 109.400 CHECK ok   SONGS: the song list again
+ 110.417 snapshot: the songs again
+ 110.417 keyfall: 12 checks, 0 failed
+ 112.933 CHECK ok   EXIT held: the end
+ 115.950 snapshot: after the end
+ 115.950 keyfall: 13 checks, 0 failed
+ 115.950 end

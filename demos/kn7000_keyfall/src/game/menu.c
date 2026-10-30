@@ -31,6 +31,10 @@ static void take_keys(void) {
 /* the keys pressed since the last call (a bit each), and the wheel's detents */
 static u32 pressed(s32 *wheel) {
   host->panelScan();
+  /* the keybed followed here too (KN7APP's notes[]), its presses let go: a game starts with none queued */
+  host->pollNotes();
+  PfKeyEvent e[16];
+  while (host->keyEvents(e, 16) == 16) {}
   u32 p = 0;
   for (int k = 0; k < KEYS; ++k) {  /* (KN7APP's latch: a press let go while the game read a song counts too) */
     const u32 seg = keyBit[k] >> 8;

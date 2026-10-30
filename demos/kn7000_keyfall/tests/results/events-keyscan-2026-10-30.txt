@@ -1,0 +1,159 @@
+  58.067 menu: up, 1 programs, "Keyfall (piano game)" at 0
+  60.350 RUN
+  67.250 CHECK ok   the songs are up (6.9 s after RUN, text "KEYFALL: HOLD EXIT TO QUIT")
+  67.250 nothing: key 28: no keybed field
+  67.250 nothing: key 29: no keybed field
+  67.250 nothing: key 30: no keybed field
+  67.250 nothing: key 31: no keybed field
+  67.250 nothing: key 32: no keybed field
+  67.250 nothing: key 33: no keybed field
+  67.250 nothing: key 34: no keybed field
+  67.250 nothing: key 35: no keybed field
+  67.717 nothing: key 36: notes[] 0001 while held, 2 key events
+  68.200 nothing: key 37: notes[] 0001 while held, 2 key events
+  68.667 nothing: key 38: notes[] 0001 while held, 2 key events
+  69.150 nothing: key 39: notes[] 0001 while held, 2 key events
+  69.617 nothing: key 40: notes[] 0001 while held, 2 key events
+  70.100 nothing: key 41: notes[] 0001 while held, 2 key events
+  70.567 nothing: key 42: notes[] 0001 while held, 2 key events
+  71.050 nothing: key 43: notes[] 0001 while held, 2 key events
+  71.517 nothing: key 44: notes[] 0001 while held, 2 key events
+  72.000 nothing: key 45: notes[] 0001 while held, 2 key events
+  72.467 nothing: key 46: notes[] 0001 while held, 2 key events
+  72.933 nothing: key 47: notes[] 0001 while held, 2 key events
+  73.417 nothing: key 48: notes[] 0001 while held, 2 key events
+  73.883 nothing: key 49: notes[] 0001 while held, 2 key events
+  74.367 nothing: key 50: notes[] 0001 while held, 2 key events
+  74.833 nothing: key 51: notes[] 0001 while held, 2 key events
+  75.317 nothing: key 52: notes[] 0001 while held, 2 key events
+  75.783 nothing: key 53: notes[] 0001 while held, 2 key events
+  76.267 nothing: key 54: notes[] 0001 while held, 2 key events
+  76.733 nothing: key 55: notes[] 0001 while held, 2 key events
+  77.217 nothing: key 56: notes[] 0001 while held, 2 key events
+  77.683 nothing: key 57: notes[] 0001 while held, 2 key events
+  78.167 nothing: key 58: notes[] 0001 while held, 2 key events
+  78.633 nothing: key 59: notes[] 0001 while held, 2 key events
+  79.117 nothing: key 60: notes[] 0001 while held, 2 key events
+  79.583 nothing: key 61: notes[] 0001 while held, 2 key events
+  80.067 nothing: key 62: notes[] 0001 while held, 2 key events
+  80.533 nothing: key 63: notes[] 0001 while held, 2 key events
+  81.000 nothing: key 64: notes[] 0001 while held, 2 key events
+  81.483 nothing: key 65: notes[] 0001 while held, 2 key events
+  81.950 nothing: key 66: notes[] 0001 while held, 2 key events
+  82.433 nothing: key 67: notes[] 0001 while held, 2 key events
+  82.900 nothing: key 68: notes[] 0001 while held, 2 key events
+  83.383 nothing: key 69: notes[] 0001 while held, 2 key events
+  83.850 nothing: key 70: notes[] 0001 while held, 2 key events
+  84.333 nothing: key 71: notes[] 0001 while held, 2 key events
+  84.800 nothing: key 72: notes[] 0001 while held, 2 key events
+  85.283 nothing: key 73: notes[] 0001 while held, 2 key events
+  85.750 nothing: key 74: notes[] 0001 while held, 2 key events
+  86.233 nothing: key 75: notes[] 0001 while held, 2 key events
+  86.700 nothing: key 76: notes[] 0001 while held, 2 key events
+  87.183 nothing: key 77: notes[] 0001 while held, 2 key events
+  87.650 nothing: key 78: notes[] 0001 while held, 2 key events
+  88.133 nothing: key 79: notes[] 0001 while held, 2 key events
+  88.617 nothing: key 80: notes[] 0001 while held, 2 key events
+  89.083 nothing: key 81: notes[] 0001 while held, 2 key events
+  89.567 nothing: key 82: notes[] 0001 while held, 2 key events
+  90.033 nothing: key 83: notes[] 0001 while held, 2 key events
+  90.517 nothing: key 84: notes[] 0001 while held, 2 key events
+  90.983 nothing: key 85: notes[] 0001 while held, 2 key events
+  91.467 nothing: key 86: notes[] 0001 while held, 2 key events
+  91.933 nothing: key 87: notes[] 0001 while held, 2 key events
+  92.417 nothing: key 88: notes[] 0001 while held, 2 key events
+  92.883 nothing: key 89: notes[] 0001 while held, 2 key events
+  93.367 nothing: key 90: notes[] 0001 while held, 2 key events
+  93.833 nothing: key 91: notes[] 0001 while held, 2 key events
+  94.317 nothing: key 92: notes[] 0001 while held, 2 key events
+  94.783 nothing: key 93: notes[] 0001 while held, 2 key events
+  95.267 nothing: key 94: notes[] 0001 while held, 2 key events
+  95.733 nothing: key 95: notes[] 0001 while held, 2 key events
+  96.200 nothing: key 96: notes[] 0001 while held, 2 key events
+  96.200 nothing: key 97: no keybed field
+  96.200 nothing: key 98: no keybed field
+  96.200 nothing: key 99: no keybed field
+  96.200 nothing: key 100: no keybed field
+  96.200 nothing: key 101: no keybed field
+  96.200 nothing: key 102: no keybed field
+  96.200 nothing: key 103: no keybed field
+  96.200 SUMMARY nothing: 61 of 76 keys read, the lowest 36
+  98.850 pressed PLAY CHORD OFF/ON
+  98.850 PLAY CHORD OFF/ON: key 28: no keybed field
+  98.850 PLAY CHORD OFF/ON: key 29: no keybed field
+  98.850 PLAY CHORD OFF/ON: key 30: no keybed field
+  98.850 PLAY CHORD OFF/ON: key 31: no keybed field
+  98.850 PLAY CHORD OFF/ON: key 32: no keybed field
+  98.850 PLAY CHORD OFF/ON: key 33: no keybed field
+  98.850 PLAY CHORD OFF/ON: key 34: no keybed field
+  98.850 PLAY CHORD OFF/ON: key 35: no keybed field
+  99.317 PLAY CHORD OFF/ON: key 36: notes[] 0000 while held, 0 key events
+  99.783 PLAY CHORD OFF/ON: key 37: notes[] 0000 while held, 0 key events
+ 100.267 PLAY CHORD OFF/ON: key 38: notes[] 0000 while held, 0 key events
+ 100.733 PLAY CHORD OFF/ON: key 39: notes[] 0000 while held, 0 key events
+ 101.217 PLAY CHORD OFF/ON: key 40: notes[] 0000 while held, 0 key events
+ 101.683 PLAY CHORD OFF/ON: key 41: notes[] 0000 while held, 0 key events
+ 102.167 PLAY CHORD OFF/ON: key 42: notes[] 0000 while held, 0 key events
+ 102.633 PLAY CHORD OFF/ON: key 43: notes[] 0000 while held, 0 key events
+ 103.117 PLAY CHORD OFF/ON: key 44: notes[] 0000 while held, 0 key events
+ 103.583 PLAY CHORD OFF/ON: key 45: notes[] 0000 while held, 0 key events
+ 104.067 PLAY CHORD OFF/ON: key 46: notes[] 0000 while held, 0 key events
+ 104.533 PLAY CHORD OFF/ON: key 47: notes[] 0000 while held, 0 key events
+ 105.017 PLAY CHORD OFF/ON: key 48: notes[] 0000 while held, 0 key events
+ 105.483 PLAY CHORD OFF/ON: key 49: notes[] 0000 while held, 0 key events
+ 105.967 PLAY CHORD OFF/ON: key 50: notes[] 0000 while held, 0 key events
+ 106.433 PLAY CHORD OFF/ON: key 51: notes[] 0000 while held, 0 key events
+ 106.917 PLAY CHORD OFF/ON: key 52: notes[] 0000 while held, 0 key events
+ 107.400 PLAY CHORD OFF/ON: key 53: notes[] 0000 while held, 0 key events
+ 107.867 PLAY CHORD OFF/ON: key 54: notes[] 0000 while held, 0 key events
+ 108.350 PLAY CHORD OFF/ON: key 55: notes[] 0000 while held, 0 key events
+ 108.817 PLAY CHORD OFF/ON: key 56: notes[] 0000 while held, 0 key events
+ 109.300 PLAY CHORD OFF/ON: key 57: notes[] 0000 while held, 0 key events
+ 109.767 PLAY CHORD OFF/ON: key 58: notes[] 0000 while held, 0 key events
+ 110.250 PLAY CHORD OFF/ON: key 59: notes[] 0000 while held, 0 key events
+ 110.717 PLAY CHORD OFF/ON: key 60: notes[] 0001 while held, 2 key events
+ 111.200 PLAY CHORD OFF/ON: key 61: notes[] 0001 while held, 2 key events
+ 111.667 PLAY CHORD OFF/ON: key 62: notes[] 0001 while held, 2 key events
+ 112.150 PLAY CHORD OFF/ON: key 63: notes[] 0001 while held, 2 key events
+ 112.617 PLAY CHORD OFF/ON: key 64: notes[] 0001 while held, 2 key events
+ 113.100 PLAY CHORD OFF/ON: key 65: notes[] 0001 while held, 2 key events
+ 113.567 PLAY CHORD OFF/ON: key 66: notes[] 0001 while held, 2 key events
+ 114.050 PLAY CHORD OFF/ON: key 67: notes[] 0001 while held, 2 key events
+ 114.517 PLAY CHORD OFF/ON: key 68: notes[] 0001 while held, 2 key events
+ 114.983 PLAY CHORD OFF/ON: key 69: notes[] 0001 while held, 2 key events
+ 115.467 PLAY CHORD OFF/ON: key 70: notes[] 0001 while held, 2 key events
+ 115.933 PLAY CHORD OFF/ON: key 71: notes[] 0001 while held, 2 key events
+ 116.417 PLAY CHORD OFF/ON: key 72: notes[] 0001 while held, 2 key events
+ 116.883 PLAY CHORD OFF/ON: key 73: notes[] 0001 while held, 2 key events
+ 117.367 PLAY CHORD OFF/ON: key 74: notes[] 0001 while held, 2 key events
+ 117.833 PLAY CHORD OFF/ON: key 75: notes[] 0001 while held, 2 key events
+ 118.317 PLAY CHORD OFF/ON: key 76: notes[] 0001 while held, 2 key events
+ 118.783 PLAY CHORD OFF/ON: key 77: notes[] 0001 while held, 2 key events
+ 119.267 PLAY CHORD OFF/ON: key 78: notes[] 0001 while held, 2 key events
+ 119.733 PLAY CHORD OFF/ON: key 79: notes[] 0001 while held, 2 key events
+ 120.217 PLAY CHORD OFF/ON: key 80: notes[] 0001 while held, 2 key events
+ 120.683 PLAY CHORD OFF/ON: key 81: notes[] 0001 while held, 2 key events
+ 121.167 PLAY CHORD OFF/ON: key 82: notes[] 0001 while held, 2 key events
+ 121.633 PLAY CHORD OFF/ON: key 83: notes[] 0001 while held, 2 key events
+ 122.117 PLAY CHORD OFF/ON: key 84: notes[] 0001 while held, 2 key events
+ 122.583 PLAY CHORD OFF/ON: key 85: notes[] 0001 while held, 2 key events
+ 123.050 PLAY CHORD OFF/ON: key 86: notes[] 0001 while held, 2 key events
+ 123.533 PLAY CHORD OFF/ON: key 87: notes[] 0001 while held, 2 key events
+ 124.000 PLAY CHORD OFF/ON: key 88: notes[] 0001 while held, 2 key events
+ 124.483 PLAY CHORD OFF/ON: key 89: notes[] 0001 while held, 2 key events
+ 124.950 PLAY CHORD OFF/ON: key 90: notes[] 0001 while held, 2 key events
+ 125.433 PLAY CHORD OFF/ON: key 91: notes[] 0001 while held, 2 key events
+ 125.900 PLAY CHORD OFF/ON: key 92: notes[] 0001 while held, 2 key events
+ 126.383 PLAY CHORD OFF/ON: key 93: notes[] 0001 while held, 2 key events
+ 126.850 PLAY CHORD OFF/ON: key 94: notes[] 0001 while held, 2 key events
+ 127.333 PLAY CHORD OFF/ON: key 95: notes[] 0001 while held, 2 key events
+ 127.800 PLAY CHORD OFF/ON: key 96: notes[] 0001 while held, 2 key events
+ 127.800 PLAY CHORD OFF/ON: key 97: no keybed field
+ 127.800 PLAY CHORD OFF/ON: key 98: no keybed field
+ 127.800 PLAY CHORD OFF/ON: key 99: no keybed field
+ 127.800 PLAY CHORD OFF/ON: key 100: no keybed field
+ 127.800 PLAY CHORD OFF/ON: key 101: no keybed field
+ 127.800 PLAY CHORD OFF/ON: key 102: no keybed field
+ 127.800 PLAY CHORD OFF/ON: key 103: no keybed field
+ 127.800 SUMMARY PLAY CHORD OFF/ON: 37 of 76 keys read, the lowest 60
+ 127.800 end

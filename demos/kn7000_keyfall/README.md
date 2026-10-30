@@ -38,8 +38,10 @@ B 70%, C 50%), the counts, the longest streak and how early or late the keys cam
 song, part and tempo is kept in `SCORES.TXT` in the folder.
 
 The keys the game reads are those the keybed sends to MIDI OUT on channels 1-3 (RIGHT 1, RIGHT 2, LEFT; and those MIDI
-IN 1 receives on them, from a keyboard plugged in there). With the instrument as it starts, the keys below the split
-point are the arranger's chord keys and reach none of those: songs for the right hand play as they are.
+IN 1 receives on them, from a keyboard plugged in there). While AUTO PLAY CHORD is on, the keys left of the split point
+are the arranger's chord keys and send nothing: a right-hand part plays as it is; for a left-hand part, or both hands,
+turn AUTO PLAY CHORD off first (in MAME: every key read with it off, none below C4 with it on:
+`tests/results/events-keyscan-2026-10-30.txt`).
 
 ## The songs
 
