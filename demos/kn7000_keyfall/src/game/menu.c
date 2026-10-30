@@ -295,9 +295,9 @@ int kf_main(void) {
   menu_sel = nSongs ? 0 : -1;
   first = 0;
   if (menu_sel >= 0) load_song(menu_sel);
-  menu_screen = 1;
   draw_songs();
   keys_now();
+  menu_screen = 1;  /* (after keys_now: a press from here on counts) */
   u32 movedAt = 0;
   int pending = 0;
   for (;;) {

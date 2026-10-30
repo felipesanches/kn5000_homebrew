@@ -161,6 +161,10 @@ typedef struct PfHost {
    * let go again before the program looked at `panel` still shows. The program clears the bits it has taken; KN7APP only
    * sets them, on the firmware's main task, which never runs halfway through the program task's read and clear. */
   volatile u8* panelLatch;
+  /* ABI 15: how long each converter call rests at most (2 ms to the platform's REST_MS, 100): the firmware's main task
+   * passes the keybed's notes to MIDI OUT and takes MIDI IN 1's bytes between the calls, so a short rest makes both
+   * quicker and costs the program the CPU the firmware's main task takes each call. */
+  void (*restMs)(u32 ms);
 } PfHost;
 
 /* The header at the start of the program's file, which is read to `base` (ABI 13: PT.BIN was read to GAME_BASE; DOOM.BIN

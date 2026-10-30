@@ -18,6 +18,8 @@ OUT     ?= build
 PYTHON  ?= python3
 # how long KN7APP's converter calls rest before they hand the firmware's main task back (src/app/entry.c rest)
 REST_MS ?= 100
+# ... and while a song plays (src/game/play.c kf_rest, through PfHost::restMs)
+PLAY_REST_MS ?= 10
 
 CFLAGS_COMMON := -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Isrc/common
 
@@ -29,7 +31,7 @@ APP_OBJ := $(APP_C:src/app/%.c=$(OUT)/app/%.o) $(OUT)/app/glue.o $(OUT)/app/font
 # ---- KEYFALL.BIN: the game (src/game/) ----
 GAME_C  := $(addprefix src/game/,main.c smf.c song.c judge.c draw.c play.c menu.c fmt.c scores.c)
 GAME_HDR := $(wildcard src/game/*.h src/common/*.h)
-GAME_CFLAGS := $(CFLAGS_COMMON) -std=gnu11 -ffreestanding -Isrc/game
+GAME_CFLAGS := $(CFLAGS_COMMON) -std=gnu11 -ffreestanding -Isrc/game -DKF_PLAY_REST=$(PLAY_REST_MS)
 GAME_OBJ := $(GAME_C:src/game/%.c=$(OUT)/game/%.o)
 
 SONGS_TXT := $(wildcard songs/*.txt)
@@ -74,6 +76,11 @@ $(OUT)/app/kn7app.elf: $(APP_OBJ) src/app/kn7app.ld
 $(OUT)/KN7APP.BIN: $(OUT)/app/kn7app.elf $(LOADER)/mkapp.py
 	$(CROSS)objcopy -O binary -j .header -j .text -j .rodata -j .data $< $(OUT)/app/kn7app.bin
 	$(PYTHON) -I $(LOADER)/mkapp.py $(OUT)/app/kn7app.bin $@
+
+$(OUT)/game/play.o: $(OUT)/game/play_rest
+$(OUT)/game/play_rest: FORCE
+	@mkdir -p $(dir $@)
+	@echo $(PLAY_REST_MS) | cmp -s - $@ || echo $(PLAY_REST_MS) > $@
 
 $(OUT)/game/%.o: src/game/%.c $(GAME_HDR)
 	@mkdir -p $(dir $@)

@@ -37,6 +37,7 @@ extern const PfHost *host;
 #define END_PAD_MS 1500   /* the song ends this long after its last note */
 
 u32 kf_speed = 110;       /* lines a second (menu.c) */
+u32 kf_rest = KF_PLAY_REST;         /* KN7APP's converter rest while a song plays (PfHost::restMs) */
 s32 kf_latency;           /* ms taken off each key's time before it is judged (menu.c) */
 
 /* what tests/mame/keyfall_test.lua reads */
@@ -437,6 +438,7 @@ int play_run(Chart *c, int m, const char *title, Judge *j) {
   PfKeyEvent ev[32];
   kf_log("play: %u notes, keys %u-%u, %u messages on %u channels, mode %d, speed %u", nNotes, c->lo, c->hi, c->nOut,
          c->outCh, m, kf_speed);
+  host->restMs(kf_rest);
   play_state = 1;
   for (;;) {
     now = host->ms();
@@ -495,6 +497,7 @@ int play_run(Chart *c, int m, const char *title, Judge *j) {
     host->yield(1);
   }
   all_notes_off(chans);
+  host->restMs(100);
   if (mode == MODE_PLAY) judge_pass(j, 0x3FFFFFFF);
   play_state = aborted ? 3 : 2;
   kf_log("play: %s at %d ms: %u perfect %u good %u ok %u miss %u wrong, score %u, streak %u, frames %u, loop max %u ms, "

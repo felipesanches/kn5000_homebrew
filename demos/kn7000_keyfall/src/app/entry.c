@@ -135,6 +135,12 @@ static void led_service(void) {
 #define PANEL_RX_WR 0x5006BDAEu
 u32 rest_calls, rest_early;  /* calls that waited; of them, those the panel or a file ended early */
 u32 rest_raw;                /* raw reads served during a wait (a converter call serves as many as come in REST_MS) */
+/* ABI 15 (PfHost::restMs): the rest the program asks for. The firmware's main task decodes the keybed's notes for
+ * MIDI OUT and takes MIDI IN 1's bytes only between converter calls: in MAME, with REST_MS 100 the keys reached the
+ * game 23-146 ms late and the firmware took the accompaniment 1-178 ms after it was put in; with 20, 24-62 and 1-47
+ * (tests/results/). Keyfall asks for a short rest while a song plays, REST_MS otherwise. */
+volatile u32 rest_ms = REST_MS;
+void rest_set(u32 ms) { rest_ms = ms < 2 ? 2 : ms > REST_MS ? REST_MS : ms; }
 
 /* The TEMPO/PROGRAM wheel, for the game (PfHost::wheel). Each detent comes from the panel as a frame [0x17, step] (a
  * signed step) into the receive ring, and the firmware adds the step to the tempo (kn7000_mame notes,
@@ -290,7 +296,7 @@ static void rest(void) {
   if (fw.build != 893 || !fw.dly || !fw.ms) return;
   ++rest_calls;
   const u32 t0 = now_ms();
-  while (now_ms() - t0 < REST_MS) {
+  while (now_ms() - t0 < rest_ms) {
     if (file_raw_pending()) {  /* a part of a file (the program): read now, not a converter call later */
       file_serve();
       ++rest_raw;

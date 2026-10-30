@@ -119,6 +119,7 @@ void wheel_scan(void);       /* PfHost::panelScan: the ring's frames, the switch
 void panel_take(const u8* mask);  /* PfHost::panelTake: the switches taken from the firmware */
 extern volatile s32 wheel_steps;  /* the TEMPO/PROGRAM wheel's detents so far, signed (entry.c wheel_scan) */
 void set_status(const char* s);
+void rest_set(u32 ms);  /* PfHost::restMs (entry.c) */
 /* The diagnostic build (`make DIAG=1`, README.md "If it does not start"): the text the converter calls answer, which
  * the firmware shows in its own box, names what comes next. Nothing in the normal build. */
 #ifdef PF_DIAG
