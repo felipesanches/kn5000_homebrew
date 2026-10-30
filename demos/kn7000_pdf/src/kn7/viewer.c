@@ -19,6 +19,7 @@
 #include "view.h"
 
 extern void (*fz_kn7_yield)(void);  /* (MuPDF's, KN7PDF) */
+static u32 beatAt;  /* the log's last heartbeat (yieldNow) */
 
 #define LCDC(r) (*(volatile u8 *)(0x9CC00000u + (r)))
 #define PITCH FB_W
@@ -270,6 +271,7 @@ static int drawPage(int n) {
   const u32 t0 = host->ms();
   printf("drawing page %d\n", n + 1);
   host->diagSave();
+  beatAt = host->ms();
   const int h = view_draw(n, FB_W, PAGE_ROWS, BAND_ROWS, band, NULL, &st);
   if (h < 0) {
     printf("page %d: %s\n", n + 1, view_error());
@@ -379,12 +381,23 @@ static unsigned clockMs(void) { return (unsigned)host->ms(); }
 #define YIELD_MS 20
 static u32 yieldAt;
 u32 yields;
+/* and every HEARTBEAT_MS while MuPDF works, a line into the log and the log onto the card (PDFLOG.TXT): on the
+ * instrument, where a page that never ends cannot say whether it is slow or stuck otherwise */
+#define HEARTBEAT_MS 5000
 static void yieldNow(void) {
   const u32 t = *(volatile u32 *)host->msCounter;
   if (t - yieldAt < YIELD_MS) return;
   host->yield(1);
   yieldAt = *(volatile u32 *)host->msCounter;
   ++yields;
+  if (*view_stage && yieldAt - beatAt >= HEARTBEAT_MS) {
+    HeapStats hs;
+    kn7HeapStats(&hs);
+    printf("  ... %s at line %d; yields %lu; heap %u KB, peak %u, failed %u\n", view_stage, view_y,
+           (unsigned long)yields, hs.used >> 10, hs.peak >> 10, kn7HeapFailures());
+    host->diagSave();
+    beatAt = *(volatile u32 *)host->msCounter;
+  }
 }
 
 int viewer_main(void) {

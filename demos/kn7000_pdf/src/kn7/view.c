@@ -13,6 +13,8 @@
 unsigned (*view_clock)(void);
 unsigned (*view_failures)(void);
 int view_aa_bits = 4;
+const char* volatile view_stage = "";
+volatile int view_y;
 extern fz_context* fontfile_ctx;  /* (fontfile.c) */
 void pdf_close_image_windows(fz_context* ctx);  /* (MuPDF's pdf_image.c and pdf_xref.c, KN7PDF) */
 typedef struct pdf_document_s pdf_document;
@@ -169,6 +171,7 @@ int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out
         fz_kn7_list_keep(list, keep);
       }
       dev = fz_new_list_device(ctx, list);
+      view_stage = "list", view_y = y0;
       fz_run_page(doc, page, dev, ctm, NULL);
       fz_free_device(dev);
       dev = NULL;
@@ -189,6 +192,7 @@ int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out
         const unsigned f1 = failures();
         const int n = y1 - y < rows ? y1 - y : rows;
         int ok = 1;
+        view_stage = "band", view_y = y;
         fz_try(ctx) { draw_band(list, page, ctm, box, y, n, &band, NULL, NULL); }
         fz_catch(ctx) { ok = 0; }
         ++st->bands;
@@ -222,5 +226,6 @@ int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out
   if (page) fz_free_page(doc, page);
   pdf_clear_xref((pdf_document*)doc);  /* (the objects the page parsed) */
   fz_flush_warnings(ctx);
+  view_stage = "";
   return h;
 }
