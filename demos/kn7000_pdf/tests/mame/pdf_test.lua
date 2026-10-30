@@ -9,7 +9,8 @@
 --   * the list up: CHECK it lists the card's PDFs; then the file named $PDF_FILE (default the first) chosen with the
 --     wheel and opened (R1 OPEN), and CHECK its first page drawn;
 --   * the wheel turned (the TEMPO/PROGRAM knob's adjuster, +$PDF_TURN steps): CHECK the page scrolled, and the tempo
---     left alone; turned on past the page's end: CHECK the next page drawn; PAGE UP: CHECK the page before;
+--     left alone; turned on past the page's end: CHECK the next page drawn; PAGE UP: CHECK the page before; PAGE
+--     DOWN and, while that page draws, PAGE UP pressed and let go: CHECK the press kept (the page before again);
 --   * the panel shared: R2 (taken by the viewer) CHECKed absent from the firmware's switch bitmap, and VARIATION 1 (the
 --     firmware's) present there, while held; then SOUND GROUP 2 and 3, PANEL MEMORY 8 (the sound group's), VARIATION 2,
 --     SOUND EXPLORER and ORGAN & ACCORDION pressed, with a write tap on the borrowed frame buffers: CHECK no firmware code
@@ -66,6 +67,9 @@ local function logLast()
   if l == "" and rows > 1 then l = cstr(SYM["_logLine"] + 81 * (rows - 2), 80) end
   return l
 end
+-- what MuPDF is doing (view.c view_stage: "" when no page is being drawn)
+local function stage() return cstr(sp:read_u32(SYM["_view_stage"]), 16) end
+local function idle() return stage() == "" and s32("_pageH") > 0 end
 local function state()
   return string.format("text %q; files %d pages %d page %d height %d top %d; heap %d KB peak %d KB failed %d; " ..
     "calls %d, switch frames %d (late %d), wheel frames %d (late %d), yields %d; log %q",
@@ -215,10 +219,22 @@ local co = coroutine.create(function()
       string.format("%d of %d late, %d taken back", u32("_wheel_late"), u32("_wheel_frames"), u32("_wheel_undone")))
     wait(1)
     snap("page 2")
-    local shown = s32("_pageNo")                        -- (the wheel may have gone on past page 2's end too)
+    -- (the wheel's detents may carry it on past page 2's end too: the page it stops on, once nothing is drawn)
+    wait_until(idle, 600)
+    local shown = s32("_pageNo")
     E("PAGE UP on page %d", shown + 1)
     press("CPC_SEG11", 0x10)                            -- PAGE UP: the page before
-    CHECK("PAGE UP: the page before", wait_until(function() return s32("_pageNo") == shown - 1 end, 600), state())
+    CHECK("PAGE UP: the page before", wait_until(function() return idle() and s32("_pageNo") == shown - 1 end, 600),
+      state())
+    -- PAGE DOWN, and PAGE UP pressed and let go while that page draws: kept, and done when it is drawn
+    press("CPC_SEG11", 0x20)
+    local drew = wait_until(function() return stage() ~= "" end, 30)
+    press("CPC_SEG11", 0x10)
+    local during = stage() ~= ""
+    local down = wait_until(function() return s32("_pageNo") == shown end, 600)  -- (PAGE DOWN's page drawn, then)
+    CHECK("a key pressed while a page draws counts", drew and during and down and
+      wait_until(function() return idle() and s32("_pageNo") == shown - 1 end, 600),
+      string.format("drawing at the press %s, PAGE DOWN's page drawn %s; %s", tostring(during), tostring(down), state()))
     wait(1)
     snap("page 1 again")
   end

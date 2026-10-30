@@ -154,15 +154,23 @@ static void takeKeys(void) {
 
 static int down(int k) { return (host->panel[keyBit[k] >> 8] & (keyBit[k] & 0xFF)) != 0; }
 
-/* the keys pressed since the last call (a bit each), and the wheel's detents */
-static u32 pressed(s32 *wheel) {
+/* the keys gone down since the last look, kept until pressed() takes them: latch() runs between pages and, through
+ * MuPDF's yield, while one is drawn, so a key pressed and let go during a page of a minute counts */
+static u32 latched;
+static void latch(void) {
   host->panelScan();
-  u32 p = 0;
   for (int k = 0; k < KEYS; ++k) {
     const int d = down(k);
-    if (d && !keyWas[k]) p |= 1u << k;
+    if (d && !keyWas[k]) latched |= 1u << k;
     keyWas[k] = d;
   }
+}
+
+/* the keys pressed since the last call (a bit each), and the wheel's detents */
+static u32 pressed(s32 *wheel) {
+  latch();
+  const u32 p = latched;
+  latched = 0;
   const s32 w = *host->wheel;
   *wheel = w - wheelWas;
   wheelWas = w;
@@ -392,6 +400,7 @@ static void yieldNow(void) {
   host->yield(1);
   yieldAt = *(volatile u32 *)host->msCounter;
   ++yields;
+  latch();
   if (*view_stage && yieldAt - beatAt >= HEARTBEAT_MS) {
     HeapStats hs;
     kn7HeapStats(&hs);
