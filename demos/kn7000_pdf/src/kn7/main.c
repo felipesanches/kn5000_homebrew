@@ -316,7 +316,8 @@ void kn7LogShow(int on) {
 
 static void logChar(char c) {
   if (logRows == 0) logRows = 1;
-  if (c == '\n' && host->diag) host->diag(logLine[logRows - 1]);  /* (each line into KN7APP's log, PDFLOG.TXT) */
+  /* (each line into KN7APP's log, PDFLOG.TXT; a line longer than the screen's in its 80-column parts) */
+  if ((c == '\n' || logCol >= LOG_COLS) && host->diag) host->diag(logLine[logRows - 1]);
   if (c == '\n' || logCol >= LOG_COLS) {
     if (logShown) host->text(logLine[logRows - 1], 0, 1 + 13 * (logRows - 1), 0xFFFF, 0);
     if (logRows == LOG_ROWS) {
