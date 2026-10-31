@@ -120,7 +120,7 @@ softfp-test: $(SOFTFP:%=$(OUT)/softfp-host/%.o) tests/softfp/test_softfp.c
 	$(OUT)/test_softfp
 
 # ---- PDF.BIN: MuPDF 1.1 and its libraries, and the KN7000 side (src/kn7/) ----
-KN7_C   := $(addprefix src/kn7/,main.c viewer.c view.c fontfile.c left_out.c fmt.c) src/third/tlsf/tlsf.c
+KN7_C   := $(addprefix src/kn7/,main.c viewer.c view.c pagecache.c fontfile.c left_out.c fmt.c) src/third/tlsf/tlsf.c
 PDF_CFLAGS := -Os -g -ffunction-sections -fdata-sections -std=gnu99 -w $(MU_INC) $(MU_DEFS) -Isrc/kn7 -Isrc/common \
               -Isrc/third/tlsf
 PDF_OBJ := $(MU_C:src/%.c=$(OUT)/pdf/%.o) $(THIRD_C:src/%.c=$(OUT)/pdf/%.o) $(KN7_C:src/%.c=$(OUT)/pdf/%.o) $(SOFTFP_OBJ)

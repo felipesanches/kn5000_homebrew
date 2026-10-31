@@ -9,8 +9,12 @@
 --   * the list up: CHECK it lists the card's PDFs; then the file named $PDF_FILE (default the first) chosen with the
 --     wheel and opened (R1 OPEN), and CHECK its first page drawn;
 --   * the wheel turned (the TEMPO/PROGRAM knob's adjuster, +$PDF_TURN steps): CHECK the page scrolled, and the tempo
---     left alone; turned on past the page's end: CHECK the next page drawn; PAGE UP: CHECK the page before; PAGE
---     DOWN and, while that page draws, PAGE UP pressed and let go: CHECK the press kept (the page before again);
+--     left alone;
+--   * pages drawn ahead (viewer.c, pagecache.c): CHECK the next page drawn into the cache unasked; CHECK the page shown
+--     scrolls while another is drawn; the wheel on past the page's end: CHECK the next page shown at once; PAGE UP:
+--     CHECK the page before at once; PAGE DOWN to the last page, not drawn yet: CHECK TOP (R1) answers meanwhile and
+--     CHECK the page shown when it is done; CHECK the pages drawn saved on the card once the controls are left alone;
+--     EXIT and the document opened again: CHECK its first page from the card at once;
 --   * the panel shared: R2 (taken by the viewer) CHECKed absent from the firmware's switch bitmap, and VARIATION 1 (the
 --     firmware's) present there, while held; then SOUND GROUP 2 and 3, PANEL MEMORY 8 (the sound group's), VARIATION 2,
 --     SOUND EXPLORER and ORGAN & ACCORDION pressed, with a write tap on the borrowed frame buffers: CHECK no firmware code
@@ -69,7 +73,13 @@ local function logLast()
 end
 -- what MuPDF is doing (view.c view_stage: "" when no page is being drawn)
 local function stage() return cstr(sp:read_u32(SYM["_view_stage"]), 16) end
-local function idle() return stage() == "" and s32("_pageH") > 0 end
+local function idle() return stage() == "" and s32("_pageNo") >= 0 end
+-- the page cache (pagecache.c: pg[], PcPage = blob, card, used, rows/saved/failed: 16 bytes)
+local function pcEntry(n, off) local pg = sp:read_u32(SYM["_pg"]); return pg ~= 0 and sp:read_u32(pg + 16 * n + off) or 0 end
+local function cached(n) return pcEntry(n, 0) ~= 0 end
+local function onCard(n) return pcEntry(n, 4) ~= 0 end
+local function shownWithin(n, s) local t = now(); local ok = wait_until(function() return s32("_pageNo") == n end, s)
+  return ok, now() - t end
 local function state()
   return string.format("text %q; files %d pages %d page %d height %d top %d; heap %d KB peak %d KB failed %d; " ..
     "calls %d, switch frames %d (late %d), wheel frames %d (late %d), yields %d; log %q",
@@ -168,12 +178,12 @@ local co = coroutine.create(function()
   local keyed = false
   if KEYN[60] then
     KEYN[60]:set_value(1); wait(0.5)
-    keyed = sp:read_u32(ring + 0x0C) ~= wr0 and s32("_pageH") <= 0
+    keyed = sp:read_u32(ring + 0x0C) ~= wr0 and s32("_pageNo") < 0
     KEYN[60]:set_value(0)
   end
   CHECK("the keybed plays while the page draws", keyed, string.format("MIDI OUT write %08X -> %08X, yields %d; %s", wr0,
     sp:read_u32(ring + 0x0C), u32("_yields"), state()))
-  local drawn = wait_until(function() return s32("_pageH") > 0 end, 600)
+  local drawn = wait_until(function() return s32("_pageNo") >= 0 end, 600)
   CHECK("the first page drawn", drawn, string.format("%.1f s; %s", now() - openAt, state()))
   wait(1)
   snap("page 1, top")
@@ -207,36 +217,53 @@ local co = coroutine.create(function()
   tap:remove()
   CHECK("the firmware's buttons: no firmware write in the borrowed RAM", foreign == 0, foreign)
   snap("after the firmware's buttons")
-  -- on past the page's end: the next page
+  -- pages drawn ahead of the reader
   local pages = s32("_pages")
   if pages > 1 then
+    CHECK("the next page drawn ahead, unasked", wait_until(function() return cached(1) end, 600), state())
+    local busy = wait_until(function() return s32("_job") >= 0 end, 60)
+    local t0 = s32("_top")
+    turn(t0 > 0 and -2 or 2)
+    CHECK("the page shown scrolls while another is drawn", busy and s32("_top") ~= t0 and s32("_pageNo") == 0,
+      string.format("drawing page %d; top %d -> %d; %s", s32("_job") + 1, t0, s32("_top"), state()))
     for _ = 1, 60 do
       turn(4)
       if s32("_pageNo") == 1 then break end
     end
-    CHECK("past the end: the next page", wait_until(function() return s32("_pageNo") == 1 and s32("_pageH") > 0 end, 600), state())
+    local ok, dt = shownWithin(1, 30)
+    CHECK("past the end: the next page at once", ok and dt < 3, string.format("%.1f s; %s", dt, state()))
     CHECK("the wheel turned while a page drew: the tempo left alone", u32("_wheel_late") == u32("_wheel_undone"),
       string.format("%d of %d late, %d taken back", u32("_wheel_late"), u32("_wheel_frames"), u32("_wheel_undone")))
     wait(1)
     snap("page 2")
-    -- (the wheel's detents may carry it on past page 2's end too: the page it stops on, once nothing is drawn)
-    wait_until(idle, 600)
-    local shown = s32("_pageNo")
-    E("PAGE UP on page %d", shown + 1)
     press("CPC_SEG11", 0x10)                            -- PAGE UP: the page before
-    CHECK("PAGE UP: the page before", wait_until(function() return idle() and s32("_pageNo") == shown - 1 end, 600),
-      state())
-    -- PAGE DOWN, and PAGE UP pressed and let go while that page draws: kept, and done when it is drawn
-    press("CPC_SEG11", 0x20)
-    local drew = wait_until(function() return stage() ~= "" end, 30)
-    press("CPC_SEG11", 0x10)
-    local during = stage() ~= ""
-    local down = wait_until(function() return s32("_pageNo") == shown end, 600)  -- (PAGE DOWN's page drawn, then)
-    CHECK("a key pressed while a page draws counts", drew and during and down and
-      wait_until(function() return idle() and s32("_pageNo") == shown - 1 end, 600),
-      string.format("drawing at the press %s, PAGE DOWN's page drawn %s; %s", tostring(during), tostring(down), state()))
+    ok, dt = shownWithin(0, 30)
+    CHECK("PAGE UP: the page before at once", ok and dt < 3, string.format("%.1f s; %s", dt, state()))
+    -- PAGE DOWN to the last page, not drawn ahead: TOP answers while it is drawn, and it is shown when done
+    local last = pages - 1
+    for _ = 1, last do press("CPC_SEG11", 0x20) end
+    local waiting = s32("_want") == last and s32("_pageNo") ~= last
+    local shownBefore = s32("_pageNo")
+    press("CPR_SEG5", 0x10)                             -- R1: TOP
+    CHECK("TOP answers while the page asked for is drawn", waiting and s32("_top") == 0 and s32("_pageNo") == shownBefore,
+      string.format("want %d shown %d top %d; %s", s32("_want") + 1, s32("_pageNo") + 1, s32("_top"), state()))
+    ok, dt = shownWithin(last, 600)
+    CHECK("the page asked for shown when it is drawn", ok, string.format("%.1f s; %s", dt, state()))
+    snap("the last page")
+    -- the controls left alone: the pages drawn go onto the card
+    CHECK("the pages drawn saved on the card", wait_until(function() return onCard(0) and onCard(1) and onCard(last) end,
+      600), string.format("on the card: %s %s %s; %s", tostring(onCard(0)), tostring(onCard(1)), tostring(onCard(last)),
+      state()))
+    -- the document again: its pages from the card
+    press("CPC_SEG11", 0x80)                            -- EXIT: the list
+    wait_until(function() return s32("_pageH") == 0 end, 30)
     wait(1)
-    snap("page 1 again")
+    press("CPR_SEG5", 0x10)                             -- R1: OPEN
+    local t1 = now()
+    ok = wait_until(function() return s32("_pageNo") == 0 end, 120)
+    CHECK("opened again: the first page from the card at once", ok and onCard(0) and now() - t1 < 8,
+      string.format("%.1f s; %s", now() - t1, state()))
+    snap("opened again")
   end
   E("%s", state())
   press("CPC_SEG11", 0x80)                              -- EXIT: the list

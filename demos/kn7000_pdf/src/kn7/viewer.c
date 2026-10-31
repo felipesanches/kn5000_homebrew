@@ -4,18 +4,26 @@
  * viewer.c -- the viewer on the KN7000's LCD: the folder's PDFs listed, one opened, its page drawn as wide as the LCD
  * (view.c, MuPDF) into display memory and scrolled by the TEMPO/PROGRAM wheel. The rest of the panel and the keybed stay
  * the instrument's: KN7APP takes from the firmware only the switches this file names (PfHost::panelTake).
- *   * the page: 8 bits a pixel, 256 grays in the controller's look-up table (4 bits each), lines of 640 bytes in display
- *     memory from LCD_FRAME, as tall as the page is (at most PAGE_ROWS); the controller shows 240 of them from its start
- *     address, so the wheel scrolls without a pixel moved (Doom's i_video.c, Pinball's screen.cpp);
+ *   * the page: 4 bits a pixel (two a byte, the first in bits 7-4), 16 grays in the controller's look-up table, lines
+ *     of PITCH bytes in display memory from LCD_FRAME, as tall as the page is (at most PAGE_ROWS); the controller shows
+ *     240 of them from its start address, so the wheel scrolls without a pixel moved (Doom's i_video.c, Pinball's
+ *     screen.cpp). The display memory above it is the display heap (pagecache.c): the pages drawn, coded, and fonts;
+ *   * pages are drawn ahead of the reader into that cache (pagecache.c), never into the page shown: the next, the one
+ *     after, the one before, while the reader reads and scrolls the page shown (MuPDF yields every 20 ms, and the
+ *     switches and the wheel are served then, ui()); a page asked for that is not drawn yet is drawn first, and shown
+ *     when it is done. Each page drawn is saved on the card when the reader has left the controls alone a while, and
+ *     comes from there the next time the document is opened;
  *   * over it, the controller's ink layer (2 bits a dot: colour 0, colour 1, or the page): the soft keys' labels
  *     beside their keys, and a line of status at the bottom while there is something to say (Pinball's screen.cpp);
  *   * the controls: the wheel scrolls (past a page's end, to the next page's top, and back); PAGE UP and PAGE DOWN
  *     the previous and the next page; the soft keys as labelled; EXIT, briefly, back to the list (in the list, held,
  *     KN7APP ends the program: entry.c). */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "kn7pdf.h"
+#include "pagecache.h"
 #include "view.h"
 
 extern void (*fz_kn7_yield)(void);  /* (MuPDF's, KN7PDF) */
@@ -23,8 +31,16 @@ static u32 beatAt;  /* the log's last heartbeat (yieldNow) */
 volatile u32 hang_test;  /* (tests/mame/hang.lua sets it: the viewer loops without yielding, for KN7APP's watchdog) */
 
 #define LCDC(r) (*(volatile u8 *)(0x9CC00000u + (r)))
-#define PITCH FB_W
-#define PAGE_ROWS ((LCD_KEEP - LCD_FRAME) / PITCH)  /* the tallest page display memory holds: 1,004 lines */
+#define PITCH PC_PITCH       /* 4 bits a pixel */
+#define PAGE_ROWS 1004       /* the tallest page shown (an 8-bit page filled LCD_FRAME to LCD_KEEP with these) */
+/* the display heap (pagecache.c): from the page's end to LCD_KEEP, and the 16 KB between the firmware's frame (its
+ * 241 lines end at 0x4B500) and LCD_FRAME; the font files may take FONT_BUDGET of it */
+#define DHEAP_LO ((LCD_FRAME + PAGE_ROWS * PITCH + 15) & ~15u)
+#define DHEAP_HI LCD_KEEP
+#define DHEAP2_LO 0x4C000u
+#define DHEAP2_HI LCD_FRAME
+#define FONT_BUDGET (128u << 10)
+#define SAVE_IDLE_MS 1500    /* the controls left alone this long: a page drawn goes onto the card */
 #define INK LCD_INK
 #define INK_PITCH (FB_W / 4)
 #define VNDP_SPIN 2000
@@ -58,9 +74,9 @@ static void show(int top) { writeStart((LCD_FRAME + (u32)(top + FB_H - 1) * PITC
 
 static volatile u8 *line(int y) { return (volatile u8 *)(LCD_MEM + LCD_FRAME + (u32)y * PITCH); }
 
-/* lines [y, y + h) of the page memory set to gray g */
+/* lines [y, y + h) of the page memory set to gray g (0-15) */
 static void clearLines(int y, int h, u8 g) {
-  const u16 two = (u16)(g | (g << 8));
+  const u16 two = (u16)((g | (g << 4)) * 0x101);
   for (int r = y; r < y + h; ++r) {
     volatile u16 *p = (volatile u16 *)line(r);
     for (int x = 0; x < PITCH / 2; ++x) p[x] = two;
@@ -98,26 +114,28 @@ static void inkClear(void) {
   for (u32 i = 0; i < INK_PITCH * FB_H / 2; ++i) p[i] = 0xAAAA;
 }
 
+/* the look-up table's first 16 entries, which 4 bits a pixel use: gray i (S1D13506 spec, REG[1E2h]-[1E4h], bits 7-4) */
 static void lutLoad(void) {
   LCDC(0x1E0) = 0;
-  for (int i = 0; i < 256; ++i) {
+  for (int i = 0; i < 16; ++i) {
     LCDC(0x1E2) = (u8)i;
-    LCDC(0x1E4) = (u8)(i & 0xF0);
-    LCDC(0x1E4) = (u8)(i & 0xF0);
-    LCDC(0x1E4) = (u8)(i & 0xF0);
+    LCDC(0x1E4) = (u8)(i << 4);
+    LCDC(0x1E4) = (u8)(i << 4);
+    LCDC(0x1E4) = (u8)(i << 4);
   }
 }
 
-/* the controller ours: 8 bits a pixel, gray, lines of PITCH bytes, the ink layer on (Pinball's Screen::own, inkOn) */
+/* the controller ours: 4 bits a pixel (REG[040h] bits 2-0 = 010b), gray, lines of PITCH bytes, the ink layer on
+ * (Pinball's Screen::own, inkOn) */
 static void own(void) {
   saved40 = LCDC(0x40), saved46 = LCDC(0x46), saved47 = LCDC(0x47);
   LCDC(0x70) = 0;
-  clearLines(0, FB_H, 255);
+  clearLines(0, FB_H, 15);
   inkClear();
   lutLoad();
   LCDC(0x46) = (u8)(PITCH / 2);
   LCDC(0x47) = (u8)((PITCH / 2) >> 8);
-  LCDC(0x40) = (u8)((saved40 & ~7) | 3);
+  LCDC(0x40) = (u8)((saved40 & ~7) | 2);
   show(0);
   /* colour 0 a dark gray, colour 1 white (5, 6, 5 bits of blue, green, red) */
   LCDC(0x76) = 6, LCDC(0x77) = 12, LCDC(0x78) = 6;
@@ -242,22 +260,26 @@ static int isPdf(const char *n) {
          !dot[4];
 }
 
+#define MAX_LISTED 600  /* the folder's files looked at (its cached pages, Kxxxxnnn.PGC, among them) */
 static void listFiles(void) {
-  static PfFile all[MAX_FILES];
-  const s32 n = host->list(all, MAX_FILES);
+  PfFile *all = malloc(MAX_LISTED * sizeof *all);
   nFiles = 0;
-  for (s32 i = 0; i < n; ++i)
+  if (!all) return;
+  const s32 n = host->list(all, MAX_LISTED);
+  for (s32 i = 0; i < n && nFiles < MAX_FILES; ++i)
     if (isPdf(all[i].name)) files[nFiles++] = all[i];
+  free(all);
 }
 
-/* 8 x 13 text into the page memory at (x, y): gray fg on bg */
+/* 8 x 13 text into the page memory at (x, y), x a multiple of 2: gray fg on bg (0-15) */
 static void pageText(const char *s, int x, int y, u8 fg, u8 bg) {
   for (; *s && x <= FB_W - 8; ++s, x += 8) {
     const unsigned c = (unsigned char)*s;
     const u8 *g = host->font + 13 * ((c >= 0x20 && c < 0x7F ? c : '?') - 0x20);
     for (int r = 0; r < 13; ++r) {
-      volatile u8 *p = line(y + r) + x;
-      for (int b = 0; b < 8; ++b) p[b] = (g[r] & (0x80 >> b)) ? fg : bg;
+      volatile u8 *p = line(y + r) + x / 2;
+      for (int b = 0; b < 8; b += 2)
+        p[b / 2] = (u8)(((g[r] & (0x80 >> b)) ? fg : bg) << 4 | ((g[r] & (0x40 >> b)) ? fg : bg));
     }
   }
 }
@@ -266,69 +288,219 @@ static void pageText(const char *s, int x, int y, u8 fg, u8 bg) {
 static void drawList(int sel, int first) {
   clearLines(0, FB_H, 0);
   show(0);
-  pageText("PDF VIEWER (MuPDF 1.1)", LABEL_W + 8, 4, 255, 0);
+  pageText("PDF VIEWER (MuPDF 1.1)", LABEL_W + 8, 4, 15, 0);
   char t[64];
   snprintf(t, sizeof t, "%d PDF file%s in the folder", nFiles, nFiles == 1 ? "" : "s");
-  pageText(t, LABEL_W + 8, 20, 160, 0);
+  pageText(t, LABEL_W + 8, 20, 10, 0);
   for (int i = 0; i < LIST_ROWS && first + i < nFiles; ++i) {
     const PfFile *f = &files[first + i];
     snprintf(t, sizeof t, " %-12s %7lu KB ", f->name, (unsigned long)((f->bytes + 1023) / 1024));
     const int on = first + i == sel;
-    pageText(t, LABEL_W + 8, 40 + 14 * i, on ? 0 : 255, on ? 255 : 0);
+    pageText(t, LABEL_W + 8, 40 + 14 * i, on ? 0 : 15, on ? 15 : 0);
   }
-  if (!nFiles) pageText("Put PDF files in the card's PDF folder.", LABEL_W + 8, 60, 255, 0);
+  if (!nFiles) pageText("Put PDF files in the card's PDF folder.", LABEL_W + 8, 60, 15, 0);
 }
 
 /* ---- the page ----------------------------------------------------------------------------------------------- */
-static int pageNo, pages, pageH, top;
+static int pages, pageNo = -1, pageH, top;  /* the page shown (-1: none yet), its height (at least FB_H), the top line */
+static int want = -1, wantTop;          /* the page asked for and not shown yet (-1: none), its top line (-1: end) */
+static int job = -1;                    /* the page being drawn (into the cache) */
+static int quitDoc, logReq, noRoom;     /* FILES or EXIT, LOG asked for; the cache had no room for the page */
+static u32 lastInput;                   /* when the reader last turned the wheel or pressed a key */
 static char docName[16];
 
-static void band(void *user, int y, int h, int w, const unsigned char *gray, int stride) {
-  (void)user;
-  for (int r = 0; r < h; ++r) {
-    volatile u16 *dst = (volatile u16 *)line(y + r);
-    const unsigned char *s = gray + r * stride;
-    for (int x = 0; x < w / 2; ++x) dst[x] = (u16)(s[4 * x] | (s[4 * x + 2] << 8));  /* (gray and alpha: gray in 0) */
-  }
-}
-
-/* page n drawn into the page memory; 0, or -1 (the log says why) */
-static int drawPage(int n) {
-  char t[64];
-  snprintf(t, sizeof t, "%s: drawing page %d of %d...", docName, n + 1, pages);
-  status(t);
-  ViewStats st = {0};
-  const u32 t0 = host->ms();
-  printf("drawing page %d\n", n + 1);
-  host->diagSave();
-  beatAt = host->ms();
-  const int h = view_draw(n, FB_W, PAGE_ROWS, BAND_ROWS, band, NULL, &st);
-  if (h < 0) {
-    printf("page %d: %s\n", n + 1, view_error());
-    host->diagSave();
-    status("This page cannot be drawn: see the log (L5)");
-    return -1;
-  }
-  if (h < PAGE_ROWS) clearLines(h, (h < FB_H ? FB_H : h + 1) - h, 255);
-  pageNo = n;
-  pageH = h < FB_H ? FB_H : h;
-  HeapStats hs;
-  kn7HeapStats(&hs);
-  printf("page %d: %d lines, %lu ms (load %u, list %u, bands %u: %u%s)%s; heap %u KB of %u, peak %u\n", n + 1, h,
-         (unsigned long)(host->ms() - t0), st.load_ms, st.list_ms, st.draw_ms, st.bands, st.direct ? ", no list" : "",
-         st.incomplete ? " INCOMPLETE" : "", hs.used >> 10, hs.total >> 10, hs.peak >> 10);
-  snprintf(t, sizeof t, "%s  page %d of %d%s", docName, n + 1, pages,
-           st.incomplete ? "  (memory ran short: it may lack something)" : "");
-  status(t);
-  host->diagSave();
-  return 0;
-}
+static u32 nowMs(void) { return *(volatile u32 *)host->msCounter; }
 
 static void scrollTo(int y) {
   if (y > pageH - FB_H) y = pageH - FB_H;
   if (y < 0) y = 0;
   top = y;
   show(top);
+}
+
+/* the status line: the page shown, and what is being drawn meanwhile */
+static void pageStatus(void) {
+  char t[80];
+  if (want >= 0)
+    snprintf(t, sizeof t, "%s  page %d of %d: drawing page %d...", docName, pageNo + 1, pages, want + 1);
+  else if (job >= 0)
+    snprintf(t, sizeof t, "%s  page %d of %d  (drawing %d)", docName, pageNo + 1, pages, job + 1);
+  else
+    snprintf(t, sizeof t, "%s  page %d of %d", docName, pageNo + 1, pages);
+  status(pageNo >= 0 || want >= 0 ? t : NULL);
+}
+
+/* page n out of the cache (or the card) onto the LCD, from line t (-1: its end) -> 0, or -1 */
+static int showPage(int n, int t) {
+  const u32 t0 = nowMs();
+  const int rows = pc_show(n, LCD_FRAME, PAGE_ROWS);
+  if (rows < 0) return -1;
+  if (rows < FB_H) clearLines(rows, FB_H - rows, 15);
+  pageNo = n, pageH = rows < FB_H ? FB_H : rows;
+  if (want == n) want = -1;
+  scrollTo(t < 0 ? pageH : t);
+  printf("page %d shown, %lu ms\n", n + 1, (unsigned long)(nowMs() - t0));
+  pageStatus();
+  return 0;
+}
+
+/* page n asked for, from line t: shown now if it is drawn, else drawn next (what is being drawn instead stops) */
+static void go(int n, int t) {
+  if (n < 0 || n >= pages) return;
+  if (n == pageNo) {
+    want = -1;
+    scrollTo(t < 0 ? pageH : t);
+    pageStatus();
+    return;
+  }
+  want = n, wantTop = t;
+  if ((pc_have(n) || pc_onCard(n)) && showPage(n, t) == 0) return;
+  if (job >= 0 && job != n) view_abort();
+  pageStatus();
+}
+
+/* the switches and the wheel, from the main loop and, while a page is drawn, from MuPDF's yield */
+static void ui(void) {
+  s32 w;
+  const u32 p = pressed(&w);
+  if (!p && !w) return;
+  lastInput = nowMs();
+  if (p & (1u << K_EXIT | 1u << K_L1)) quitDoc = 1;
+  if (p & (1u << K_L5)) logReq = 1;
+  if (quitDoc || logReq) {
+    if (job >= 0) view_abort();
+    return;
+  }
+  if (pageNo < 0) return;  /* (nothing shown yet: the first page is on its way) */
+  const int base = want >= 0 ? want : pageNo;
+  if (p & (1u << K_PAGE_DOWN | 1u << K_L3)) go(base + 1 < pages ? base + 1 : base, 0);
+  if (p & (1u << K_PAGE_UP | 1u << K_L2)) go(base > 0 ? base - 1 : 0, 0);
+  if (p & (1u << K_L4)) go(0, 0);
+  if (p & (1u << K_R1)) scrollTo(0);
+  if (p & (1u << K_R5)) scrollTo(pageH);
+  if (w > 0) {  /* (clockwise: down the page; past its end, the next page's top) */
+    if (top >= pageH - FB_H) {
+      if (want < 0 && pageNo + 1 < pages) go(pageNo + 1, 0);
+    } else {
+      scrollTo(top + w * WHEEL_ROWS);
+    }
+  } else if (w < 0) {  /* (back: a page asked for by the wheel is let go; past the top, the page before's end) */
+    if (want >= 0) {
+      want = -1;
+      pageStatus();
+    }
+    if (top == 0 && pageNo > 0) go(pageNo - 1, -1);
+    else scrollTo(top + w * WHEEL_ROWS);
+  }
+}
+
+/* MuPDF's bands: into the cache, or (drawDirect) onto the LCD */
+static void bandCache(void *user, int y, int h, int w, const unsigned char *gray, int stride) {
+  (void)user, (void)w;
+  if (!noRoom && pc_band(y, h, gray, stride) < 0) {
+    noRoom = 1;
+    view_abort();
+  }
+}
+
+static void bandDirect(void *user, int y, int h, int w, const unsigned char *gray, int stride) {
+  (void)user;
+  for (int r = 0; r < h; ++r) {
+    volatile u16 *dst = (volatile u16 *)line(y + r);
+    const unsigned char *s = gray + r * stride;
+    for (int x = 0; x < w / 4; ++x)
+      dst[x] = (u16)(((s[8 * x] & 0xF0) | (s[8 * x + 2] >> 4)) | ((s[8 * x + 4] & 0xF0) | (s[8 * x + 6] >> 4)) << 8);
+  }
+}
+
+static void logPage(int n, const char *how, int h, u32 t0, const ViewStats *st) {
+  HeapStats hs;
+  kn7HeapStats(&hs);
+  u32 dt, du, fonts;
+  int in;
+  pc_stats(&dt, &du, &in, &fonts);
+  printf("page %d %s: %d lines, %lu ms (load %u, list %u, bands %u: %u%s)%s; heap %u KB of %u, peak %u; cache %lu of "
+         "%lu KB, %d pages, fonts %lu KB\n",
+         n + 1, how, h, (unsigned long)(nowMs() - t0), st->load_ms, st->list_ms, st->draw_ms, st->bands,
+         st->direct ? ", no list" : "", st->incomplete ? " INCOMPLETE" : "", hs.used >> 10, hs.total >> 10,
+         hs.peak >> 10, (unsigned long)(du >> 10), (unsigned long)(dt >> 10), in, (unsigned long)(fonts >> 10));
+}
+
+/* page n drawn straight onto the LCD (the cache had no room for it), the reader waiting */
+static void drawDirect(int n) {
+  ViewStats st = {0};
+  const u32 t0 = nowMs();
+  pageNo = -1, want = n;
+  pageStatus();
+  scrollTo(0);
+  const int h = view_draw(n, FB_W, PAGE_ROWS, BAND_ROWS, bandDirect, NULL, &st);
+  if (h < 0) {
+    printf("page %d: %s\n", n + 1, view_error());
+    want = -1;
+    status("This page cannot be drawn: see the log (L5)");
+    return;
+  }
+  if (h < FB_H) clearLines(h, FB_H - h, 15);
+  pageNo = n, pageH = h < FB_H ? FB_H : h, want = -1;
+  scrollTo(wantTop < 0 ? pageH : wantTop);
+  logPage(n, "drawn onto the LCD", h, t0, &st);
+  pageStatus();
+}
+
+/* page n drawn into the cache; shown when the reader waits for it */
+static void render(int n) {
+  ViewStats st = {0};
+  const u32 t0 = nowMs();
+  noRoom = pc_begin(n) < 0;
+  job = n;
+  pageStatus();
+  printf("drawing page %d\n", n + 1);
+  beatAt = nowMs();
+  const int h = noRoom ? -2 : view_draw(n, FB_W, PAGE_ROWS, BAND_ROWS, bandCache, NULL, &st);
+  job = -1;
+  if (h >= 0 && !noRoom) {
+    pc_end(h, st.incomplete);
+    logPage(n, "drawn", h, t0, &st);
+    if (want == n) showPage(n, wantTop);
+    else pageStatus();
+    return;
+  }
+  pc_drop();
+  if (h == -2 && !noRoom) {
+    printf("page %d put aside (%lu ms)\n", n + 1, (unsigned long)(nowMs() - t0));
+    pageStatus();
+    return;
+  }
+  pc_setFailed(n);  /* (not drawn ahead again) */
+  if (h == -1) {
+    printf("page %d: %s\n", n + 1, view_error());
+    if (want == n) {
+      want = -1;
+      status("This page cannot be drawn: see the log (L5)");
+    }
+    host->diagSave();
+    return;
+  }
+  printf("page %d: no room in the cache\n", n + 1);
+  if (want == n) drawDirect(n);
+  host->diagSave();
+}
+
+/* the page to draw ahead of the reader: the next, the one after, the one before, the third; or one the card has, the
+ * next, into the cache -> its number, or -1 */
+static int ahead(void) {
+  if (pageNo < 0) return -1;
+  const int order[4] = {pageNo + 1, pageNo + 2, pageNo - 1, pageNo + 3};
+  for (int i = 0; i < 4; ++i) {
+    const int n = order[i];
+    if (n < 0 || n >= pages || pc_have(n) || pc_failed(n)) continue;
+    if (pc_onCard(n)) {
+      if (i == 0) pc_load(n);
+      continue;
+    }
+    return n;
+  }
+  return -1;
 }
 
 static const char *const pageLeft[5] = {"FILES", "PREV", "NEXT", "FIRST", "LOG"};
@@ -355,6 +527,7 @@ static void viewDoc(const PfFile *f) {
   status("Opening...");
   printf("opening %s\n", f->name);
   host->diagSave();
+  pageNo = -1, want = -1, job = -1, quitDoc = logReq = 0;
   pages = view_open(f->name);
   printf("%s: %d pages\n", f->name, pages);
   host->diagSave();
@@ -368,41 +541,49 @@ static void viewDoc(const PfFile *f) {
       host->yield(30);
     }
   }
+  pc_open(f->name, f->bytes, pages);
   inkClear();
   labels(pageLeft, pageRight);
-  int want = 0, wantTop = 0;
+  clearLines(0, FB_H, 15);
+  pageH = FB_H;
+  scrollTo(0);
+  go(0, 0);
   for (;;) {
-    if (want != pageNo || pageH == 0) {
-      top = 0;
-      show(0);
-      if (drawPage(want) == 0) scrollTo(wantTop < 0 ? pageH : wantTop);
-      want = pageNo;
-    }
-    s32 w;
-    const u32 p = pressed(&w);
+    ui();
     while (hang_test) {}
-    if (p & (1u << K_EXIT | 1u << K_L1)) break;
-    if (p & (1u << K_L5)) {
+    if (quitDoc) break;
+    if (logReq) {
+      logReq = 0;
       showLog();
       labels(pageLeft, pageRight);
-      show(top);
+      if (pageNo >= 0 && showPage(pageNo, top) < 0) want = pageNo, wantTop = top, pageNo = -1;
+      continue;
     }
-    if (p & (1u << K_PAGE_DOWN | 1u << K_L3)) want = pageNo + 1 < pages ? pageNo + 1 : pageNo, wantTop = 0;
-    if (p & (1u << K_PAGE_UP | 1u << K_L2)) want = pageNo > 0 ? pageNo - 1 : 0, wantTop = 0;
-    if (p & (1u << K_L4)) want = 0, wantTop = 0;
-    if (p & (1u << K_R1)) scrollTo(0);
-    if (p & (1u << K_R5)) scrollTo(pageH);
-    if (w > 0) {  /* (clockwise: down the page; past its end, the next page's top) */
-      if (top >= pageH - FB_H && pageNo + 1 < pages) want = pageNo + 1, wantTop = 0;
-      else scrollTo(top + w * WHEEL_ROWS);
-    } else if (w < 0) {
-      if (top == 0 && pageNo > 0) want = pageNo - 1, wantTop = -1;
-      else scrollTo(top + w * WHEEL_ROWS);
+    if (want >= 0) {
+      if ((pc_have(want) || pc_onCard(want)) && showPage(want, wantTop) == 0) continue;
+      render(want);
+      continue;
     }
-    if (!p && !w) host->yield(20);
+    if (nowMs() - lastInput >= SAVE_IDLE_MS) {
+      const int u = pc_unsaved();
+      if (u >= 0) {
+        const u32 t0 = nowMs();
+        const int r = pc_save(u);
+        printf("page %d %s the card, %lu ms\n", u + 1, r ? "not saved on" : "saved on", (unsigned long)(nowMs() - t0));
+        continue;
+      }
+    }
+    const int n = ahead();
+    if (n >= 0) {
+      render(n);
+      continue;
+    }
+    host->yield(20);
   }
+  pc_close();
   view_close();
-  pageNo = 0, pageH = 0;
+  pageNo = -1, pageH = 0, want = -1;
+  status(NULL);
 }
 
 static unsigned clockMs(void) { return (unsigned)host->ms(); }
@@ -421,7 +602,8 @@ static void yieldNow(void) {
   host->yield(1);
   yieldAt = *(volatile u32 *)host->msCounter;
   ++yields;
-  latch();
+  if (job >= 0) ui();  /* (the reader reads and scrolls the page shown meanwhile) */
+  else latch();
   if (*view_stage && yieldAt - beatAt >= HEARTBEAT_MS) {
     HeapStats hs;
     kn7HeapStats(&hs);
@@ -438,9 +620,9 @@ void kn7_ft_report(int (*out)(const char *, ...));   /* (res_font.c, KN7PDF) */
 static void stuck(void) {
   HeapStats hs;
   kn7HeapStats(&hs);
-  printf("viewer: stuck in \"%s\" at line %d of page %d (shown %d); yields %lu; heap %u KB, peak %u, failed %u\n",
-         view_stage, view_y, pageNo + 1, pageH ? 1 : 0, (unsigned long)yields, hs.used >> 10, hs.peak >> 10,
-         kn7HeapFailures());
+  printf("viewer: stuck in \"%s\" at line %d drawing page %d (page %d shown); yields %lu; heap %u KB, peak %u, "
+         "failed %u\n",
+         view_stage, view_y, job + 1, pageNo + 1, (unsigned long)yields, hs.used >> 10, hs.peak >> 10, kn7HeapFailures());
   kn7_ft_report(printf);
   kn7_gray_report(printf);
 }
@@ -456,6 +638,11 @@ int viewer_main(void) {
   fz_kn7_yield = yieldNow;
   ((PfHost *)host)->stuck = stuck;  /* (the one field the program sets: pfhost.h) */
   view_failures = kn7HeapFailures;
+  pc_init(DHEAP_LO, DHEAP_HI, DHEAP2_LO, DHEAP2_HI, FONT_BUDGET);
+  extern void *(*fz_kn7_slow_malloc)(unsigned int size);  /* (MuPDF's res_font.c, KN7PDF: the font files) */
+  extern void (*fz_kn7_slow_free)(void *p);
+  fz_kn7_slow_malloc = pc_slow_malloc;
+  fz_kn7_slow_free = pc_slow_free;
   if (view_init(NULL, STORE_BYTES) < 0) {
     printf("%s\n", view_error());
     return 1;

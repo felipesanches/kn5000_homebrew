@@ -154,7 +154,7 @@ local co = coroutine.create(function()
   wait(1)
   press("CPR_SEG5", 0x10)
   E("OPEN")
-  CHECK("the first page drawn", wait_until(function() return s32("_pageH") > 0 end, QUICK_S), state())
+  CHECK("the first page drawn", wait_until(function() return s32("_pageNo") >= 0 end, QUICK_S), state())
   snap("the first page")
   local vals = {}
   local tap = sp:install_write_tap(0x500D5000, 0x5011DFFF, "contrast", function(offset, data, mask)

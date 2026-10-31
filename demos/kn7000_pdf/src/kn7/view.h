@@ -26,8 +26,10 @@ int view_init(fz_alloc_context* alloc, unsigned store);
 int view_open(const char* path);
 void view_close(void);
 /* Page `page` (0 first) drawn `width` pixels wide, its height as the page's shape makes it, at most max_h rows, bands of
- * `band_rows` rows handed to `out`. -> the page's height in rows, or < 0. */
+ * `band_rows` rows handed to `out`. -> the page's height in rows, -2 when view_abort stopped it, or -1. */
 int view_draw(int page, int width, int max_h, int band_rows, view_band_fn out, void* user, ViewStats* stats);
+/* view_draw stopped at its next look (from MuPDF's yield, fz_kn7_yield, or `out`): it returns -2 */
+void view_abort(void);
 /* The page's height for a given width, without drawing it (-1 on an error). */
 int view_height(int page, int width);
 const char* view_error(void);

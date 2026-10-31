@@ -148,7 +148,7 @@ local co = coroutine.create(function()
   CHECK("the list is up", wait_until(function() return u32("_owned") == 1 end, 240), state())
   wait(1)
   press("CPR_SEG5", 0x10)
-  CHECK("the first page drawn", wait_until(function() return s32("_pageH") > 0 end, 60), state())
+  CHECK("the first page drawn", wait_until(function() return s32("_pageNo") >= 0 end, 60), state())
   E("wd_on %d wd_entry %08X wd_last %d now %d", u32("_wd_on"), u32("_wd_entry"), u32("_wd_last"), sp:read_u32(0x500C53F8))
   for _, a in ipairs({ 0x4C03DD8D, 0x4C03DE13 }) do
     local b = {}

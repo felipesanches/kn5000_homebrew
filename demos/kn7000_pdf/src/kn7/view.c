@@ -22,6 +22,9 @@ void pdf_clear_xref(pdf_document* xref);
 
 static fz_context* ctx;
 static fz_document* doc;
+static fz_cookie cookie;  /* (view_abort: MuPDF's interpreter and display list stop at its next look) */
+
+void view_abort(void) { cookie.abort = 1; }
 static char error[96];
 
 static unsigned clock_ms(void) { return view_clock ? view_clock() : 0; }
@@ -115,7 +118,7 @@ static void draw_band(fz_display_list* list, fz_page* page, fz_matrix ctm, fz_bb
   fz_var(dev);
   fz_try(ctx) {
     dev = fz_new_draw_device(ctx, *band);
-    fz_run_display_list(list, dev, fz_identity, b, NULL);
+    fz_run_display_list(list, dev, fz_identity, b, &cookie);
   }
   fz_always(ctx) {
     if (dev) fz_free_device(dev);
@@ -146,6 +149,7 @@ int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out
   ViewStats dummy;
   if (!st) st = &dummy;
   memset(st, 0, sizeof *st);
+  memset(&cookie, 0, sizeof cookie);
   if (!doc) {
     set_error("no document");
     return -1;
@@ -172,9 +176,10 @@ int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out
       }
       dev = fz_new_list_device(ctx, list);
       view_stage = "list", view_y = y0;
-      fz_run_page(doc, page, dev, ctm, NULL);
+      fz_run_page(doc, page, dev, ctm, &cookie);
       fz_free_device(dev);
       dev = NULL;
+      if (cookie.abort) fz_throw(ctx, "aborted");
       pdf_clear_xref((pdf_document*)doc);
       st->list_ms += clock_ms() - t0;
       ++st->lists;
@@ -204,6 +209,7 @@ int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out
           continue;
         }
         if (!ok) fz_throw(ctx, "%s", ctx->error->message);
+        if (cookie.abort) fz_throw(ctx, "aborted");
         st->incomplete |= failures() != f1;
         out(user, y, n, box.x1, fz_pixmap_samples(ctx, band), 2 * box.x1);  /* (gray and alpha: the gray in byte 0) */
         y += n;
@@ -217,7 +223,7 @@ int view_draw(int page_no, int width, int max_h, int band_rows, view_band_fn out
   }
   fz_catch(ctx) {
     set_error(ctx->error->message);
-    h = -1;
+    h = cookie.abort ? -2 : -1;
   }
   if (dev) fz_free_device(dev);
   if (band) fz_drop_pixmap(ctx, band);
