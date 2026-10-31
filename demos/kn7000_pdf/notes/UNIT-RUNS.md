@@ -3,14 +3,15 @@
 Each run: the build on the card (KN7000 `tools/sdcard/stage.sh`), what Felipe saw, and what `PDF\PDFLOG.TXT` said
 (`~/compartilhado/sdcard-stage/from-card/<date>/PDF/PDFLOG.TXT`).
 
-| date       | build (PDF.BIN SHA-1)  | file         | result                                                                                       |
-|------------|------------------------|--------------|----------------------------------------------------------------------------------------------|
-| 2026-10-30 | first staged           | -            | an error after "Loading..."                                                                  |
-| 2026-10-30 | 0a1b033                | BACHIANI.PDF | PDF.BIN loaded by raw reads in 6 s, CRCs right, list shown; the log ends at "drawing page 1" |
-| 2026-10-30 | 57292fe (69e92e7a)     | BACHIANI.PDF | freezes; one heartbeat at 5 s ("list at line 0", heap 547 KB), then nothing: not yielding    |
-| 2026-10-31 | 3d0fe47 (b9dd8506)     | BACHIANI.PDF | the watchdog's screen (photo below); the log: watchdog armed, one heartbeat, then nothing    |
-| 2026-10-31 | 64d125c (777aaab2)     | BACHIANI.PDF | the watchdog's report (below): FreeType's negative coordinates 65536 too high                |
-| 2026-10-31 | 33b277a (c6394908 CRC) | BACHIANI.PDF | past the old hang; then a system-error NMI in the heap walk (below)                          |
+| date       | build (PDF.BIN SHA-1)  | file               | result                                                                                           |
+|------------|------------------------|--------------------|--------------------------------------------------------------------------------------------------|
+| 2026-10-30 | first staged           | -                  | an error after "Loading..."                                                                      |
+| 2026-10-30 | 0a1b033                | BACHIANI.PDF       | PDF.BIN loaded by raw reads in 6 s, CRCs right, list shown; the log ends at "drawing page 1"     |
+| 2026-10-30 | 57292fe (69e92e7a)     | BACHIANI.PDF       | freezes; one heartbeat at 5 s ("list at line 0", heap 547 KB), then nothing: not yielding        |
+| 2026-10-31 | 3d0fe47 (b9dd8506)     | BACHIANI.PDF       | the watchdog's screen (photo below); the log: watchdog armed, one heartbeat, then nothing        |
+| 2026-10-31 | 64d125c (777aaab2)     | BACHIANI.PDF       | the watchdog's report (below): FreeType's negative coordinates 65536 too high                    |
+| 2026-10-31 | 33b277a (c6394908 CRC) | BACHIANI.PDF       | past the old hang; then a system-error NMI in the heap walk (below)                              |
+| 2026-10-31 | d2f9a89 (fb9d856b)     | BACHIANI, PROTRACK | pages drawn; then pool 6 found overwritten with E0 bytes, and an NMI after CONTRAST DOWN (below) |
 
 ## 2026-10-31: the watchdog's screen
 
@@ -85,3 +86,19 @@ pipeline, so which pairs go wrong there depends on when the interrupts come.
 header in the heap was overwritten; in MAME (with the flag delay modelled) every heartbeat's walk is clean. Build
 d2f9a89 walks each pool itself, checking every block against the pool's bounds, and logs the first damaged one
 (the pool, the block, its words) instead of following it.
+
+## 2026-10-31: the pages draw; the borrowed frame buffers overwritten (d2f9a89)
+
+`from-card/20261031-122545/PDF/PDFLOG.TXT`: BACHIANI.PDF's pages 1-3 in 16.1, 9.9 and 14.0 s, then PROTRACK.PDF;
+Felipe pressed buttons looking for a way to scroll. At 118328 ms, while PROTRACK's page 1 was drawn:
+
+    heap: pool 6 (500D5000-5011E000) damaged at block 181, 500FD924: size word E0E0E0E0
+    heap:   500FD924: E0E0E0E0 E0E0E0E0 E0E0E0E0 E0E0E0E0
+
+Pool 6 is the firmware's frame buffers, lent to the heap while its drawing is off (`src/app/borrow.c`). After CONTRAST
+DOWN the crash screen (`photo_5129731191580855835_y.jpg`): PC 5033E870, `fz_run_display_list`+0x130, a display list
+node read through the damaged memory (E0E0E0E0 on the stack). In MAME (`tests/mame/probes/contrast.lua`: CONTRAST
+DOWN and UP three times each, a write tap on the borrowed range) the firmware writes nothing there and the heap stays
+whole. The next build (staged with this note) logs every switch frame KN7APP sees ("switch frame ADDR DATA"),
+checks every pool every 200 ms, logs the first damage with the extent of its fill value, and saves the log on damage
+and 1 s after the last switch change.

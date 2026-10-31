@@ -235,6 +235,7 @@ void wheel_scan(void) {
       const u8 data = ring[next];
       panel_real[idx] = data;
       ++panel_frames;
+      diag("switch frame %02X %02X", addr, data);  /* (every press and release, the firmware's switches too) */
       const u32 ahead = (wheel_at + PANEL_RING_LEN - rd) % PANEL_RING_LEN, filled = (wr + PANEL_RING_LEN - rd) % PANEL_RING_LEN;
       if (ahead < filled) {
         ring[next] = (u8)(data & ~take_of(idx));

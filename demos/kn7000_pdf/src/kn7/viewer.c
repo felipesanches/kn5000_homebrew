@@ -157,8 +157,29 @@ static int down(int k) { return (host->panel[keyBit[k] >> 8] & (keyBit[k] & 0xFF
 /* the keys gone down since the last look, kept until pressed() takes them: latch() runs between pages and, through
  * MuPDF's yield, while one is drawn, so a key pressed and let go during a page of a minute counts */
 static u32 latched;
+static u8 panelWas[0x40];  /* every switch as last seen, the firmware's too (KN7APP logs each switch frame) */
+static u32 saveAt, checkAt;  /* the log onto the card 1 s after the last switch change; the heap checked every 200 ms */
 static void latch(void) {
   host->panelScan();
+  const u32 t = *(volatile u32 *)host->msCounter;
+  for (int i = 0; i < 0x40; ++i)
+    if (host->panel[i] != panelWas[i]) {
+      saveAt = t + 1000 ? t + 1000 : 1;
+      panelWas[i] = host->panel[i];
+    }
+  static unsigned damaged;  /* (a switch's effect on the firmware shows soon after it: the heap checked here) */
+  if ((s32)(t - checkAt) >= 0) {
+    checkAt = t + 200;
+    if (kn7HeapCheck() != damaged) {
+      damaged = kn7HeapCheck();
+      saveAt = 0;
+      host->diagSave();  /* (the log onto the card at once: what comes next may stop the program) */
+    }
+  }
+  if (saveAt && (s32)(t - saveAt) >= 0) {
+    saveAt = 0;
+    host->diagSave();
+  }
   for (int k = 0; k < KEYS; ++k) {
     const int d = down(k);
     if (d && !keyWas[k]) latched |= 1u << k;

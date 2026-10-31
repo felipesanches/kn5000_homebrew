@@ -149,6 +149,7 @@ void *_calloc_r(struct _reent *r, size_t a, size_t b) { (void)r; return calloc(a
  * size word, the block before), and that pool is not walked again. On the instrument a walk that follows a
  * damaged block reads where the CPU stops it (a system-error NMI, 2026-10-31): this says which pool and where. */
 static u32 poolBad;  /* the pools found damaged, a bit each */
+static u32 badBlock; /* the damaged block walkPool found last (0: outside its pool) */
 
 static size_t walkPool(unsigned i) {
   size_t largest = 0;
@@ -159,6 +160,7 @@ static size_t walkPool(unsigned i) {
     const u32 next = b + 4 + (size & ~3u);
     if (!inside || (size & ~3u) && (next <= b || next + 8 > poolHi[i])) {
       poolBad |= 1u << i;
+      badBlock = inside ? b : 0;
       printf("heap: pool %u (%08lX-%08lX) damaged at block %u, %08lX: size word %08lX; the block before %08lX\n", i,
              (unsigned long)poolLo[i], (unsigned long)poolHi[i], n, (unsigned long)b,
              (unsigned long)(inside ? size : 0), (unsigned long)before);
@@ -171,6 +173,27 @@ static size_t walkPool(unsigned i) {
     if ((size & 1) && (size & ~3u) > largest) largest = size & ~3u;
     before = b, b = next;
   }
+}
+
+/* Every pool walked (from the viewer's yield, every 20 ms): the first damage in a pool is logged as walkPool logs it,
+ * and then the extent of what overwrote it: the words in the pool equal to the damaged block's first word, the first
+ * and the last of them and how many. -> the damaged pools, a bit each. */
+unsigned kn7HeapCheck(void) {
+  for (unsigned i = 0; heap && i < heap_regions; ++i)
+    if (pools[i] && !(poolBad & (1u << i))) {
+      walkPool(i);
+      if (!(poolBad & (1u << i)) || !badBlock) continue;
+      const u32 w = *(volatile u32 *)badBlock;
+      u32 first = 0, last = 0, n = 0;
+      for (u32 a = poolLo[i]; a + 4 <= poolHi[i]; a += 4)
+        if (*(volatile u32 *)a == w) {
+          if (!n++) first = a;
+          last = a;
+        }
+      printf("heap: in pool %u, %08lX found %lu times, from %08lX to %08lX\n", i, (unsigned long)w, (unsigned long)n,
+             (unsigned long)first, (unsigned long)last);
+    }
+  return poolBad;
 }
 
 void kn7HeapStats(HeapStats *s) {
