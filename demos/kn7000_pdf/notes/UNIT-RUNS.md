@@ -66,3 +66,11 @@ The firmware (Panasonic's compiler) has no ADDC, SUBC, ROR or ROL at all (techni
 (FreeType's rasterizer and glyph loaders, soft-fp's double add, subtract and divide, jbig2dec), 0 in KN7APP. Fixed in
 the toolchain (Pinball kn7000/toolchain/gcc-kn7000-flags.patch: a nop before every addc and subc), checked at every
 link by check_flags.py, and modelled in MAME's MN10300 core (kn7000_mame).
+
+With the delay modelled (kn7000_mame 0a37d84), MAME runs this same PDF.BIN (777aaab2) into the same hang:
+`tests/mame/run_pdf.sh OUT tests/mame/quick.lua` with `EMU` a folder holding that build's `kn7000` (beside the
+published emulator's `roms`, `plugins` and card image) and `KEEP_SD=1`; the log
+(`tools/card/fatget.py OUT/sd_after.img 'PDF\PDFLOG.TXT'`) shows glyph 18 of C059-Bold, the matrix's yy as
+-4294968142, the line 1548,0 -> 2340,262108 and the clip box as on the unit. Some outline points differ (64912 for
+the unit's 64858) and the matrix's sixth decimal: on the chip an interrupt between an ADD and its ADDC empties the
+pipeline, so which pairs go wrong there depends on when the interrupts come.
