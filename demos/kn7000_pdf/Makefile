@@ -124,9 +124,11 @@ PDF_CFLAGS := -Os -g -ffunction-sections -fdata-sections -std=gnu99 -w $(MU_INC)
               -Isrc/third/tlsf
 PDF_OBJ := $(MU_C:src/%.c=$(OUT)/pdf/%.o) $(THIRD_C:src/%.c=$(OUT)/pdf/%.o) $(KN7_C:src/%.c=$(OUT)/pdf/%.o) $(SOFTFP_OBJ)
 
+# (-MMD: what each source includes, FreeType's modules' other .c files among it, in a .d beside its object)
 $(OUT)/pdf/%.o: src/%.c $(MU_HDR) $(wildcard src/kn7/*.h src/common/*.h)
 	@mkdir -p $(dir $@)
-	$(CROSS)gcc $(PDF_CFLAGS) -c $< -o $@
+	$(CROSS)gcc $(PDF_CFLAGS) -MMD -MP -c $< -o $@
+-include $(PDF_OBJ:.o=.d)
 
 # jbig2dec casts an int32_t's address to int * where int32_t is long (newlib's for the MN10300; both 32 bits)
 $(OUT)/pdf/third/jbig2dec/%.o: PDF_CFLAGS += -Wno-error=incompatible-pointer-types

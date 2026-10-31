@@ -6,14 +6,15 @@
  * interface (Pinball kn7000/src/common/pfhost.h) with ABI 10 added: the program codes its own sample bank in RAM and the
  * platform sends it to the DSP (dspSend); ABI 12 lists the program's folder (list); ABI 13 (Doom) reads a file anywhere
  * in it (rawOpen, rawRead) and loads the program where its header says (PfGameHeader::base); ABI 14 (the viewer) loads
- * segments of the program to other regions as well (PfSegment). KN7APP.BIN loads the program, checks its header,
+ * segments of the program to other regions as well (PfSegment); ABI 15 asks it for its state when KN7APP's watchdog
+ * finds its task stuck (stuck). KN7APP.BIN loads the program, checks its header,
  * clears its bss, runs its constructors and calls its entry on the game task, with a PfHost. The program returns when
  * the player leaves it. */
 #ifndef PF_PFHOST_H
 #define PF_PFHOST_H
 #include "kn7.h"
 
-#define PFHOST_ABI 14
+#define PFHOST_ABI 15
 #define PFGAME_MAGIC 0x4D474650u  /* "PFGM" */
 #define PFHOST_MAGIC 0x54534850u  /* "PHST" */
 #define PDF_PROGRAM 0x50  /* PfGameHeader::table of PDF.BIN */
@@ -140,6 +141,10 @@ typedef struct PfHost {
    * (waits for the converter entry, as save does) */
   void (*diag)(const char* line);
   void (*diagSave)(void);
+  /* ABI 15: set by the program (KN7APP leaves it 0): when the watchdog finds the program's task has not yielded for
+   * 4 s, the task is made to leave what it was doing and run KN7APP's report, which calls this to put the program's
+   * own state into the log (diag) before the log is saved; the program's task never goes back */
+  void (*stuck)(void);
 } PfHost;
 
 /* The header at the start of the program's file, which is read to `base` (ABI 13: PT.BIN was read to GAME_BASE; DOOM.BIN

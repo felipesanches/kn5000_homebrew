@@ -13,6 +13,28 @@
 void (*fz_kn7_yield)(void);
 void *(*fz_kn7_slow_malloc)(unsigned int size);
 void (*fz_kn7_slow_free)(void *p);
+
+/* KN7PDF: the glyph FreeType was last asked to draw, for the viewer's report when KN7APP's watchdog finds the
+ * program's task stuck (viewer.c) */
+static struct { fz_font *font; int gid, stroked; fz_matrix trm; FT_Matrix m; FT_Vector v; } kn7_ft;
+#define KN7_FT(f, g, s) (kn7_ft.font = (f), kn7_ft.gid = (g), kn7_ft.stroked = (s), kn7_ft.trm = trm, kn7_ft.m = m, \
+			 kn7_ft.v = v)
+
+void kn7_ft_report(int (*out)(const char *, ...))
+{
+	if (!kn7_ft.font)
+	{
+		out("freetype: no glyph drawn yet\n");
+		return;
+	}
+	out("freetype: %s glyph %d of \"%.32s\"%s%s; matrix %f %f %f %f %f %f\n", kn7_ft.stroked ? "stroked" : "filled",
+		kn7_ft.gid, kn7_ft.font->name, kn7_ft.font->ft_bold ? ", bold" : "", kn7_ft.font->ft_italic ? ", italic" : "",
+		kn7_ft.trm.a, kn7_ft.trm.b, kn7_ft.trm.c, kn7_ft.trm.d, kn7_ft.trm.e, kn7_ft.trm.f);
+	out("freetype: as FreeType's: %ld %ld %ld %ld, %ld %ld (1/64)\n", (long)kn7_ft.m.xx, (long)kn7_ft.m.yx,
+		(long)kn7_ft.m.xy, (long)kn7_ft.m.yy, (long)kn7_ft.v.x, (long)kn7_ft.v.y);
+}
+#else
+#define KN7_FT(f, g, s) ((void)0)
 #endif
 
 /* 20 degrees */
@@ -479,6 +501,7 @@ fz_render_ft_glyph(fz_context *ctx, fz_font *font, int gid, fz_matrix trm, int a
 	v.x = trm.e * 64;
 	v.y = trm.f * 64;
 
+	KN7_FT(font, gid, 0);
 	fz_lock(ctx, FZ_LOCK_FREETYPE);
 	fterr = FT_Set_Char_Size(face, 65536, 65536, 72, 72); /* should be 64, 64 */
 	if (fterr)
@@ -579,6 +602,7 @@ fz_render_ft_stroked_glyph(fz_context *ctx, fz_font *font, int gid, fz_matrix tr
 	v.x = trm.e * 64;
 	v.y = trm.f * 64;
 
+	KN7_FT(font, gid, 1);
 	fz_lock(ctx, FZ_LOCK_FREETYPE);
 	fterr = FT_Set_Char_Size(face, 65536, 65536, 72, 72); /* should be 64, 64 */
 	if (fterr)

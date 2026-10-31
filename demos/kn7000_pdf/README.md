@@ -81,6 +81,17 @@ drawn. The firmware's tasks give the CPU only to each other: a task below them (
 | FreeType on MuPDF's allocator, so its allocations make MuPDF free its cache; FreeType trimmed (`kn7ftoptions.h`, `kn7ftmodules.h`) | `res_font.c`                                                 |
 | smaller tables: 8 colour components, the glyph cache 64 KB and 400 glyphs, the store's hash, the lexer's buffer                    | several                                                      |
 | the yield hook                                                                                                                     | `pdf_interpret.c`, `dev_list.c`, `stm_read.c`, `pdf_image.c` |
+| the glyph FreeType draws last and its rasterizer's state, for the watchdog's report (below)                                        | `res_font.c`, FreeType's `ftgrays.c`                         |
+
+## On the instrument: the log and the watchdog
+
+KN7APP.BIN keeps a log (`src/app/diag.c`) and saves it as `PDF\PDFLOG.TXT` (KN7000 `update_sdcard.sh` brings it back):
+the build, the firmware found, the load, every file and page, and a heartbeat every 5 s while a page is drawn. When
+the program's task has not yielded for 4 s, a watchdog on the firmware's 1 kHz tick (`src/app/crash.c`) samples where
+it is, then makes the task leave what it was doing: the log gets the 16 PCs, the registers, the stack's words that may
+be return addresses, and the viewer's own account (the page and stage, the glyph FreeType was drawing, the line its
+rasterizer was on, the outline's points), and is saved; the screen shows the PCs and the stack. The program stops
+there; the instrument goes on. `tests/mame/hang.lua` makes the viewer loop and checks both.
 
 ## Memory
 

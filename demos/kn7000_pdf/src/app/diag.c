@@ -11,7 +11,7 @@
 
 #include "app.h"
 
-#define DIAG_SIZE 8192
+#define DIAG_SIZE 7168
 #define DIAG_KEEP 3072
 static char text[DIAG_SIZE];
 static u32 len;

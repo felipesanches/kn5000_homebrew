@@ -411,6 +411,19 @@ static void yieldNow(void) {
   }
 }
 
+/* KN7APP's watchdog found the task stuck (PfHost::stuck): where the viewer and MuPDF's rasterizers were, into the log */
+void kn7_gray_report(int (*out)(const char *, ...)); /* (FreeType's ftgrays.c, KN7PDF) */
+void kn7_ft_report(int (*out)(const char *, ...));   /* (res_font.c, KN7PDF) */
+static void stuck(void) {
+  HeapStats hs;
+  kn7HeapStats(&hs);
+  printf("viewer: stuck in \"%s\" at line %d of page %d (shown %d); yields %lu; heap %u KB, peak %u, failed %u\n",
+         view_stage, view_y, pageNo + 1, pageH ? 1 : 0, (unsigned long)yields, hs.used >> 10, hs.peak >> 10,
+         kn7HeapFailures());
+  kn7_ft_report(printf);
+  kn7_gray_report(printf);
+}
+
 int viewer_main(void) {
   printf("PDF viewer: MuPDF 1.1 on the KN7000\n");
   HeapStats hs;
@@ -420,6 +433,7 @@ int viewer_main(void) {
   host->status("PDF VIEWER: HOLD EXIT TO QUIT");
   view_clock = clockMs;
   fz_kn7_yield = yieldNow;
+  ((PfHost *)host)->stuck = stuck;  /* (the one field the program sets: pfhost.h) */
   view_failures = kn7HeapFailures;
   if (view_init(NULL, STORE_BYTES) < 0) {
     printf("%s\n", view_error());

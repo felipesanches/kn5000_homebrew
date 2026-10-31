@@ -96,6 +96,8 @@ void crash_selftest_load(void);  /* glue.S, PF_CRASH_SELFTEST only */
 void wd_arm(void);     /* the watchdog: where the program task is when it stops yielding (crash.c) */
 void wd_disarm(void);
 extern volatile u32 wd_last;
+extern volatile u32 wd_escaped;
+void game_stuck(void);  /* the program's account, for the watchdog (game.c) */
 
 /* fwdraw.c: the firmware's screen without its wallpaper repaints while the game task runs */
 void fwdraw_hook(void);

@@ -3,7 +3,8 @@
 --
 -- hang.lua -- the watchdog's test (run_pdf.sh OUT hang.lua): as quick.lua, then, the first page drawn, the viewer is made
 -- to loop without yielding (hang_test, viewer.c); after 4 s + 16 x 0.1 s KN7APP's watchdog (crash.c) paints the PCs:
--- CHECK its screen is up (wd_shown) and the PCs lie in the viewer's loop; a snapshot. quick.lua's header follows.
+-- CHECK its screen is up (wd_shown), its report written and saved (wd_escaped 2: with KEEP_SD=1, PDF\PDFLOG.TXT in
+-- OUT/sd_after.img), and the PCs lie in the viewer's loop; a snapshot. quick.lua's header follows.
 --
 -- quick.lua -- a short session (run_pdf.sh OUT quick.lua, a few minutes): the menu, RUN, the list, OPEN the first file,
 -- the first page or $PDF_QUICK_S seconds (default 60), EXIT held; with KEEP_SD=1 the card (OUT/sd_after.img) keeps
@@ -157,6 +158,8 @@ local co = coroutine.create(function()
   sp:write_u32(SYM["_hang_test"], 1)
   E("hang_test set")
   CHECK("the watchdog's screen", wait_until(function() return u32("_wd_shown") == 1 end, 15), u32("_wd_shown"))
+  CHECK("the watchdog's report saved on the card", wait_until(function() return u32("_wd_escaped") == 2 end, 30),
+    u32("_wd_escaped"))
   E("after: wd_on %d wd_last %d now %d wd_n %d, PC %08X", u32("_wd_on"), u32("_wd_last"), sp:read_u32(0x500C53F8),
     u32("_wd_n"), cpu.state["PC"].value)
   local pcs = {}

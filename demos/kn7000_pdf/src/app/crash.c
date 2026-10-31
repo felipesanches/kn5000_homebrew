@@ -111,8 +111,11 @@ void crash_main(const u32* sp) {
  * wd_tick (glue.S) at the start of the firmware's level-6 system-tick entry (1 kHz; in the library SRAM, its address by
  * the PROGRAM build as MAME's kn7000_bios_info has it, checked by its first 7 bytes), and each tick asks wd_check
  * whether the task yielded in the last WD_MS (task.c task_yield stamps wd_last). When it has not, the PC the tick came
- * from is taken every WD_EVERY_MS, WD_SAMPLES times, with the stack's words over the first; then the screen shows them
- * (the firmware's frame, as the crash screen's), and the ticks go on as before. */
+ * from is taken every WD_EVERY_MS, WD_SAMPLES times, with the stack's words over the first in our code. Then, at the next
+ * tick that comes from our code, the registers the tick's entry saved are kept, and the
+ * tick returns to wd_escape instead: on the program task, it writes all of it into the log, asks the program for its
+ * own (PfHost::stuck), saves the log on the card, shows the screen, and yields from then on, so the instrument goes on
+ * (the firmware still runs; the program never goes back to what it was doing). */
 #define WD_MS 4000
 #define WD_EVERY_MS 100
 #define WD_SAMPLES 16
@@ -122,7 +125,12 @@ extern u8 wd_back[]; /* glue.S: jmp d32 back into the firmware's entry */
 volatile u32 wd_last;
 static u32 wd_on, wd_n, wd_t, wd_shown, wd_entry;
 #define WD_STACK 48
+#define WD_DEEP 1024 /* words of the task's stack the escape lists from (the first WD_COPY copied at the tick: what the */
+#define WD_COPY 8    /* escape's own frame may write over; it pushes only below the task's SP, so the rest stays) */
 static u32 wd_pc[WD_SAMPLES], wd_stack[WD_STACK], wd_stack_at;
+/* at the escape: D0-D3, A0-A3, MDR, the PSW, the PC and the SP the task had, and the stack's words from that SP */
+static u32 wd_reg[12], wd_copy[WD_COPY];
+volatile u32 wd_escaped; /* 1 at the escape, 2 once the log is on the card (tests/mame/hang.lua) */
 static u8 wd_saved[7];
 static const u8 wd_head[7] = {0xCF, 0xF8, 0xF8, 0xFE, 0xF4, 0xF2, 0xE7};
 
@@ -217,24 +225,75 @@ static void wd_show(void) {
   lcd_text("PHOTOGRAPH THIS SCREEN, THEN SWITCH THE INSTRUMENT OFF", 8, 216, 0xFFFF, BLUE);
 }
 
-/* every tick, from wd_tick: `frame` the PSW and the PC the CPU pushed */
-void wd_check(const u32* frame) {
+static int ours(u32 pc) { return pc >= 0x50000000u && pc < 0x58000000u; }
+
+static void wd_escape(void) __attribute__((noreturn));
+static void wd_escape(void) {
+  static const char* const name[12] = {"D0", "D1", "D2", "D3", "A0", "A1", "A2", "A3", "MDR", "PSW", "PC", "SP"};
+  diag("watchdog: no yield since %u ms (now %u); the PC every %u ms:", wd_last, now_ms(), WD_EVERY_MS);
+  for (int r = 0; r < WD_SAMPLES / 8; ++r) {
+    const u32* v = wd_pc + 8 * r;
+    diag("  %08X %08X %08X %08X %08X %08X %08X %08X", v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+  }
+  for (int r = 0; r < 2; ++r) {
+    const int i = 6 * r;
+    diag("  %s %08X  %s %08X  %s %08X  %s %08X  %s %08X  %s %08X", name[i], wd_reg[i], name[i + 1], wd_reg[i + 1],
+         name[i + 2], wd_reg[i + 2], name[i + 3], wd_reg[i + 3], name[i + 4], wd_reg[i + 4], name[i + 5], wd_reg[i + 5]);
+  }
+  /* the stack's words that may be return addresses (our RAM), with their place */
+  u32 n = 0;
+  char line[96];
+  char* p = line;
+  const u32* const sp = (const u32*)wd_reg[11];
+  for (u32 i = 0; i < WD_DEEP && n < 96; ++i) {
+    const u32 w = i < WD_COPY ? wd_copy[i] : sp[i];
+    if (!ours(w)) continue;
+    p = str(p, "+");
+    p = hex(p, i * 4, 3);
+    p = str(p, ":");
+    p = hex(p, w, 8);
+    p = str(p, " ");
+    if (++n % 6 == 0) *p = 0, diag("  %s", line), p = line;
+  }
+  if (p != line) *p = 0, diag("  %s", line);
+  game_stuck();  /* the program's own account (PfHost::stuck) */
+  diag("watchdog: the log saved; the program stays stopped here");
+  diag_save();
+  wd_escaped = 2;
+  wd_show();
+  for (;;) task_yield(50);
+}
+
+/* every tick, from wd_tick: `frame` the PSW and the PC the CPU pushed, the 12 words the entry's movm pushed below them
+ * (D2 D3 A2 A3 D0 D1 A0 A1 MDR LIR LAR and one more, from the top) */
+void wd_check(u32* frame) {
   if (!wd_on || wd_shown || task_done) return;
   const u32 t = now_ms();
   if (t - wd_last < WD_MS) {
     wd_n = 0;
     return;
   }
+  if (wd_n == WD_SAMPLES) {  /* the samples taken: the escape, from a tick that comes from our code */
+    if (!ours(frame[1])) {
+      if (t - wd_t < 3000) return;
+      wd_shown = 1;  /* (none in 3 s: the screen alone) */
+      wd_show();
+      return;
+    }
+    const u32 r[12] = {frame[-5], frame[-6], frame[-1], frame[-2], frame[-7], frame[-8], frame[-3], frame[-4],
+                       frame[-9], frame[0], frame[1], (u32)(frame + 2)};
+    for (int i = 0; i < 12; ++i) wd_reg[i] = r[i];
+    for (int i = 0; i < WD_COPY; ++i) wd_copy[i] = frame[2 + i];
+    wd_shown = wd_escaped = 1;
+    frame[1] = (u32)wd_escape;
+    return;
+  }
   if (wd_n && t - wd_t < WD_EVERY_MS) return;
   wd_t = t;
   /* the stack at the first sample in our code (RAM, not the firmware's flash or library) */
-  if (!wd_stack_at && frame[1] >= 0x50000000u && frame[1] < 0x58000000u) {
+  if (!wd_stack_at && ours(frame[1])) {
     for (int i = 0; i < WD_STACK; ++i) wd_stack[i] = frame[2 + i];
     wd_stack_at = wd_n + 1;
   }
   wd_pc[wd_n++] = frame[1];
-  if (wd_n == WD_SAMPLES) {
-    wd_shown = 1;
-    wd_show();
-  }
 }

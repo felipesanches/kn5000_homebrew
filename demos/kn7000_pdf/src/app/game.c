@@ -74,6 +74,12 @@ static PfHost host = {
     .diagSave = diag_save,
 };
 
+/* the watchdog's escape (crash.c): the program's account of where it is */
+void game_stuck(void) {
+  if (host.stuck) host.stuck();
+  else diag("the program gives no account (PfHost::stuck 0)");
+}
+
 static u32 crc32(const u8* p, u32 n) {
   u32 c = 0xFFFFFFFFu;
   while (n--) {

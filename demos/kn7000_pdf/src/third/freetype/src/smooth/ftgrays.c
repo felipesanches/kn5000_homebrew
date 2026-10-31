@@ -519,6 +519,67 @@ typedef ptrdiff_t  FT_PtrDist;
   static gray_TWorker  ras;
 #endif
 
+#ifdef KN7PDF
+  /* KN7PDF: what the rasterizer is drawing, for the viewer's report when KN7APP's watchdog finds the program's task */
+  /* stuck (kn7_gray_report, viewer.c): the worker, and the line gray_render_line was given last (1/256 pixel)       */
+  gray_PWorker volatile  kn7_gray_worker;
+  volatile TPos          kn7_gray_line[4];
+#define KN7_LINE( tx, ty )                                                 \
+          ( kn7_gray_worker = worker, kn7_gray_line[0] = ras.x,          \
+            kn7_gray_line[1] = ras.y, kn7_gray_line[2] = (tx),           \
+            kn7_gray_line[3] = (ty) )
+
+  void
+  kn7_gray_report( int  (*out)( const char*, ... ) )
+  {
+    gray_PWorker  w = kn7_gray_worker;
+    long          xmin = 0, ymin = 0, xmax = 0, ymax = 0;
+    int           i;
+
+
+    out( "gray: the last line %ld,%ld -> %ld,%ld (1/256 pixel)\n",
+         (long)kn7_gray_line[0], (long)kn7_gray_line[1],
+         (long)kn7_gray_line[2], (long)kn7_gray_line[3] );
+    if ( !w )
+    {
+      out( "gray: not drawing (no worker)\n" );
+      return;
+    }
+    out( "gray: worker %p: cbox %ld,%ld %ld,%ld; ex %ld..%ld, ey %ld..%ld "
+         "(count %ld); error %d\n",
+         (void*)w, (long)w->cbox.xMin, (long)w->cbox.yMin,
+         (long)w->cbox.xMax, (long)w->cbox.yMax,
+         (long)w->min_ex, (long)w->max_ex, (long)w->min_ey, (long)w->max_ey,
+         (long)w->count_ey, w->error );
+    out( "gray: cells: current %p, next free %p, null %p; ycells %p; "
+         "at %ld,%ld\n",
+         (void*)w->cell, (void*)w->cell_free, (void*)w->cell_null,
+         (void*)w->ycells, (long)w->x, (long)w->y );
+    for ( i = 0; i < w->outline.n_points && i < 4096; i++ )
+    {
+      FT_Vector  v = w->outline.points[i];
+
+
+      if ( i == 0 || v.x < xmin ) xmin = v.x;
+      if ( i == 0 || v.y < ymin ) ymin = v.y;
+      if ( i == 0 || v.x > xmax ) xmax = v.x;
+      if ( i == 0 || v.y > ymax ) ymax = v.y;
+    }
+    out( "gray: outline: %d points, %d contours, flags %x; points within "
+         "%ld,%ld %ld,%ld (1/64 pixel)\n",
+         w->outline.n_points, w->outline.n_contours, w->outline.flags,
+         xmin, ymin, xmax, ymax );
+    for ( i = 0; i + 3 < w->outline.n_points && i < 24; i += 4 )
+      out( "gray:   %ld,%ld %ld,%ld %ld,%ld %ld,%ld\n",
+           (long)w->outline.points[i].x, (long)w->outline.points[i].y,
+           (long)w->outline.points[i + 1].x, (long)w->outline.points[i + 1].y,
+           (long)w->outline.points[i + 2].x, (long)w->outline.points[i + 2].y,
+           (long)w->outline.points[i + 3].x, (long)w->outline.points[i + 3].y );
+  }
+#else
+#define KN7_LINE( tx, ty )  ( (void)0 )
+#endif
+
   /* The |x| value of the null cell.  Must be the largest possible */
   /* integer value stored in a `TCell.x` field.                    */
 #define CELL_MAX_X_VALUE    INT_MAX
@@ -741,6 +802,7 @@ typedef ptrdiff_t  FT_PtrDist;
     int     incr;
 
 
+    KN7_LINE( to_x, to_y );
     ey1 = TRUNC( ras.y );
     ey2 = TRUNC( to_y );     /* if (ey2 >= ras.max_ey) ey2 = ras.max_ey-1; */
 
@@ -879,6 +941,7 @@ typedef ptrdiff_t  FT_PtrDist;
     TCoord  ex1, ey1, ex2, ey2;
 
 
+    KN7_LINE( to_x, to_y );
     ey1 = TRUNC( ras.y );
     ey2 = TRUNC( to_y );
 
@@ -2039,7 +2102,17 @@ typedef ptrdiff_t  FT_PtrDist;
     if ( ras.cbox.xMin >= ras.cbox.xMax || ras.cbox.yMin >= ras.cbox.yMax )
       return Smooth_Err_Ok;
 
+#ifdef KN7PDF
+    {
+      int  error = gray_convert_glyph( RAS_VAR );
+
+
+      kn7_gray_worker = NULL;  /* (the worker is on this stack) */
+      return error;
+    }
+#else
     return gray_convert_glyph( RAS_VAR );
+#endif
   }
 
 
