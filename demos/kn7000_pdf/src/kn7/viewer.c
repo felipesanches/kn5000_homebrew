@@ -200,7 +200,9 @@ static void latch(void) {
   }
   for (int k = 0; k < KEYS; ++k) {
     const int d = down(k);
-    if (d && !keyWas[k]) latched |= 1u << k;
+    u8 *const hit = &host->panelHit[keyBit[k] >> 8];
+    if ((d && !keyWas[k]) || (*hit & (keyBit[k] & 0xFF))) latched |= 1u << k;
+    *hit &= (u8)~(keyBit[k] & 0xFF);
     keyWas[k] = d;
   }
 }
@@ -633,6 +635,7 @@ int viewer_main(void) {
   kn7HeapStats(&hs);
   printf("heap: %u KB in %u regions\n", hs.total >> 10, hs.regions);
   takeKeys();
+  memset(host->panelHit, 0, 0x40);  /* (presses from before the viewer: not its) */
   host->status("PDF VIEWER: HOLD EXIT TO QUIT");
   view_clock = clockMs;
   fz_kn7_yield = yieldNow;

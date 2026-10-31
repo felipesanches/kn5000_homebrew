@@ -193,6 +193,7 @@ static int undone_frame(u32 at) {
  * switches the program takes (panel_take, PfHost::panelTake; until it names them, every switch but CONTRAST UP and DOWN):
  * to the firmware those never change, and the others act as ever. Program 893 only, as the wheel. */
 u8 panel_real[0x40];
+u8 panel_hit[0x40];  /* PfHost::panelHit: the switches gone down since the program cleared them */
 static u8 taken[0x40];
 static int taken_set;
 
@@ -233,6 +234,7 @@ void wheel_scan(void) {
     if (addr != 0x17 && type == 0 && (bank == 0 || bank == 0xC0)) {  /* a switch frame (types 0 and 1: bit 3 the segment's) */
       const u32 idx = (bank ? 0x30 : 0) + (addr & 0x0F);
       const u8 data = ring[next];
+      panel_hit[idx] |= (u8)(data & ~panel_real[idx]);  /* (a switch gone down: kept until the program takes it) */
       panel_real[idx] = data;
       ++panel_frames;
       diag("switch frame %02X %02X", addr, data);  /* (every press and release, the firmware's switches too) */

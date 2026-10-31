@@ -7,14 +7,14 @@
  * platform sends it to the DSP (dspSend); ABI 12 lists the program's folder (list); ABI 13 (Doom) reads a file anywhere
  * in it (rawOpen, rawRead) and loads the program where its header says (PfGameHeader::base); ABI 14 (the viewer) loads
  * segments of the program to other regions as well (PfSegment); ABI 15 asks it for its state when KN7APP's watchdog
- * finds its task stuck (stuck). KN7APP.BIN loads the program, checks its header,
+ * finds its task stuck (stuck); ABI 16 keeps each switch press until the program takes it (panelHit). KN7APP.BIN loads the program, checks its header,
  * clears its bss, runs its constructors and calls its entry on the game task, with a PfHost. The program returns when
  * the player leaves it. */
 #ifndef PF_PFHOST_H
 #define PF_PFHOST_H
 #include "kn7.h"
 
-#define PFHOST_ABI 15
+#define PFHOST_ABI 16
 #define PFGAME_MAGIC 0x4D474650u  /* "PFGM" */
 #define PFHOST_MAGIC 0x54534850u  /* "PHST" */
 #define PDF_PROGRAM 0x50  /* PfGameHeader::table of PDF.BIN */
@@ -145,6 +145,10 @@ typedef struct PfHost {
    * 4 s, the task is made to leave what it was doing and run KN7APP's report, which calls this to put the program's
    * own state into the log (diag) before the log is saved; the program's task never goes back */
   void (*stuck)(void);
+  /* ABI 16: each switch that went down since the program cleared it, a bit each, laid out as `panel`, set by every
+   * switch frame KN7APP takes from the panel's ring: a press and its release that both come while the program reads
+   * no switches (a page loading, a file being written) still show here. The program clears the bits it takes. */
+  u8* panelHit;
 } PfHost;
 
 /* The header at the start of the program's file, which is read to `base` (ABI 13: PT.BIN was read to GAME_BASE; DOOM.BIN

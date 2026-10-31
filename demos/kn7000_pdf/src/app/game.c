@@ -236,6 +236,7 @@ static const char* load_program(void) {
 void game_task(void) {
   host.build = fw.build;
   host.panel = panel_real;  /* (entry.c: the switches the firmware no longer sees) */
+  host.panelHit = panel_hit;
   host.msCounter = fw.ms;
   regions_make();
   for (const PfRegion* r = regions; r->hi; ++r) diag("region %08X-%08X (%u KB)", r->lo, r->hi, (r->hi - r->lo) / 1024);
