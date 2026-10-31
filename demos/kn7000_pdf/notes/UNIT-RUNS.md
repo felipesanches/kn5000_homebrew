@@ -3,15 +3,16 @@
 Each run: the build on the card (KN7000 `tools/sdcard/stage.sh`), what Felipe saw, and what `PDF\PDFLOG.TXT` said
 (`~/compartilhado/sdcard-stage/from-card/<date>/PDF/PDFLOG.TXT`).
 
-| date       | build (PDF.BIN SHA-1)  | file               | result                                                                                           |
-|------------|------------------------|--------------------|--------------------------------------------------------------------------------------------------|
-| 2026-10-30 | first staged           | -                  | an error after "Loading..."                                                                      |
-| 2026-10-30 | 0a1b033                | BACHIANI.PDF       | PDF.BIN loaded by raw reads in 6 s, CRCs right, list shown; the log ends at "drawing page 1"     |
-| 2026-10-30 | 57292fe (69e92e7a)     | BACHIANI.PDF       | freezes; one heartbeat at 5 s ("list at line 0", heap 547 KB), then nothing: not yielding        |
-| 2026-10-31 | 3d0fe47 (b9dd8506)     | BACHIANI.PDF       | the watchdog's screen (photo below); the log: watchdog armed, one heartbeat, then nothing        |
-| 2026-10-31 | 64d125c (777aaab2)     | BACHIANI.PDF       | the watchdog's report (below): FreeType's negative coordinates 65536 too high                    |
-| 2026-10-31 | 33b277a (c6394908 CRC) | BACHIANI.PDF       | past the old hang; then a system-error NMI in the heap walk (below)                              |
-| 2026-10-31 | d2f9a89 (fb9d856b)     | BACHIANI, PROTRACK | pages drawn; then pool 6 found overwritten with E0 bytes, and an NMI after CONTRAST DOWN (below) |
+| date       | build (PDF.BIN SHA-1)  | file               | result                                                                                              |
+|------------|------------------------|--------------------|-----------------------------------------------------------------------------------------------------|
+| 2026-10-30 | first staged           | -                  | an error after "Loading..."                                                                         |
+| 2026-10-30 | 0a1b033                | BACHIANI.PDF       | PDF.BIN loaded by raw reads in 6 s, CRCs right, list shown; the log ends at "drawing page 1"        |
+| 2026-10-30 | 57292fe (69e92e7a)     | BACHIANI.PDF       | freezes; one heartbeat at 5 s ("list at line 0", heap 547 KB), then nothing: not yielding           |
+| 2026-10-31 | 3d0fe47 (b9dd8506)     | BACHIANI.PDF       | the watchdog's screen (photo below); the log: watchdog armed, one heartbeat, then nothing           |
+| 2026-10-31 | 64d125c (777aaab2)     | BACHIANI.PDF       | the watchdog's report (below): FreeType's negative coordinates 65536 too high                       |
+| 2026-10-31 | 33b277a (c6394908 CRC) | BACHIANI.PDF       | past the old hang; then a system-error NMI in the heap walk (below)                                 |
+| 2026-10-31 | d2f9a89 (fb9d856b)     | BACHIANI, PROTRACK | pages drawn; then pool 6 found overwritten with E0 bytes, and an NMI after CONTRAST DOWN (below)    |
+| 2026-10-31 | 8468662                | BACHIANI, PROTRACK | no blue screen; PROTRACK's page 2 took 124 s (memory short, "no list"); seemed frozen later (below) |
 
 ## 2026-10-31: the watchdog's screen
 
@@ -102,3 +103,12 @@ DOWN and UP three times each, a write tap on the borrowed range) the firmware wr
 whole. The next build (staged with this note) logs every switch frame KN7APP sees ("switch frame ADDR DATA"),
 checks every pool every 200 ms, logs the first damage with the extent of its fill value, and saves the log on damage
 and 1 s after the last switch change.
+
+## 2026-10-31: no blue screen; slow pages (8468662)
+
+`from-card/20261031-132955/PDF/PDFLOG.TXT`: the log's middle was pushed out (the switch frames filled it). PROTRACK.PDF's
+page 2 took 124522 ms: 9116 allocations refused, the page drawn a region at a time without its whole list ("no list").
+Then PAGE UP/DOWN pressed while page 1 was drawn; the last heartbeat 528314 ms ("band at line 416"), no watchdog report,
+no heap damage. Felipe: it seemed to freeze at some point. Asked for: the page shown readable and scrollable while
+another is drawn, pages drawn ahead, and the pages drawn kept, also on the card. Done in d4329f4 (README, "The page
+cache", "Drawing ahead"): the font files left the main heap for the display heap, which the page's 4 bits a pixel made.
