@@ -33,12 +33,13 @@ volatile u32 hang_test;  /* (tests/mame/hang.lua sets it: the viewer loops witho
 #define LCDC(r) (*(volatile u8 *)(0x9CC00000u + (r)))
 #define PITCH PC_PITCH       /* 4 bits a pixel */
 #define PAGE_ROWS 1004       /* the tallest page shown (an 8-bit page filled LCD_FRAME to LCD_KEEP with these) */
-/* the display heap (pagecache.c): from the page's end to LCD_KEEP, and the 16 KB between the firmware's frame (its
- * 241 lines end at 0x4B500) and LCD_FRAME; the font files may take FONT_BUDGET of it */
+/* the display heap (pagecache.c): from the page's end to LCD_KEEP (the 20 KB between the firmware's frame, whose 241
+ * lines end at 0x4B500, and LCD_FRAME are left alone: what the firmware keeps there is not known); the font files may
+ * take FONT_BUDGET of it */
 #define DHEAP_LO ((LCD_FRAME + PAGE_ROWS * PITCH + 15) & ~15u)
 #define DHEAP_HI LCD_KEEP
-#define DHEAP2_LO 0x4C000u
-#define DHEAP2_HI LCD_FRAME
+#define DHEAP2_LO 0u
+#define DHEAP2_HI 0u
 #define FONT_BUDGET (128u << 10)
 #define SAVE_IDLE_MS 1500    /* the controls left alone this long: a page drawn goes onto the card */
 #define INK LCD_INK
