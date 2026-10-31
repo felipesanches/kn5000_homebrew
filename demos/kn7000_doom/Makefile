@@ -81,6 +81,7 @@ $(OUT)/app/font8x13.o: $(OUT)/app/font8x13.c
 $(OUT)/app/kn7app.elf: $(APP_OBJ) src/app/kn7app.ld
 	$(CROSS)gcc -nostartfiles -T src/app/kn7app.ld -Wl,--gc-sections -Wl,--no-warn-rwx-segments -Wl,-Map=$(OUT)/app/kn7app.map -o $@ $(APP_OBJ) -lc -lgcc
 	$(PYTHON) -I tools/build/check_d32.py $(CROSS)objdump $@ || { rm -f -- $@; false; }
+	$(PYTHON) -I tools/build/check_flags.py $(CROSS)objdump $@ || { rm -f -- $@; false; }
 
 $(OUT)/KN7APP.BIN: $(OUT)/app/kn7app.elf $(LOADER)/mkapp.py
 	$(CROSS)objcopy -O binary -j .header -j .text -j .rodata -j .data $< $(OUT)/app/kn7app.bin
@@ -105,6 +106,7 @@ $(OUT)/doom/doom.elf: $(DOOM_OBJ) src/kn7/doom.ld
 	$(CROSS)gcc -nostartfiles -T src/kn7/doom.ld -Wl,--gc-sections -Wl,--no-warn-rwx-segments -Wl,-Map=$(OUT)/doom/doom.map \
 	  -o $@ $(DOOM_OBJ) -lc -lm -lgcc
 	$(PYTHON) -I tools/build/check_d32.py $(CROSS)objdump $@ || { rm -f -- $@; false; }
+	$(PYTHON) -I tools/build/check_flags.py $(CROSS)objdump $@ || { rm -f -- $@; false; }
 
 $(OUT)/DOOM.BIN: $(OUT)/doom/doom.elf tools/build/mkgame.py
 	$(CROSS)objcopy -O binary -j .header -j .text -j .rodata -j .init_array -j .data $< $(OUT)/doom/doom.bin

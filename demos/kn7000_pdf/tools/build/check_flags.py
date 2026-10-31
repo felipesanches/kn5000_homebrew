@@ -8,8 +8,8 @@
 # instruction that updates the flags use the flags from before it, and after a write to the PSW (AND imm16,PSW,
 # OR imm16,PSW, MOV Dm,PSW) they need two cycles. Branches (Bcc, Lcc) are not affected. On the unit this made
 # FreeType's FT_MulFix_64 (add 32768,a0 / addc d2,d3) add the carry of the asr before it, and every negative result
-# came out 65536 too high (notes/UNIT-RUNS.md, 2026-10-31); MAME does not model the delay. The toolchain's GCC puts a
-# nop before each addc and subc it makes (toolchain/gcc-kn7000-flags.patch); this catches the rest: the libraries'
+# came out 65536 too high (kn5000_homebrew demos/kn7000_pdf notes/UNIT-RUNS.md, 2026-10-31). The toolchain's GCC puts a
+# nop before each addc and subc it makes (Pinball kn7000/toolchain/gcc-kn7000-flags.patch); this catches the rest: the libraries'
 # assembly, and a compiler without the patch. Looks at each instruction's one or two predecessors in address order
 # (objdump -d); prints each one found, exits 1 if any.
 import re, subprocess, sys
