@@ -3,13 +3,14 @@
 Each run: the build on the card (KN7000 `tools/sdcard/stage.sh`), what Felipe saw, and what `PDF\PDFLOG.TXT` said
 (`~/compartilhado/sdcard-stage/from-card/<date>/PDF/PDFLOG.TXT`).
 
-| date       | build (PDF.BIN SHA-1) | file         | result                                                                                       |
-|------------|-----------------------|--------------|----------------------------------------------------------------------------------------------|
-| 2026-10-30 | first staged          | -            | an error after "Loading..."                                                                  |
-| 2026-10-30 | 0a1b033               | BACHIANI.PDF | PDF.BIN loaded by raw reads in 6 s, CRCs right, list shown; the log ends at "drawing page 1" |
-| 2026-10-30 | 57292fe (69e92e7a)    | BACHIANI.PDF | freezes; one heartbeat at 5 s ("list at line 0", heap 547 KB), then nothing: not yielding    |
-| 2026-10-31 | 3d0fe47 (b9dd8506)    | BACHIANI.PDF | the watchdog's screen (photo below); the log: watchdog armed, one heartbeat, then nothing    |
-| 2026-10-31 | 64d125c (777aaab2)    | BACHIANI.PDF | the watchdog's report (below): FreeType's negative coordinates 65536 too high                |
+| date       | build (PDF.BIN SHA-1)  | file         | result                                                                                       |
+|------------|------------------------|--------------|----------------------------------------------------------------------------------------------|
+| 2026-10-30 | first staged           | -            | an error after "Loading..."                                                                  |
+| 2026-10-30 | 0a1b033                | BACHIANI.PDF | PDF.BIN loaded by raw reads in 6 s, CRCs right, list shown; the log ends at "drawing page 1" |
+| 2026-10-30 | 57292fe (69e92e7a)     | BACHIANI.PDF | freezes; one heartbeat at 5 s ("list at line 0", heap 547 KB), then nothing: not yielding    |
+| 2026-10-31 | 3d0fe47 (b9dd8506)     | BACHIANI.PDF | the watchdog's screen (photo below); the log: watchdog armed, one heartbeat, then nothing    |
+| 2026-10-31 | 64d125c (777aaab2)     | BACHIANI.PDF | the watchdog's report (below): FreeType's negative coordinates 65536 too high                |
+| 2026-10-31 | 33b277a (c6394908 CRC) | BACHIANI.PDF | past the old hang; then a system-error NMI in the heap walk (below)                          |
 
 ## 2026-10-31: the watchdog's screen
 
@@ -74,3 +75,13 @@ published emulator's `roms`, `plugins` and card image) and `KEEP_SD=1`; the log
 -4294968142, the line 1548,0 -> 2340,262108 and the clip box as on the unit. Some outline points differ (64912 for
 the unit's 64858) and the matrix's sixth decimal: on the chip an interrupt between an ADD and its ADDC empties the
 pipeline, so which pairs go wrong there depends on when the interrupts come.
+
+## 2026-10-31: a system-error NMI in the heap walk (33b277a, the toolchain fixed)
+
+`from-card/20261031-104104/PDF/PDFLOG.TXT` ends at "drawing page 1" (56475 ms); photo
+`photo_5129731191580855828_y.jpg`: the crash screen, PC 503C0F7C in PDF.BIN, NMICR 0004. `tools/debug/addr2fn.py`:
+`tlsf_walk_pool`+0x1C, the instruction after `mov (4,a2),d1` (a block's size word), called from `kn7HeapStats`
+(stack: 503BDC8C) from the heartbeat in `yieldNow` (503BE4D1). A block chain led out of its pool, so a block
+header in the heap was overwritten; in MAME (with the flag delay modelled) every heartbeat's walk is clean. Build
+d2f9a89 walks each pool itself, checking every block against the pool's bounds, and logs the first damaged one
+(the pool, the block, its words) instead of following it.
