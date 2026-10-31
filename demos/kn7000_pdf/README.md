@@ -15,8 +15,14 @@ Contents: [Using it](#using-it) · [The card](#the-card) · [How it works](#how-
 ## Using it
 
 DISK MENU, STYLE CONVERT, `KN7LOAD.CNV`, OK; then the program menu's "PDF viewer (MuPDF)" row, RUN. The folder's PDFs
-are listed; the wheel or UP/DOWN chooses one, OPEN opens it, and its first page is drawn (half a minute for a page of
-music in MAME). The page fills the LCD's width; the LCD shows 240 of its lines at a time.
+are listed; the wheel or UP/DOWN chooses one, OPEN opens it, and its first page is drawn (15 s for a page of music in
+MAME). The page fills the LCD's width; the LCD shows 240 of its lines at a time.
+
+While the page is read, the next pages are drawn behind it: the next, the one after, the one before. Turning the wheel
+past the page's end shows the next page at once when it is drawn already; a page asked for that is not drawn yet is
+drawn first, and the page shown can be read and scrolled meanwhile (the status line says "drawing page N..."). Each page
+drawn is saved on the card once the controls have been left alone a moment, and the next time the document is opened
+its pages come from there in about a second.
 
 | control                    | in the list | on a page                                                                 |
 |----------------------------|-------------|---------------------------------------------------------------------------|
@@ -45,6 +51,7 @@ short while a page was drawn it says so ("it may lack something").
 | `MANIFEST.TXT` | the name the program menu shows and its folder (Tools)                                                                  |
 | `*.CFF`        | the 14 standard PDF fonts (URW's Nimbus, from MuPDF 1.1), read only by a PDF that does not embed them                   |
 | `*.PDF`        | the documents: copy any PDF in (an 8.3 name, as the computer makes it)                                                  |
+| `K*.PGC`       | the pages drawn, one a file (`Kxxxxnnn.PGC`: xxxx the document's name and size, nnn the page): delete them at will      |
 
 ## How it works
 
@@ -57,12 +64,24 @@ Two programs, as Doom's and ProTracker's (`src/common/pfhost.h` between them):
 - **`PDF.BIN`** (`src/kn7/`, `src/mupdf/`, `src/third/`): MuPDF 1.1 with its changes behind `KN7PDF`, and the viewer.
 
 **Drawing a page** (`src/kn7/view.c`). The page is run once into MuPDF's display list, then drawn from it 32 lines at
-a time into a gray band, each band copied into the LCD controller's display memory, 8 bits a pixel, its look-up table 16
-grays. When memory runs short while the list is made, each band runs the page's content again instead; a band that runs
+a time into a gray band, each band made 4 bits a pixel and coded (PackBits, a row at a time) into the page cache. When memory runs short while the list is made, each band runs the page's content again instead; a band that runs
 short is drawn again half as tall.
 
-**Showing it** (`src/kn7/viewer.c`). The page lies whole in display memory (up to 1,004 lines at 640 wide: A4 is 906,
-Letter 828); the controller shows 240 lines of it from its start address, so the wheel scrolls without a pixel moving.
+**The page cache** (`src/kn7/pagecache.c`). The display memory the page shown does not take (the page is 4 bits a pixel,
+so half of the 643 KB an 8-bit page took) is a second heap, the display heap: the coded pages (29-69 KB each, 9-23% of a
+page: `tests/host/packbits_size.py`) and, up to 128 KB, MuPDF's font files. When it is full, the page used longest ago
+goes, one the card has first. The cards' copies are the coded page with a header naming the document, the page, the
+width and the anti-aliasing; one that does not match is not used.
+
+**Drawing ahead** (`src/kn7/viewer.c`). The viewer's loop serves the page asked for first, then saves a page drawn when
+the controls have been left alone 1.5 s, then draws ahead. While MuPDF draws, its yield (every 20 ms) serves the wheel and
+the switches (`ui()`): the page shown scrolls, a page drawn already is shown at once, and a page drawing that is no longer
+wanted is stopped (`view_abort`, MuPDF's cookie). A page that does not fit in the cache is drawn straight onto the LCD.
+
+**Showing it** (`src/kn7/viewer.c`). The page is decoded from the cache whole into display memory, 4 bits a pixel (up
+to 1,004 lines at 640 wide: A4 is 906, Letter 828; the S1D13506 Hardware Functional Specification's Figure 11-1 and
+section 15.3: two pixels a byte, the first in bits 7-4, fetched backwards in the 180-degree SwivelView the KN7000 uses);
+the controller shows 240 lines of it from its start address, so the wheel scrolls without a pixel moving.
 The labels and the status line are in the controller's ink layer (2 bits a dot over the picture), which stays still.
 
 **The instrument meanwhile.** The viewer's task runs at the firmware's priority and MuPDF gives the CPU to the firmware
