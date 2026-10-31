@@ -41,3 +41,10 @@ Result (2026-10-30, program 893, `wd8`): the watchdog's screen up 5.6 s after `h
 the viewer's loop (`0x503BE444`-`0x503BE44C`), 2 in the firmware's flash, the stack taken at the first sample.
 2026-10-31 (`wd10`, with the escape): the screen 5.6 s after, the report on the card 0.1 s later (16 PCs, registers,
 stack, the viewer's page and stage, the last glyph: glyph 4 of the score's Emmentaler-20, FreeType's "not drawing").
+
+Result of `pdf_test.lua` on BACHIANI.PDF with the page cache (2026-10-31, kn5000_homebrew ce189eb, the published
+emulator kn7000_mame 2eb75c9, `cache5`): 20 checks, 0 failed. The first page in 16.8 s; the next page drawn ahead
+unasked; the page shown scrolled while page 3 was drawn; past the end and PAGE UP showed the pages at once (0.0 s, from
+the cache: 162-175 ms each in the viewer's log); the last page, asked for before it was drawn, shown when drawn (15.9 s,
+the page TOP answering meanwhile); the pages saved on the card (420-560 ms each); the document opened again showed its
+first page from the card in 0.8 s.
