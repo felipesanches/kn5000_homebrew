@@ -9,6 +9,7 @@ Each run: the build on the card (KN7000 `tools/sdcard/stage.sh`), what Felipe sa
 | 2026-10-30 | 0a1b033               | BACHIANI.PDF | PDF.BIN loaded by raw reads in 6 s, CRCs right, list shown; the log ends at "drawing page 1" |
 | 2026-10-30 | 57292fe (69e92e7a)    | BACHIANI.PDF | freezes; one heartbeat at 5 s ("list at line 0", heap 547 KB), then nothing: not yielding    |
 | 2026-10-31 | 3d0fe47 (b9dd8506)    | BACHIANI.PDF | the watchdog's screen (photo below); the log: watchdog armed, one heartbeat, then nothing    |
+| 2026-10-31 | 64d125c (777aaab2)    | BACHIANI.PDF | the watchdog's report (below): FreeType's negative coordinates 65536 too high                |
 
 ## 2026-10-31: the watchdog's screen
 
@@ -37,3 +38,31 @@ The same page draws in MAME in 15 s, yielding every 20 ms. On the PC (`tests/hos
 `MALLOC_PERTURB_=165` and `=90` byte-identical to a clean run: heap contents left over are not the difference there
 (in `build/card/PDF`: `MALLOC_PERTURB_=165 ../../host/kn7pdf BACHIANI.PDF 640 32 64 OUT_DIR 831`, then `cmp` the PGMs).
 The next build's watchdog report gives the line, the outline and the glyph (README, "On the instrument").
+
+## 2026-10-31: the watchdog's report (64d125c)
+
+`from-card/20261031-085634/PDF/PDFLOG.TXT`, photo `photo_5127479391767170558_y.jpg`. Stuck in "band" at line 0 of page
+1, in `gray_render_line` again, drawing glyph 18 of "LJYFAB+C059-Bold" (matrix 13.226071 0 0 -13.226071 0.5 0):
+
+    freetype: as FreeType's: 846 0 0 -4294968142, 32 0 (1/64)
+    gray: the last line 1548,0 -> 2340,262108 (1/256 pixel)
+    gray: outline: 39 points, 2 contours, flags 4; points within 63,0 617,65527 (1/64 pixel)
+    gray:   513,64858 298,64871 298,64968 380,64968
+
+FreeType's matrix entry yy is -846, printed by fmt.c as -4294968142, -(2^32 + 846); and every negative y of the
+outline is 65536 too high (64858 for -678): the high word of a 64-bit result one too high whenever it should be
+all ones. The cause is in the CPU manual (MN1030/MN103S Series Instruction Manual, Chapter 3, "Dangerous Code
+Sequences", 2-3, cores AM30-AM32): a flag update reaches the PSW one cycle late, so an ADDC right after the ADD that
+sets its carry adds the carry from before. GCC makes exactly that pair; FreeType's `FT_MulFix_64`:
+
+    mul   d1,d0          ; product in MDR:d0
+    asr   31,d0          ; the sign: C = bit 30 of the high word, 1 for a negative product
+    add   32768,a0       ; low word + 0x8000
+    addc  d2,d3          ; high word + carry: the asr's carry, not the add's
+
+For a negative product the high word gets 1 + 1 too many and wraps to 0, so (hi << 16) | (lo >> 16) loses the sign.
+The firmware (Panasonic's compiler) has no ADDC, SUBC, ROR or ROL at all (technics-roms-disasm kn7000
+`disasm/program.asm`, 0 of 589,114 lines). `tools/build/check_flags.py` finds 520 such reads in this PDF.BIN
+(FreeType's rasterizer and glyph loaders, soft-fp's double add, subtract and divide, jbig2dec), 0 in KN7APP. Fixed in
+the toolchain (Pinball kn7000/toolchain/gcc-kn7000-flags.patch: a nop before every addc and subc), checked at every
+link by check_flags.py, and modelled in MAME's MN10300 core (kn7000_mame).
