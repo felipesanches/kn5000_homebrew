@@ -18,6 +18,7 @@ void kn7FileClose(PfRawFile *f);
  * was, and the largest block it could give now */
 typedef struct HeapStats {
   unsigned total, used, peak, largest, regions;
+  unsigned damaged; /* the pools whose blocks lead out of them, a bit each (main.c walkPool) */
 } HeapStats;
 void kn7HeapStats(HeapStats *s);
 unsigned kn7HeapFailures(void);  /* allocations refused so far (view.h view_failures) */

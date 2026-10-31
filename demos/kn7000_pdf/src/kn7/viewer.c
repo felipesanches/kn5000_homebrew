@@ -404,8 +404,8 @@ static void yieldNow(void) {
   if (*view_stage && yieldAt - beatAt >= HEARTBEAT_MS) {
     HeapStats hs;
     kn7HeapStats(&hs);
-    printf("  ... %s at line %d; yields %lu; heap %u KB, peak %u, failed %u\n", view_stage, view_y,
-           (unsigned long)yields, hs.used >> 10, hs.peak >> 10, kn7HeapFailures());
+    printf("  ... %s at line %d; yields %lu; heap %u KB, peak %u, failed %u%s\n", view_stage, view_y,
+           (unsigned long)yields, hs.used >> 10, hs.peak >> 10, kn7HeapFailures(), hs.damaged ? "; HEAP DAMAGED" : "");
     host->diagSave();
     beatAt = *(volatile u32 *)host->msCounter;
   }

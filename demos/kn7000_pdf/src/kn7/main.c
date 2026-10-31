@@ -40,6 +40,7 @@ const PfHost *host;
 #define MIN_POOL 0x1000  /* smaller pieces are left unused */
 static tlsf_t heap;
 static pool_t pools[MAX_POOLS];
+static u32 poolLo[MAX_POOLS], poolHi[MAX_POOLS];
 static unsigned heap_total, heap_regions;
 static size_t heap_used, heap_peak;
 static unsigned heap_failed;  /* allocations refused (MuPDF had given back what its store held first) */
@@ -60,6 +61,7 @@ static void pool(u32 lo, u32 hi) {
   } else {
     pools[heap_regions] = tlsf_add_pool(heap, (void *)lo, hi - lo);
   }
+  poolLo[heap_regions] = lo, poolHi[heap_regions] = hi;
   heap_total += hi - lo;
   ++heap_regions;
 }
@@ -141,9 +143,34 @@ void _free_r(struct _reent *r, void *p) { (void)r; free(p); }
 void *_realloc_r(struct _reent *r, void *p, size_t n) { (void)r; return realloc(p, n); }
 void *_calloc_r(struct _reent *r, size_t a, size_t b) { (void)r; return calloc(a, b); }
 
-static void largest_walker(void *ptr, size_t size, int used, void *user) {
-  (void)ptr;
-  if (!used && size > *(size_t *)user) *(size_t *)user = size;
+/* A pool's blocks, as tlsf_walk_pool walks them (a block's header: the previous block at +0, the size at +4 with
+ * bit 0 set when free, the next block at +4 + size; the last one's size 0), but each checked to lie inside the pool
+ * first: one that does not, or a size that leads out of it, is reported once into the log (the pool, the block, its
+ * size word, the block before), and that pool is not walked again. On the instrument a walk that follows a
+ * damaged block reads where the CPU stops it (a system-error NMI, 2026-10-31): this says which pool and where. */
+static u32 poolBad;  /* the pools found damaged, a bit each */
+
+static size_t walkPool(unsigned i) {
+  size_t largest = 0;
+  u32 b = (u32)pools[i] - 4, before = 0;
+  for (unsigned n = 0;; ++n) {
+    const int inside = b >= poolLo[i] - 4 && b + 8 <= poolHi[i] && !(b & 3);
+    const u32 size = inside ? *(volatile u32 *)(b + 4) : 0;
+    const u32 next = b + 4 + (size & ~3u);
+    if (!inside || (size & ~3u) && (next <= b || next + 8 > poolHi[i])) {
+      poolBad |= 1u << i;
+      printf("heap: pool %u (%08lX-%08lX) damaged at block %u, %08lX: size word %08lX; the block before %08lX\n", i,
+             (unsigned long)poolLo[i], (unsigned long)poolHi[i], n, (unsigned long)b,
+             (unsigned long)(inside ? size : 0), (unsigned long)before);
+      if (inside)
+        printf("heap:   %08lX: %08lX %08lX %08lX %08lX\n", (unsigned long)b, (unsigned long)((volatile u32 *)b)[0],
+               (unsigned long)size, (unsigned long)((volatile u32 *)b)[2], (unsigned long)((volatile u32 *)b)[3]);
+      return largest;
+    }
+    if (!(size & ~3u)) return largest;  /* the last block */
+    if ((size & 1) && (size & ~3u) > largest) largest = size & ~3u;
+    before = b, b = next;
+  }
 }
 
 void kn7HeapStats(HeapStats *s) {
@@ -153,8 +180,12 @@ void kn7HeapStats(HeapStats *s) {
   s->peak = heap_peak;
   s->regions = heap_regions;
   for (unsigned i = 0; heap && i < heap_regions; ++i)
-    if (pools[i]) tlsf_walk_pool(pools[i], largest_walker, &largest);
+    if (pools[i] && !(poolBad & (1u << i))) {
+      const size_t l = walkPool(i);
+      if (l > largest) largest = l;
+    }
   s->largest = largest;
+  s->damaged = poolBad;
 }
 
 /* ---- the card's files ------------------------------------------------------------------------------------------ */
@@ -372,7 +403,8 @@ int pdf_entry(const PfHost *h) {
   memoryInit();
   for (u32 i = 0; i < heap_regions; ++i) {
     char t[64];
-    snprintf(t, sizeof t, "heap pool %u at %08lX", (unsigned)i, (unsigned long)pools[i]);
+    snprintf(t, sizeof t, "heap pool %u at %08lX (%08lX-%08lX)", (unsigned)i, (unsigned long)pools[i],
+             (unsigned long)poolLo[i], (unsigned long)poolHi[i]);
     host->diag(t);
   }
   if (setjmp(quitJmp) == 0) exitCode = viewer_main();

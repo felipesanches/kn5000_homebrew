@@ -6,7 +6,9 @@
 # they were changed. The MN1030/MN103S Series Instruction Manual (Chapter 3, "Dangerous Code Sequences", 2-3 and 2-4,
 # cores AM30, AM31 and AM32) says a flag update reaches the PSW one cycle late: ADDC, SUBC, ROR and ROL right after an
 # instruction that updates the flags use the flags from before it, and after a write to the PSW (AND imm16,PSW,
-# OR imm16,PSW, MOV Dm,PSW) they need two cycles. Branches (Bcc, Lcc) are not affected. On the unit this made
+# OR imm16,PSW, MOV Dm,PSW) they need two cycles. Branches (Bcc, Lcc) are not affected. And (2-5, the AM30 core
+# only) MUL and MULU need two cycles after an instruction writes A0 (MOV, ADD, SUB, INC, INC4 to A0): GCC's own mul
+# patterns have two nops in front (-mmult-bug), inline assembly (longlong.h's umul_ppmm) does not. On the unit this made
 # FreeType's FT_MulFix_64 (add 32768,a0 / addc d2,d3) add the carry of the asr before it, and every negative result
 # came out 65536 too high (kn5000_homebrew demos/kn7000_pdf notes/UNIT-RUNS.md, 2026-10-31). The toolchain's GCC puts a
 # nop before each addc and subc it makes (Pinball kn7000/toolchain/gcc-kn7000-flags.patch); this catches the rest: the libraries'
@@ -32,7 +34,7 @@ def kind(mnem, ops):
 found = 0
 for elf in sys.argv[2:]:
     out = subprocess.run([sys.argv[1], '-d', elf], capture_output=True, text=True, check=True).stdout
-    fn, last = '?', [None, None]   # the two instructions before: (kind, text)
+    fn, last = '?', [None, None]   # the two instructions before: (kind, text, writes A0)
     for line in out.splitlines():
         m = re.match(r'([0-9a-f]+) <(.*)>:$', line)
         if m:
@@ -45,12 +47,20 @@ for elf in sys.argv[2:]:
         if not m:
             continue
         addr, mnem, ops = m.group(1), m.group(2), m.group(3).split(';')[0].strip()
+        if mnem in ('mul', 'mulu'):
+            for k in (last[1], last[0]):
+                if k and k[2]:
+                    print(f'check_flags: {elf}: 0x{addr} in {fn}: {mnem} {ops} within two instructions of {k[1]} (2-5)')
+                    found += 1
+                    break
         if mnem in READERS:
             k1, k2 = last[1], last[0]
             if k1 and k1[0] in ('update', 'write') or k2 and k2[0] == 'write':
                 why = k1[1] if k1 and k1[0] else k2[1]
                 print(f'check_flags: {elf}: 0x{addr} in {fn}: {mnem} {ops} right after {why}')
                 found += 1
-        last = [last[1], (kind(mnem, ops), f'{mnem} {ops}'.strip())]
-print(f'check_flags: {found} flag reads too soon after a flag change in {len(sys.argv) - 2} programs')
+        dest = ops.split(',')[-1].strip() if ops else ''
+        a0 = mnem in ('mov', 'add', 'sub', 'inc', 'inc4') and dest == 'a0'
+        last = [last[1], (kind(mnem, ops), f'{mnem} {ops}'.strip(), a0)]
+print(f'check_flags: {found} flag reads too soon after a flag change, or multiplies after an A0 write, in {len(sys.argv) - 2} programs')
 sys.exit(1 if found else 0)
