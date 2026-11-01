@@ -110,7 +110,8 @@ local PROFILE_S = tonumber(os.getenv("PDF_PROFILE_S") or "") or 120
 local FUNCS = {}
 for line in io.lines((os.getenv("PDF_SYMS"))) do
   local a, k, n = line:match("^(%x+) (%a) (%S+)$")
-  if a and (k == "T" or k == "t") and not n:match("^%.") then FUNCS[#FUNCS + 1] = { tonumber(a, 16), n } end
+  -- (not local labels: ".L12", and the "L0" of assembly sources, which would name every PC after them)
+  if a and (k == "T" or k == "t") and not n:match("^%.") and not n:match("^L%d+$") then FUNCS[#FUNCS + 1] = { tonumber(a, 16), n } end
 end
 table.sort(FUNCS, function(x, y) return x[1] < y[1] end)
 local function fname(pc)
