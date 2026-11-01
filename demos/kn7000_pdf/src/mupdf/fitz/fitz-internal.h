@@ -750,6 +750,11 @@ extern void (*fz_kn7_yield)(void);
  * font's file, which FreeType reads a glyph's outline from once and the glyph cache keeps. NULL: none. */
 extern void *(*fz_kn7_slow_malloc)(unsigned int size);
 extern void (*fz_kn7_slow_free)(void *p);
+/* KN7PDF: the slow memory only (NULL when it has no room: never the heap), freed with fz_kn7_slow_free; for the Type 3
+ * glyph procedures kept once loaded (res_font.c t3_contents) */
+extern void *(*fz_kn7_slow_try)(unsigned int size);
+/* KN7PDF: the Type 3 glyph procedures kept (res_font.c) freed: when the document is closed */
+void fz_kn7_t3_flush(void);
 #endif
 
 struct fz_font_s

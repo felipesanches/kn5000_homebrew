@@ -645,8 +645,10 @@ int viewer_main(void) {
   pc_init(DHEAP_LO, DHEAP_HI, DHEAP2_LO, DHEAP2_HI, FONT_BUDGET);
   extern void *(*fz_kn7_slow_malloc)(unsigned int size);  /* (MuPDF's res_font.c, KN7PDF: the font files) */
   extern void (*fz_kn7_slow_free)(void *p);
+  extern void *(*fz_kn7_slow_try)(unsigned int size);
   fz_kn7_slow_malloc = pc_slow_malloc;
   fz_kn7_slow_free = pc_slow_free;
+  fz_kn7_slow_try = pc_slow_try;
   if (view_init(NULL, STORE_BYTES) < 0) {
     printf("%s\n", view_error());
     return 1;

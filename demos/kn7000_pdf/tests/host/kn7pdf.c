@@ -120,6 +120,10 @@ static void* slow_malloc(unsigned n) {
   if (slow_in_use > slow_peak) slow_peak = slow_in_use;
   return (char*)p + 8;
 }
+/* fz_kn7_slow_try (the Type 3 glyph procedures kept): only while the slow memory in use stays within the viewer's
+ * share of the display heap for fonts (viewer.c FONT_BUDGET, 128 KB; KN7PDF_SLOW_KB) */
+static size_t slow_limit = 128 << 10;
+static void* slow_try(unsigned n) { return slow_in_use + n <= slow_limit ? slow_malloc(n) : NULL; }
 static void slow_free(void* q) {
   if (!q) return;
   size_t* p = (size_t*)((char*)q - 8);
@@ -128,6 +132,17 @@ static void slow_free(void* q) {
 }
 
 static unsigned refused(void) { return (unsigned)failed; }
+
+/* the file's reads (linked with --wrap=read): on the KN7000 each one is a request to the card, which costs far more
+ * than the drawing a glyph needs; and MuPDF's Type 3 glyph procedures loaded and glyph cache (KN7PDF counters) */
+static unsigned reads, read_kb_bytes;
+ssize_t __real_read(int fd, void* b, size_t n);
+ssize_t __wrap_read(int fd, void* b, size_t n) {
+  const ssize_t r = __real_read(fd, b, n);
+  if (fd > 2 && r > 0) ++reads, read_kb_bytes += (unsigned)r;
+  return r;
+}
+extern int fz_kn7_t3_loads, fz_kn7_t3_bytes, fz_kn7_glyph_misses, fz_kn7_glyph_evictions;
 
 static unsigned ms(void) {
   struct timespec t;
@@ -159,6 +174,8 @@ int main(int argc, char** argv) {
   if (getenv("KN7PDF_AA")) view_aa_bits = atoi(getenv("KN7PDF_AA"));
   fz_kn7_slow_malloc = slow_malloc;
   fz_kn7_slow_free = slow_free;
+  fz_kn7_slow_try = slow_try;
+  if (getenv("KN7PDF_SLOW_KB")) slow_limit = (size_t)atoi(getenv("KN7PDF_SLOW_KB")) << 10;
   sites_on = getenv("KN7PDF_SITES") != NULL;
   if (view_init(&counting, store) < 0) {
     printf("init: %s\n", view_error());
@@ -186,6 +203,8 @@ int main(int argc, char** argv) {
     memset(page_buf, 255, (size_t)width * h);
     peak = in_use;
     ViewStats st = {0};
+    reads = read_kb_bytes = 0;
+    fz_kn7_t3_loads = fz_kn7_t3_bytes = fz_kn7_glyph_misses = fz_kn7_glyph_evictions = 0;
     const unsigned t0 = ms();
     const int r = view_draw(p, width, h, band, band_out, NULL, &st);
     const unsigned t = ms() - t0;
@@ -196,6 +215,8 @@ int main(int argc, char** argv) {
     printf("page %2d: %dx%d, heap peak %4zu KB, after %4zu KB; %u ms (load %u, lists %u: %u, bands %u: %u%s)%s\n", p + 1,
            width, h, peak / 1024, in_use / 1024, t, st.load_ms, st.lists, st.list_ms, st.draw_ms, st.bands,
            st.direct ? ", regions" : "", st.incomplete ? " INCOMPLETE" : "");
+    printf("         reads %u (%u KB); glyphs drawn %d, cache emptied %d; Type 3 procedures loaded %d (%d KB)\n", reads,
+           read_kb_bytes / 1024, fz_kn7_glyph_misses, fz_kn7_glyph_evictions, fz_kn7_t3_loads, fz_kn7_t3_bytes / 1024);
     incomplete += st.incomplete;
     if (peak > worst) worst = peak;
     if (out) {

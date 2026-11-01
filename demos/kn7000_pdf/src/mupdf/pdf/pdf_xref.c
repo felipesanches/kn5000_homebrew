@@ -809,6 +809,9 @@ pdf_close_document(pdf_document *xref)
 	if (!xref)
 		return;
 	ctx = xref->ctx;
+#ifdef KN7PDF
+	fz_kn7_t3_flush();  /* (its Type 3 glyph procedures kept, res_font.c) */
+#endif
 
 	if (xref->table)
 	{

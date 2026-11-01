@@ -158,7 +158,7 @@ $(foreach m,$(FONT_MAP),$(eval $(call font_rule,$(word 1,$(subst :, ,$(m))),$(wo
 
 KN7PDF_C := src/kn7/view.c src/kn7/fontfile.c src/kn7/left_out.c
 $(OUT)/host/kn7pdf: $(OUT)/host/tests/kn7pdf.o $(KN7PDF_C:src/%.c=$(OUT)/host/%.o) $(HOST_OBJ)
-	$(HOSTCC) $^ -lm -o $@
+	$(HOSTCC) $^ -Wl,--wrap=read -lm -o $@
 
 $(OUT)/host/tests/%.o: tests/host/%.c $(MU_HDR) src/kn7/view.h
 	@mkdir -p $(dir $@)

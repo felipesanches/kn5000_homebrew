@@ -6,6 +6,8 @@
  * table, which never shrinks, stays at its first 509 entries below 80% full) */
 #define MAX_CACHE_SIZE (64*1024)
 #define MAX_CACHE_GLYPHS 400
+/* glyphs drawn (not found in the cache) and the cache emptied (tests/host/kn7pdf.c prints them) */
+int fz_kn7_glyph_misses, fz_kn7_glyph_evictions;
 #else
 #define MAX_CACHE_SIZE (1024*1024)
 #endif
@@ -75,6 +77,7 @@ fz_evict_glyph_cache(fz_context *ctx)
 	cache->total = 0;
 #ifdef KN7PDF
 	cache->count = 0;
+	fz_kn7_glyph_evictions++;
 #endif
 
 	fz_empty_hash(ctx, cache->hash);
@@ -182,6 +185,9 @@ fz_render_glyph(fz_context *ctx, fz_font *font, int gid, fz_matrix ctm, fz_color
 		return val;
 	}
 
+#ifdef KN7PDF
+	fz_kn7_glyph_misses++;
+#endif
 	fz_try(ctx)
 	{
 		if (font->ft_face)

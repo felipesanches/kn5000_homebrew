@@ -98,14 +98,15 @@ static void* dalloc(u32 n, int keep) {
 }
 
 void* pc_slow_malloc(unsigned n) {
-  if (dheap && fontBytes + n <= fontBudget) {
-    void* p = dalloc(n, -1);
-    if (p) {
-      fontBytes += tlsf_block_size(p);
-      return p;
-    }
-  }
-  return fz_malloc_no_throw(fontfile_ctx, n);
+  void* p = pc_slow_try(n);
+  return p ? p : fz_malloc_no_throw(fontfile_ctx, n);
+}
+
+void* pc_slow_try(unsigned n) {
+  if (!dheap || fontBytes + n > fontBudget) return NULL;
+  void* p = dalloc(n, -1);
+  if (p) fontBytes += tlsf_block_size(p);
+  return p;
 }
 
 void pc_slow_free(void* p) {

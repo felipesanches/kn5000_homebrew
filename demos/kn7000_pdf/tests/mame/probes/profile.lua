@@ -1,9 +1,11 @@
 -- (c) 2026 Felipe Correa da Silva Sanches <juca@members.fsf.org>
 -- Licensed under the terms of the GNU Affero General Public License v3 or later
 --
--- profile.lua -- where the CPU is while the viewer draws a page (run_pdf.sh OUT probes/profile.lua): as pdf_test.lua up to OPEN, then
--- the PC sampled every frame for $PDF_PROFILE_S seconds (default 120), each PC's count with the function it lies in
--- (OUT/syms.txt) written to OUT/profile.txt (profile_lines.py names the lines), with a snapshot every 20 s. The original pdf_test.lua header follows.
+-- profile.lua -- where the CPU is while the viewer draws pages (run_pdf.sh OUT probes/profile.lua): as pdf_test.lua up to OPEN
+-- ($PDF_FILE chosen with the wheel, default the first file), then the PC sampled every frame for $PDF_PROFILE_S seconds
+-- (default 120: the first page and the pages drawn ahead after it), each PC's count with the function it lies in
+-- (OUT/syms.txt) written to OUT/profile.txt (profile_lines.py names the lines), with a snapshot every 20 s; events.txt
+-- has when the first page was shown. The original pdf_test.lua header follows.
 --
 -- pdf_test.lua -- the PDF viewer in MAME, through the program menu (run_pdf.sh OUT):
 --   * DISK MENU, STYLE CONVERT, OK: the loader, the menu; the "PDF viewer (MuPDF)" row, RUN;
@@ -92,8 +94,8 @@ for _, f in pairs(M.ioport.ports[":TEMPO_KNOB"].fields) do knob = f end
 local knobAt = 50
 local function turn(n)
   for _ = 1, math.abs(n) do
-    knobAt = knobAt + (n > 0 and 1 or -1)
-    knob:set_value(knobAt)
+    knobAt = (knobAt + (n > 0 and 1 or -1)) % 101  -- (0-100, round: the panel model takes a jump over 50 as a wrap)
+    knob.user_value = knobAt  -- (an adjuster: the panel model reads its live value, kn_cpanel.cpp)
     wait(0.15)
   end
   wait(0.5)
@@ -133,11 +135,18 @@ local co = coroutine.create(function()
   press("CPR_SEG5", 0x01)
   wait_until(function() return u32("_owned") == 1 end, 240)
   wait(2)
-  press("CPR_SEG5", 0x10)                               -- R1: OPEN (the first file)
-  E("OPEN")
-  local count, total, t0, nextSnap = {}, 0, now(), now() + 20
+  local want = 0
+  for i = 0, s32("_nFiles") - 1 do
+    if FILE and cstr(SYM["_files"] + i * 20, 13) == FILE then want = i end  -- PfFile: char name[13] (+3), u32 bytes
+  end
+  turn(want)                                            -- the wheel moves the selection
+  wait(1)
+  press("CPR_SEG5", 0x10)                               -- R1: OPEN
+  E("OPEN file %d", want)
+  local count, total, t0, nextSnap, shown = {}, 0, now(), now() + 20, false
   callers = {}
-  while now() - t0 < PROFILE_S and s32("_pageH") <= 0 do
+  while now() - t0 < PROFILE_S do
+    if not shown and s32("_pageNo") >= 0 then shown = true; E("first page shown after %.1f s: %s", now() - t0, state()) end
     local pc = cpu.state["PC"].value
     count[pc] = (count[pc] or 0) + 1
     local fn = fname(pc)

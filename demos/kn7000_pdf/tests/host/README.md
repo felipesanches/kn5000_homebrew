@@ -25,6 +25,11 @@ pages come out right, before anything runs in MAME.
 | `KN7PDF_SITES=1`     | the bytes in use at the highest peak (with `HEAP_KB`: at the first allocation refused) by where they were allocated (`addr2line -f -e build/host/kn7pdf ADDR`) |
 | `KN7PDF_SITES_END=1` | with `KN7PDF_SITES`: what stays in use after the last page instead                                                                                             |
 | `KN7PDF_BIG=1`       | a backtrace of every allocation over 1 MB                                                                                                                      |
+| `KN7PDF_SLOW_KB=N`   | the slow memory the Type 3 glyph procedures may be kept in (`fz_kn7_slow_try`), counting what the font files take: default 128, the viewer's `FONT_BUDGET`    |
+
+Under each page's line a second one counts what the KN7000 pays for most: the file's reads (each a request to the
+card there, about 50 ms; `read()` wrapped at the link), the glyphs drawn (not found in MuPDF's glyph cache), the times
+the glyph cache was emptied, and the Type 3 glyph procedures loaded from the file (`fz_kn7_t3_loads`).
 
 A heap limit (`HEAP_KB`) refuses an allocation that would take the heap in use over it, as the instrument's heap does;
 MuPDF then frees what its store holds and tries again, as it does there. The "slow memory" (embedded fonts' files,

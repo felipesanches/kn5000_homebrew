@@ -13,6 +13,7 @@
 void (*fz_kn7_yield)(void);
 void *(*fz_kn7_slow_malloc)(unsigned int size);
 void (*fz_kn7_slow_free)(void *p);
+void *(*fz_kn7_slow_try)(unsigned int size);
 
 /* KN7PDF: the glyph FreeType was last asked to draw, for the viewer's report when KN7APP's watchdog finds the
  * program's task stuck (viewer.c) */
@@ -911,25 +912,94 @@ fz_new_type3_font(fz_context *ctx, char *name, fz_matrix matrix)
 }
 
 #ifdef KN7PDF
-/* KN7PDF: glyph gid's procedure: the font's, or loaded now (*loaded 1: the caller drops it after running it) */
+/* KN7PDF: the Type 3 glyph procedures loaded from the file, and their bytes (tests/host/kn7pdf.c prints them) */
+int fz_kn7_t3_loads, fz_kn7_t3_bytes;
+
+/* KN7PDF: glyph gid's procedure: the font's, or loaded now (*loaded 1: the caller drops it after running it). One
+ * loaded is kept in the slow memory where it has room, until the document is closed (fz_kn7_t3_flush): a page's text
+ * draws each glyph many times, the glyph cache being small, and each load is a read of the file, on the KN7000 a
+ * request to the card (tests/host/kn7pdf.c counts them). Kept apart from the font, by the document and the glyph's
+ * object, because the store drops fonts when memory runs short and the font loaded again would load them again.
+ * A kept one is a block: the T3Kept, its fz_buffer, the procedure; in a chain from t3k[object number % T3K]. */
+typedef struct T3Kept { struct T3Kept *next; void *doc; int num, gen; fz_buffer buf; } T3Kept;
+#define T3K 256
+static T3Kept *t3k[T3K];
+static int t3_busy;  /* procedures running (t3_run): none of the kept may go then */
+
+void
+fz_kn7_t3_flush(void)
+{
+	int i;
+	for (i = 0; i < T3K; i++)
+		while (t3k[i])
+		{
+			T3Kept *k = t3k[i];
+			t3k[i] = k->next;
+			fz_kn7_slow_free(k);
+		}
+}
+
+static fz_buffer *
+t3_kept(void *doc, int num, int gen)
+{
+	T3Kept *k;
+	for (k = t3k[num % T3K]; k; k = k->next)
+		if (k->num == num && k->gen == gen && k->doc == doc)
+			return &k->buf;
+	return NULL;
+}
+
+static void
+t3_keep(void *doc, int num, int gen, fz_buffer *buf)
+{
+	T3Kept *k;
+	if (!fz_kn7_slow_try)
+		return;
+	k = fz_kn7_slow_try(sizeof *k + buf->len);
+	if (!k && !t3_busy)
+	{
+		fz_kn7_t3_flush();  /* (full: the document's glyphs start again) */
+		k = fz_kn7_slow_try(sizeof *k + buf->len);
+	}
+	if (!k)
+		return;
+	k->doc = doc, k->num = num, k->gen = gen;
+	k->buf.refs = 1;
+	k->buf.data = (unsigned char *)(k + 1);
+	k->buf.cap = k->buf.len = buf->len;
+	k->buf.unused_bits = buf->unused_bits;
+	memcpy(k->buf.data, buf->data, buf->len);
+	k->next = t3k[num % T3K];
+	t3k[num % T3K] = k;
+}
+
 static fz_buffer *
 t3_contents(fz_context *ctx, fz_font *font, int gid, int *loaded)
 {
 	fz_buffer *buf = NULL;
+	int num, gen;
 
 	*loaded = 0;
 	if (font->t3procs[gid] || !font->t3nums || !font->t3nums[2 * gid] || !font->t3load)
 		return font->t3procs[gid];
+	num = font->t3nums[2 * gid], gen = font->t3nums[2 * gid + 1];
+	buf = t3_kept(font->t3doc, num, gen);
+	if (buf)
+		return buf;
 	fz_try(ctx)
 	{
-		buf = font->t3load(font->t3doc, font->t3nums[2 * gid], font->t3nums[2 * gid + 1]);
+		buf = font->t3load(font->t3doc, num, gen);
 	}
 	fz_catch(ctx)
 	{
 		fz_warn(ctx, "cannot load type3 glyph %d: %s", gid, ctx->error->message);
 		buf = NULL;
 	}
-	*loaded = buf != NULL;
+	if (!buf)
+		return NULL;
+	fz_kn7_t3_loads++, fz_kn7_t3_bytes += buf->len;
+	t3_keep(font->t3doc, num, gen, buf);
+	*loaded = 1;  /* (the copy kept serves the next time; this one is dropped after it ran) */
 	return buf;
 }
 
@@ -937,12 +1007,14 @@ t3_contents(fz_context *ctx, fz_font *font, int gid, int *loaded)
 static void
 t3_run(fz_context *ctx, fz_font *font, fz_buffer *contents, int loaded, fz_device *dev, fz_matrix ctm, void *gstate)
 {
+	t3_busy++;
 	fz_try(ctx)
 	{
 		font->t3run(font->t3doc, font->t3resources, contents, dev, ctm, gstate);
 	}
 	fz_always(ctx)
 	{
+		t3_busy--;
 		if (loaded)
 			fz_drop_buffer(ctx, contents);
 	}

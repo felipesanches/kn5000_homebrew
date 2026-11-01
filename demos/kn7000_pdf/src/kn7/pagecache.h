@@ -15,8 +15,11 @@
 /* The display heap over [lo, hi) and [lo2, hi2) of display memory (byte offsets from LCD_MEM); the font files' share
  * of it (bytes; past that they go to the main heap). */
 void pc_init(u32 lo, u32 hi, u32 lo2, u32 hi2, u32 fontBudget);
-/* for MuPDF's font files (fz_kn7_slow_malloc, fz_kn7_slow_free): the display heap, or the main heap */
+/* for MuPDF's font files (fz_kn7_slow_malloc, fz_kn7_slow_free): the display heap, or the main heap; and the Type 3
+ * glyph procedures kept (fz_kn7_slow_try) */
 void* pc_slow_malloc(unsigned n);
+/* the display heap only, NULL when its share for fonts is used up (fz_kn7_slow_try: Type 3 glyph procedures) */
+void* pc_slow_try(unsigned n);
 void pc_slow_free(void* p);
 
 /* A document opened: its name and size make its key; `pages` of it. The card's folder listed for its pages. */
