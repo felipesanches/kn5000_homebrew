@@ -4,8 +4,12 @@
 #ifdef KN7PDF
 /* (and at most MAX_CACHE_GLYPHS glyphs: a small glyph's pixmap struct and its key outweigh its pixels, and the hash
  * table, which never shrinks, stays at its first 509 entries below 80% full) */
+#ifndef MAX_CACHE_SIZE
 #define MAX_CACHE_SIZE (64*1024)
+#endif
+#ifndef MAX_CACHE_GLYPHS
 #define MAX_CACHE_GLYPHS 400
+#endif
 /* glyphs drawn (not found in the cache) and the cache emptied (tests/host/kn7pdf.c prints them) */
 int fz_kn7_glyph_misses, fz_kn7_glyph_evictions;
 #else

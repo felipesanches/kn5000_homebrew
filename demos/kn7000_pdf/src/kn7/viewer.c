@@ -24,6 +24,7 @@
 
 #include "kn7pdf.h"
 #include "pagecache.h"
+#include "readcache.h"
 #include "view.h"
 
 extern void (*fz_kn7_yield)(void);  /* (MuPDF's, KN7PDF) */
@@ -37,10 +38,13 @@ volatile u32 hang_test;  /* (tests/mame/hang.lua sets it: the viewer loops witho
  * lines end at 0x4B500, and LCD_FRAME are left alone: what the firmware keeps there is not known); the font files may
  * take FONT_BUDGET of it */
 #define DHEAP_LO ((LCD_FRAME + PAGE_ROWS * PITCH + 15) & ~15u)
-#define DHEAP_HI LCD_KEEP
+#define DHEAP_HI RC_AT
 #define DHEAP2_LO 0u
 #define DHEAP2_HI 0u
 #define FONT_BUDGET (128u << 10)
+#define RC_BYTES (32u << 10)  /* the read cache's (readcache.c), at the display heap's top */
+#define RC_AT (LCD_KEEP - RC_BYTES)
+#define FILE_READ_MAX 1024    /* MuPDF's reads of the PDF at most (stm_open.c): the cache reads ahead */
 #define SAVE_IDLE_MS 1500    /* the controls left alone this long: a page drawn goes onto the card */
 #define INK LCD_INK
 #define INK_PITCH (FB_W / 4)
@@ -427,6 +431,14 @@ static void logPage(int n, const char *how, int h, u32 t0, const ViewStats *st) 
          n + 1, how, h, (unsigned long)(nowMs() - t0), st->load_ms, st->list_ms, st->draw_ms, st->bands,
          st->direct ? ", no list" : "", st->incomplete ? " INCOMPLETE" : "", hs.used >> 10, hs.total >> 10,
          hs.peak >> 10, (unsigned long)(du >> 10), (unsigned long)(dt >> 10), in, (unsigned long)(fonts >> 10));
+  /* since the last page logged: the card's reads for the PDF (readcache.c), the reads the cache served, the Type 3
+   * glyph procedures loaded */
+  extern int fz_kn7_t3_loads;
+  static u32 f0, b0, h0;
+  static int t0s;
+  printf("  card reads %lu (%lu KB), from the cache %lu; Type 3 glyphs loaded %d\n", (unsigned long)(rc_fetches - f0),
+         (unsigned long)((rc_fetch_bytes - b0) >> 10), (unsigned long)(rc_hits - h0), fz_kn7_t3_loads - t0s);
+  f0 = rc_fetches, b0 = rc_fetch_bytes, h0 = rc_hits, t0s = fz_kn7_t3_loads;
 }
 
 /* page n drawn straight onto the LCD (the cache had no room for it), the reader waiting */
@@ -649,6 +661,9 @@ int viewer_main(void) {
   fz_kn7_slow_malloc = pc_slow_malloc;
   fz_kn7_slow_free = pc_slow_free;
   fz_kn7_slow_try = pc_slow_try;
+  extern int fz_kn7_file_read_max;
+  fz_kn7_file_read_max = FILE_READ_MAX;
+  rc_init((void *)(LCD_MEM + RC_AT), RC_BYTES);
   if (view_init(NULL, STORE_BYTES) < 0) {
     printf("%s\n", view_error());
     return 1;

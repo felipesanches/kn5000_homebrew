@@ -2,8 +2,32 @@
 
 #define MIN_BOMB (100 << 20)
 
+#ifdef KN7PDF
+/* KN7PDF: fz_read reads until it has len bytes or the stream ends, as callers here assume (pdf_read_start_xref reads
+ * the file's last 1024 bytes with one call); one read of a stream may bring fewer (the file's are capped, stm_open.c
+ * fz_kn7_file_read_max) */
+static int fz_read_once(fz_stream *stm, unsigned char *buf, int len);
+
 int
 fz_read(fz_stream *stm, unsigned char *buf, int len)
+{
+	int total = 0;
+	while (total < len)
+	{
+		int n = fz_read_once(stm, buf + total, len - total);
+		if (n <= 0)
+			return total ? total : n;
+		total += n;
+	}
+	return total;
+}
+
+static int
+fz_read_once(fz_stream *stm, unsigned char *buf, int len)
+#else
+int
+fz_read(fz_stream *stm, unsigned char *buf, int len)
+#endif
 {
 	int count, n;
 

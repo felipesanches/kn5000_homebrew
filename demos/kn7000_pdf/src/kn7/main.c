@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include "kn7pdf.h"
+#include "readcache.h"
 #include "tlsf.h"
 
 extern char __bss_lo[], __bss_hi[], __init_lo[], __init_hi[], __game_end[], __image_end[];
@@ -268,6 +269,7 @@ int _open(const char *path, int flags, int mode) {
   for (int i = 0; i < MAX_FILES; ++i)
     if (!file[i].used) {
       if (kn7FileOpen(path, &file[i].f)) return -1;
+      rc_forget(i);
       file[i].used = 1;
       file[i].at = 0;
       return 3 + i;
@@ -285,10 +287,13 @@ static int fileOf(int fd) {
   return i;
 }
 
+static int fetch(void *f, u32 off, void *dst, u32 n) { return kn7FileRead((const PfRawFile *)f, off, dst, n); }
+
+/* (through the read cache: readcache.c) */
 int _read(int fd, void *p, int n) {
   const int i = fileOf(fd);
   if (i < 0) return -1;
-  const int got = kn7FileRead(&file[i].f, file[i].at, p, (unsigned)n);
+  const int got = rc_read(i, file[i].f.bytes, file[i].at, p, (u32)n, fetch, &file[i].f);
   if (got < 0) {
     errno = EIO;
     return -1;

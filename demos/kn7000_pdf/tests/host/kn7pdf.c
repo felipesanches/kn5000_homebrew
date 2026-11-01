@@ -14,7 +14,11 @@
 #include <string.h>
 #include <time.h>
 #include <execinfo.h>
+#include <stdint.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "fitz-internal.h"
+#include "readcache.h"
 #include "view.h"
 
 static size_t in_use, peak, limit, failed;
@@ -135,13 +139,34 @@ static unsigned refused(void) { return (unsigned)failed; }
 
 /* the file's reads (linked with --wrap=read): on the KN7000 each one is a request to the card, which costs far more
  * than the drawing a glyph needs; and MuPDF's Type 3 glyph procedures loaded and glyph cache (KN7PDF counters) */
-static unsigned reads, read_kb_bytes;
+static unsigned reads, read_kb_bytes, read_ms;
+static void card_cost(unsigned off, unsigned n) {  /* the unit's: 5 ms a request, 3.9 ms a 512-byte sector touched */
+  ++reads, read_kb_bytes += n;
+  read_ms += 5 + (unsigned)(3.9 * (((off + n + 511) / 512) - off / 512));
+}
 ssize_t __real_read(int fd, void* b, size_t n);
+static int fetch(void* arg, uint32_t off, void* dst, uint32_t n) {  /* the read cache's (KN7PDF_RC_KB) */
+  const int fd = (int)(intptr_t)arg;
+  const ssize_t r = pread(fd, dst, n, off);
+  if (r > 0) card_cost(off, (unsigned)r);
+  return (int)r;
+}
+static int rc_on;
 ssize_t __wrap_read(int fd, void* b, size_t n) {
+  if (fd <= 2) return __real_read(fd, b, n);
+  const off_t at = lseek(fd, 0, SEEK_CUR);
+  if (rc_on) {
+    struct stat st;
+    fstat(fd, &st);
+    const int r = rc_read(fd, (uint32_t)st.st_size, (uint32_t)at, b, (uint32_t)n, fetch, (void*)(intptr_t)fd);
+    if (r > 0) lseek(fd, at + r, SEEK_SET);
+    return r;
+  }
   const ssize_t r = __real_read(fd, b, n);
-  if (fd > 2 && r > 0) ++reads, read_kb_bytes += (unsigned)r;
+  if (r > 0) card_cost((unsigned)at, (unsigned)r);
   return r;
 }
+extern int fz_kn7_file_read_max;
 extern int fz_kn7_t3_loads, fz_kn7_t3_bytes, fz_kn7_glyph_misses, fz_kn7_glyph_evictions;
 
 static unsigned ms(void) {
@@ -176,6 +201,9 @@ int main(int argc, char** argv) {
   fz_kn7_slow_free = slow_free;
   fz_kn7_slow_try = slow_try;
   if (getenv("KN7PDF_SLOW_KB")) slow_limit = (size_t)atoi(getenv("KN7PDF_SLOW_KB")) << 10;
+  if (getenv("KN7PDF_READ_MAX")) fz_kn7_file_read_max = atoi(getenv("KN7PDF_READ_MAX"));
+  static unsigned char rc_mem[RC_MAX_BLOCKS * RC_BLOCK];
+  if (getenv("KN7PDF_RC_KB")) rc_on = 1, rc_init(rc_mem, (uint32_t)atoi(getenv("KN7PDF_RC_KB")) << 10);
   sites_on = getenv("KN7PDF_SITES") != NULL;
   if (view_init(&counting, store) < 0) {
     printf("init: %s\n", view_error());
@@ -203,7 +231,7 @@ int main(int argc, char** argv) {
     memset(page_buf, 255, (size_t)width * h);
     peak = in_use;
     ViewStats st = {0};
-    reads = read_kb_bytes = 0;
+    reads = read_kb_bytes = read_ms = 0;
     fz_kn7_t3_loads = fz_kn7_t3_bytes = fz_kn7_glyph_misses = fz_kn7_glyph_evictions = 0;
     const unsigned t0 = ms();
     const int r = view_draw(p, width, h, band, band_out, NULL, &st);
@@ -215,8 +243,9 @@ int main(int argc, char** argv) {
     printf("page %2d: %dx%d, heap peak %4zu KB, after %4zu KB; %u ms (load %u, lists %u: %u, bands %u: %u%s)%s\n", p + 1,
            width, h, peak / 1024, in_use / 1024, t, st.load_ms, st.lists, st.list_ms, st.draw_ms, st.bands,
            st.direct ? ", regions" : "", st.incomplete ? " INCOMPLETE" : "");
-    printf("         reads %u (%u KB); glyphs drawn %d, cache emptied %d; Type 3 procedures loaded %d (%d KB)\n", reads,
-           read_kb_bytes / 1024, fz_kn7_glyph_misses, fz_kn7_glyph_evictions, fz_kn7_t3_loads, fz_kn7_t3_bytes / 1024);
+    printf("         reads %u (%u KB, %u ms on the unit); glyphs drawn %d, cache emptied %d; Type 3 procedures loaded %d (%d KB)\n",
+           reads, read_kb_bytes / 1024, read_ms, fz_kn7_glyph_misses, fz_kn7_glyph_evictions, fz_kn7_t3_loads,
+           fz_kn7_t3_bytes / 1024);
     incomplete += st.incomplete;
     if (peak > worst) worst = peak;
     if (out) {

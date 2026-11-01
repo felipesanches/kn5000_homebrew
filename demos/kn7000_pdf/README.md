@@ -73,9 +73,18 @@ short is drawn again half as tall.
 
 **The page cache** (`src/kn7/pagecache.c`). The display memory the page shown does not take (the page is 4 bits a pixel,
 so half of the 643 KB an 8-bit page took) is a second heap, the display heap: the coded pages (29-69 KB each, 9-23% of a
-page: `tests/host/packbits_size.py`) and, up to 128 KB, MuPDF's font files. When it is full, the page used longest ago
-goes, one the card has first. The cards' copies are the coded page with a header naming the document, the page, the
+page: `tests/host/packbits_size.py`) and, up to 128 KB, MuPDF's font files and the Type 3 glyph procedures it has
+loaded (a Type 3 font's glyphs are content streams in the PDF: kept until the document is closed, they are read from
+the card once instead of each time a glyph is drawn). When it is full, the page used longest ago goes, one the card has
+first. The cards' copies are the coded page with a header naming the document, the page, the
 width and the anti-aliasing; one that does not match is not used.
+
+**Reading the PDF** (`src/kn7/readcache.c`). The card is slow: a read costs about 5 ms and 3.9 ms a 512-byte sector
+more (the unit's log), so MuPDF reads at most 1 KB at a time, and 32 KB of display memory above the display heap keep
+the file's 1 KB blocks read last; a miss reads only the blocks missing, and 4 more when the reads run on. On
+PROTRACK.PDF's 15 pages this, with the glyph procedures kept, takes the card's time from 427 s to 35 s
+(`tests/host/kn7pdf.c`'s count and cost model at an 825 KB heap: `KN7PDF_SLOW_KB=0` reads as 87f01d5 did, 10632
+reads; `KN7PDF_READ_MAX=1024 KN7PDF_RC_KB=32` as now, 1526); BACHIANI.PDF's 5 from 8.0 s to 6.0 s.
 
 **Drawing ahead** (`src/kn7/viewer.c`). The viewer's loop serves the page asked for first, then saves a page drawn when
 the controls have been left alone 1.5 s, then draws ahead. While MuPDF draws, its yield (every 20 ms) serves the wheel and

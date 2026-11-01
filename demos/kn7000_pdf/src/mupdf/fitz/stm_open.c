@@ -62,8 +62,19 @@ fz_close(fz_stream *stm)
 
 /* File stream */
 
+#ifdef KN7PDF
+/* KN7PDF: a file read asks for at most this many bytes (0: the stream's buffer, 4096): on the KN7000 each byte read
+ * from the card costs, and an object (a Type 3 glyph's procedure) is often a few hundred; the viewer's read cache
+ * (src/kn7/readcache.c) reads ahead when the reads run on */
+int fz_kn7_file_read_max;
+#endif
+
 static int read_file(fz_stream *stm, unsigned char *buf, int len)
 {
+#ifdef KN7PDF
+	if (fz_kn7_file_read_max > 0 && len > fz_kn7_file_read_max)
+		len = fz_kn7_file_read_max;
+#endif
 	int n = read(*(int*)stm->state, buf, len);
 	if (n < 0)
 		fz_throw(stm->ctx, "read error: %s", strerror(errno));
