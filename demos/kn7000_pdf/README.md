@@ -53,6 +53,10 @@ short while a page was drawn it says so ("it may lack something").
 | `*.PDF`        | the documents: copy any PDF in (an 8.3 name, as the computer makes it)                                                  |
 | `K*.PGC`       | the pages drawn, one a file (`Kxxxxnnn.PGC`: xxxx the document's name and size, nnn the page): delete them at will      |
 
+To look at the pages drawn on a computer: `python3 tools/card/pgc2png.py -o DIR CARD/PDF` makes a PNG of each `.PGC`
+(`BACHIANI-p001.png`), with Python 3 alone; KN7000's `update_sdcard.sh` brings the `.PGC` files back from the card and
+converts them into `from-card/<date-time>/PDF/png/`.
+
 ## How it works
 
 Two programs, as Doom's and ProTracker's (`src/common/pfhost.h` between them):

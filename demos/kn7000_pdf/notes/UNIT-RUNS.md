@@ -112,3 +112,15 @@ Then PAGE UP/DOWN pressed while page 1 was drawn; the last heartbeat 528314 ms (
 no heap damage. Felipe: it seemed to freeze at some point. Asked for: the page shown readable and scrollable while
 another is drawn, pages drawn ahead, and the pages drawn kept, also on the card. Done in d4329f4 (README, "The page
 cache", "Drawing ahead"): the font files left the main heap for the display heap, which the page's 4 bits a pixel made.
+
+## 2026-11-01: the page cache works on the unit (87f01d5)
+
+`from-card/20261101-101936/PDF/PDFLOG.TXT` (its middle pushed out again: 62107 ms to 1670950 ms lost) and
+`listing.txt`: the card has all 5 of BACHIANI.PDF's pages and all 15 of PROTRACK.PDF's as `.PGC` files, 29-70 KB each.
+PROTRACK's pages 14 and 15 drew in 49.6 and 35.0 s and were saved in 1027 and 895 ms; pages still in the display heap
+came back in 192-349 ms, pages read back from the card in 586-985 ms. Reopened, BACHIANI.PDF found "5 of 5 pages on
+the card" and showed page 1 in 818 ms; PROTRACK.PDF, 15 of 15, page 1 in 621 ms. No watchdog report, no heap damage
+in what the log kept. "fonts 0 KB" is right for PROTRACK.PDF: its fonts are Type 3 (`pdffonts`), glyphs drawn from
+content streams, with no font file to move. BACHIANI's pages 1, 2, 3 and 5 on the unit are 56261, 46047, 56372 and
+64007 bytes, the sizes MAME's run (`tests/mame/pdf_test.lua`, KEEP_SD=1) wrote. `update_sdcard.sh` now brings the
+`.PGC` files back and `tools/card/pgc2png.py` makes them PNGs, to compare the two byte for byte.
