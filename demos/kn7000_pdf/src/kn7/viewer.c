@@ -589,6 +589,7 @@ static void viewDoc(const PfFile *f) {
         const u32 t0 = nowMs();
         const int r = pc_save(u);
         printf("page %d %s the card, %lu ms\n", u + 1, r ? "not saved on" : "saved on", (unsigned long)(nowMs() - t0));
+        host->diagSave();  /* (the log too, the reader idle: the page's lines onto the card) */
         continue;
       }
     }
