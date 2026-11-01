@@ -11,7 +11,12 @@ void fz_flush_warnings(fz_context *ctx)
 {
 	if (ctx->warn->count > 1)
 	{
+#ifdef KN7PDF
+		fprintf(stderr, "%s ... repeated %d times ...\n", strncmp(ctx->warn->message, "error: ", 7) ? "warning:" : "error:",
+			ctx->warn->count);
+#else
 		fprintf(stderr, "warning: ... repeated %d times ...\n", ctx->warn->count);
+#endif
 		LOGE("warning: ... repeated %d times ...\n", ctx->warn->count);
 	}
 	ctx->warn->message[0] = 0;
@@ -85,9 +90,28 @@ void fz_throw(fz_context *ctx, char *fmt, ...)
 	vsnprintf(ctx->error->message, sizeof ctx->error->message, fmt, args);
 	va_end(args);
 
+#ifdef KN7PDF
+	/* KN7PDF: an error the same as the last message counted, as warnings are ("... repeated N times ..."): memory
+	 * running short makes hundreds of "calloc (1 x 16 bytes) failed", and each line costs the KN7000's log room
+	 * and card writes */
+	{
+		char buf[sizeof ctx->warn->message];
+		snprintf(buf, sizeof buf, "error: %s", ctx->error->message);
+		if (!strcmp(buf, ctx->warn->message))
+			ctx->warn->count++;
+		else
+		{
+			fz_flush_warnings(ctx);
+			fprintf(stderr, "%s\n", buf);
+			fz_strlcpy(ctx->warn->message, buf, sizeof ctx->warn->message);
+			ctx->warn->count = 1;
+		}
+	}
+#else
 	fz_flush_warnings(ctx);
 	fprintf(stderr, "error: %s\n", ctx->error->message);
 	LOGE("error: %s\n", ctx->error->message);
+#endif
 
 	throw(ctx->error);
 }

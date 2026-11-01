@@ -436,8 +436,12 @@ static void logPage(int n, const char *how, int h, u32 t0, const ViewStats *st) 
   extern int fz_kn7_t3_loads;
   static u32 f0, b0, h0;
   static int t0s;
-  printf("  card reads %lu (%lu KB), from the cache %lu; Type 3 glyphs loaded %d\n", (unsigned long)(rc_fetches - f0),
-         (unsigned long)((rc_fetch_bytes - b0) >> 10), (unsigned long)(rc_hits - h0), fz_kn7_t3_loads - t0s);
+  extern int kn7_errBudget;
+  extern unsigned kn7_errDropped;
+  printf("  card reads %lu (%lu KB), from the cache %lu; Type 3 glyphs loaded %d; MuPDF's messages not logged %u\n",
+         (unsigned long)(rc_fetches - f0), (unsigned long)((rc_fetch_bytes - b0) >> 10), (unsigned long)(rc_hits - h0),
+         fz_kn7_t3_loads - t0s, kn7_errDropped);
+  kn7_errBudget = 24, kn7_errDropped = 0;  /* (the next page's) */
   f0 = rc_fetches, b0 = rc_fetch_bytes, h0 = rc_hits, t0s = fz_kn7_t3_loads;
 }
 

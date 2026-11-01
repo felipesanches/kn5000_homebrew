@@ -18,7 +18,7 @@
 #define DIAG_PART 3072  /* a part saved when the log holds this much */
 #define DIAG_PARTS 50   /* PDFLOG01.TXT to PDFLOG50.TXT (KN7000 tools/sdcard/remove.txt deletes them once brought back) */
 static char text[DIAG_SIZE];
-static u32 len, part;
+static u32 len, part, partFail;
 static u8 saving;
 u32 diag_saves, diag_save_fail;
 
@@ -103,14 +103,14 @@ static void save_part(void) {
     shift(n);
     diag("log: part %u saved (PDFLOG%02u.TXT)", part, part);
   } else {
-    ++diag_save_fail;
+    --part, ++partFail;  /* (tried again at a later yield, three times at most) */
   }
   saving = 0;
 }
 
 /* At the program's yield (PfHost::yield, never while KN7APP waits on a file itself): a part saved when one is due */
 void diag_due(void) {
-  if (len >= DIAG_PART && part < DIAG_PARTS && !saving && diag_save_fail < 3) save_part();
+  if (len >= DIAG_PART && part < DIAG_PARTS && !saving && partFail < 3) save_part();
 }
 
 /* On the program task: the log onto the card (a part when one is due, then the rest as PDFLOG.TXT, made afresh). */
@@ -118,8 +118,9 @@ void diag_save(void) {
   if (saving) return;
   diag_due();
   saving = 1;
-  const s32 r = file_save("PDFLOG.TXT", text, len);
+  const u32 n = len;  /* (lines may come while it is written: those go next time) */
+  const s32 r = file_save("PDFLOG.TXT", text, n);
   saving = 0;
   ++diag_saves;
-  if (r != (s32)len) ++diag_save_fail;
+  if (r != (s32)n) ++diag_save_fail;
 }

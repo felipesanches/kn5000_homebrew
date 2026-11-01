@@ -394,13 +394,31 @@ static void logChar(char c) {
   logLine[logRows - 1][logCol] = 0;
 }
 
+/* MuPDF's errors and warnings (stderr) into the log at most kn7_errBudget lines, the rest counted (kn7_errDropped):
+ * memory running short makes chains of them, hundreds a page; the viewer sets the budget for each page and logs what
+ * was dropped */
+int kn7_errBudget = 24;
+unsigned kn7_errDropped;
+static int errCol, errDrop;
+
 int _write(int fd, const void *p, int n) {
   if (fd != 1 && fd != 2) {
     errno = EBADF;
     return -1;
   }
   const char *s = p;
-  for (int i = 0; i < n; ++i) logChar(s[i]);
+  for (int i = 0; i < n; ++i) {
+    if (fd == 2) {
+      if (errCol++ == 0) {
+        errDrop = kn7_errBudget <= 0;
+        if (errDrop) ++kn7_errDropped;
+        else --kn7_errBudget;
+      }
+      if (s[i] == '\n') errCol = 0;
+      if (errDrop) continue;
+    }
+    logChar(s[i]);
+  }
   if (logShown && logCol) host->text(logLine[logRows - 1], 0, 1 + 13 * (logRows - 1), 0xFFFF, 0);
   return n;
 }

@@ -245,6 +245,58 @@ fz_free_display_node(fz_context *ctx, fz_display_node *node)
 	fz_free(ctx, node);
 }
 
+#ifdef KN7PDF
+/* KN7PDF: a fill merged into the fill just before it in the list when nothing tells them apart (the same fill rule,
+ * matrix, colour space, colour and alpha) and it touches none of the pixels the other covers (their bounding boxes in
+ * whole pixels): each pixel's coverage is then one shape's, so the page comes out the same, and the list holds one node and one path for a run of small
+ * shapes (a contents page's dotted leaders are thousands of dots, each its own fill: 2150 nodes, 400 KB). The run
+ * stays within KN7_MERGE_ROWS rows, so that each band flattens little more than it draws. */
+#define KN7_MERGE_ROWS 24
+static int
+kn7_merge_fill(fz_context *ctx, fz_display_list *list, fz_path *path, int even_odd, fz_matrix ctm,
+	fz_colorspace *colorspace, float *color, float alpha, fz_rect r)
+{
+	fz_display_node *n = list->last;
+	fz_path *p;
+	fz_rect u;
+	int i, need;
+
+	if (!n || n->cmd != FZ_CMD_FILL_PATH || n->flag != even_odd || n->colorspace != colorspace || n->alpha != alpha ||
+		memcmp(&n->ctm, &ctm, sizeof ctm) || !path->len || path->items[0].k != FZ_MOVETO || fz_is_empty_rect(r))
+		return 0;
+	for (i = 0; colorspace && color && i < colorspace->n; i++)
+		if (n->color[i] != color[i])
+			return 0;
+	{
+		/* (the pixels each covers: none in common) */
+		fz_bbox a = fz_bbox_covering_rect(n->rect), b = fz_bbox_covering_rect(r);
+		if (b.x0 < a.x1 && b.x1 > a.x0 && b.y0 < a.y1 && b.y1 > a.y0)
+			return 0;
+	}
+	u = fz_union_rect(n->rect, r);
+	if (u.y1 - u.y0 > KN7_MERGE_ROWS)
+		return 0;
+	p = n->item.path;
+	need = p->len + path->len;
+	if (need > p->cap)
+	{
+		int cap = need + need / 4;
+		fz_path_item *items = fz_resize_array_no_throw(ctx, p->items, cap, sizeof(fz_path_item));
+		if (!items)
+			return 0;  /* (a node of its own, then) */
+		p->items = items;
+		p->cap = cap;
+	}
+	memcpy(p->items + p->len, path->items, path->len * sizeof(fz_path_item));
+	p->len = need;
+	n->rect = u;
+	n->kn7_have = 0;
+	if (list->top > 0 && list->tiled == 0 && list->top <= STACK_SIZE)
+		list->stack[list->top-1].rect = fz_union_rect(list->stack[list->top-1].rect, r);
+	return 1;
+}
+#endif
+
 static void
 fz_list_fill_path(fz_device *dev, fz_path *path, int even_odd, fz_matrix ctm,
 	fz_colorspace *colorspace, float *color, float alpha)
@@ -254,6 +306,8 @@ fz_list_fill_path(fz_device *dev, fz_path *path, int even_odd, fz_matrix ctm,
 #ifdef KN7PDF
 	fz_rect r = fz_bound_path(dev->ctx, path, NULL, ctm);
 	if (kn7_culled(dev, r))
+		return;
+	if (kn7_merge_fill(ctx, dev->user, path, even_odd, ctm, colorspace, color, alpha, r))
 		return;
 #endif
 	node = fz_new_display_node(ctx, FZ_CMD_FILL_PATH, ctm, colorspace, color, alpha);
