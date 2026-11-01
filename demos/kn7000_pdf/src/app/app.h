@@ -68,6 +68,7 @@ extern volatile u32 file_busy;  /* 1 while the firmware fills a buffer of ours *
 void diag(const char* fmt, ...);
 void diag_line(const char* s);
 void diag_save(void);  /* program task only */
+void diag_due(void);   /* program task only: a part of the log saved when one is due */
 
 /* borrow.c: the firmware's frame buffers lent to the program, their contents kept in display memory meanwhile */
 int borrow_regions(PfRegion* list, int room);

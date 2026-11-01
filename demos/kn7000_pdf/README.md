@@ -108,8 +108,11 @@ drawn. The firmware's tasks give the CPU only to each other: a task below them (
 
 ## On the instrument: the log and the watchdog
 
-KN7APP.BIN keeps a log (`src/app/diag.c`) and saves it as `PDF\PDFLOG.TXT` (KN7000 `update_sdcard.sh` brings it back):
-the build, the firmware found, the load, every file and page, and a heartbeat every 5 s while a page is drawn. When
+KN7APP.BIN keeps a log (`src/app/diag.c`): the build, the firmware found, the load, every file and page, and a heartbeat
+every 5 s while a page is drawn. It goes onto the card as it grows: each 3 KB as the next part, `PDF\PDFLOG01.TXT`,
+`PDFLOG02.TXT` ... (up to 50), saved at the viewer's next yield, and what came after the last part as `PDF\PDFLOG.TXT`,
+saved after each page, each file and a pause in the button presses. KN7000 `update_sdcard.sh` brings them all back
+and then deletes the parts from the card, so the parts there are always the last run's. When
 the program's task has not yielded for 4 s, a watchdog on the firmware's 1 kHz tick (`src/app/crash.c`) samples where
 it is, then makes the task leave what it was doing: the log gets the 16 PCs, the registers, the stack's words that may
 be return addresses, and the viewer's own account (the page and stage, the glyph FreeType was drawing, the line its

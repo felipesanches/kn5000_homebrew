@@ -40,13 +40,17 @@ static void regions_make(void) {
 }
 static u32 host_ms(void) { return now_ms(); }
 static void host_status(const char* s) { set_status(s); }
+static void host_yield(u32 ms) {
+  diag_due();
+  task_yield(ms);
+}
 
 static PfHost host = {
     .magic = PFHOST_MAGIC,
     .abi = PFHOST_ABI,
     .prefix = prefix,
     .ms = host_ms,
-    .yield = task_yield,
+    .yield = host_yield,
     .load = file_load,
     .save = file_save,
     .pollNotes = notes_poll,
