@@ -48,3 +48,23 @@ unasked; the page shown scrolled while page 3 was drawn; past the end and PAGE U
 the cache: 162-175 ms each in the viewer's log); the last page, asked for before it was drawn, shown when drawn (15.9 s,
 the page TOP answering meanwhile); the pages saved on the card (420-560 ms each); the document opened again showed its
 first page from the card in 0.8 s.
+
+PROTRACK.PDF (Type 3 fonts) before and after the glyph procedures were kept, the read cache and the merged fills
+(2026-11-01, the published emulator, md5 8b9865bd2e38...): `PDF_FILE=PROTRACK.PDF PDF_PROFILE_S=420 KEEP_SD=1 run_pdf.sh OUT
+probes/profile.lua`, each page's time from the viewer's log on the card (`tools/card/fatget.py OUT/sd_after.img
+'PDF\PDFLOG01.TXT'` ...); the first build in a worktree at 87f01d5.
+
+| build                          | page 1 | page 2          | page 3 | page 4 | card reads, page 1 |
+|--------------------------------|--------|-----------------|--------|--------|--------------------|
+| 87f01d5 (the unit's, before)   | 30.3 s |                 |        |        |                    |
+| 4e3fd28 (procedures kept)      | 25.0 s | 60.9 s, regions | 26.5 s |        |                    |
+| 05c6c2a (and the read cache)   | 23.2 s | 59.6 s, regions | 23.7 s |        | 66 (204 KB)        |
+| b2d4b5e (and the fills merged) | 23.2 s | 50.0 s, regions | 24.2 s | 15.6 s | 66 (204 KB)        |
+
+(87f01d5's run kept no card, so only its first page's time, from events.txt.) MAME reads the card faster than the
+unit: the viewer's 384948-byte image in 1834 ms, the unit 385012 bytes in 3054 ms (its PDFLOG.TXT of 2026-11-01), so
+the reads saved count for more there. Page 2 still runs short of memory in MAME (the heap holds 316 KB after page 1)
+and is drawn in regions; its 543 MuPDF messages were not logged. The four pages on the card match kn7pdf's drawing
+with no heap limit (no pixel more than 32 of 255 apart). `pdf_test.lua` with b2d4b5e: 20 checks, 0 failed, on
+PROTRACK.PDF (first page 23.9 s; the last page asked for, shown when drawn, 16.1 s; opened again, page 1 from the card
+in 0.8 s) and on BACHIANI.PDF (first page 16.5 s).
