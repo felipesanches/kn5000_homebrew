@@ -109,7 +109,7 @@ card-dir: $(OUT)/KN7APP.BIN $(OUT)/PT.BIN
 	cp $(OUT)/KN7APP.BIN $(OUT)/PT.BIN $(OUT)/card/PROTRACK/
 	$(if $(PF_DATA),for m in $(MODS); do cp "$(PF_DATA)/$$m" $(OUT)/card/PROTRACK/; done)
 	$(if $(OUT),rm -f -- $(OUT)/card/PROTRACK/MODS.TXT)
-	printf '# ProTracker: the KN7000 program menu shows this name (kn7menu/README.md)\r\nNAME=ProTracker 2.3D\r\nFOLDER=Other apps\r\n' > $(OUT)/card/PROTRACK/MANIFEST.TXT
+	printf '# ProTracker: the KN7000 program menu shows this name (kn7menu/README.md)\r\nNAME=ProTracker 2.3D\r\nFOLDER=Other apps\r\nDESC=Plays and edits Amiga music modules\r\n' > $(OUT)/card/PROTRACK/MANIFEST.TXT
 
 # A card and a floppy for MAME: a copy of the real KN7000's card with the program menu as its root KN7APP.BIN and the
 # PROTRACK\ folder, and a copy of the owner's loader floppy (as the Pinball port's mame-media).

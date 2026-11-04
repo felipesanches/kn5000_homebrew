@@ -108,7 +108,7 @@ card-dir: $(OUT)/KN7APP.BIN $(OUT)/KEYFALL.BIN $(SONGS_MID)
 	@mkdir -p $(OUT)/card/KEYFALL
 	cp $(OUT)/KN7APP.BIN $(OUT)/KEYFALL.BIN $(OUT)/card/KEYFALL/
 	cp $(SONGS_MID) $(OUT)/card/KEYFALL/
-	printf '# Keyfall: the KN7000 program menu shows this name (kn7menu/README.md)\r\nNAME=Keyfall (piano game)\r\nFOLDER=Games\r\n' > $(OUT)/card/KEYFALL/MANIFEST.TXT
+	printf '# Keyfall: the KN7000 program menu shows this name (kn7menu/README.md)\r\nNAME=Keyfall (piano game)\r\nFOLDER=Games\r\nDESC=Play the falling notes on the keybed\r\n' > $(OUT)/card/KEYFALL/MANIFEST.TXT
 
 # the game's song reading and judging on the PC (tests/host/README.md): the same C, 32-bit
 HOST_C := src/game/smf.c src/game/song.c src/game/judge.c src/game/fmt.c tests/host/kfcheck.c

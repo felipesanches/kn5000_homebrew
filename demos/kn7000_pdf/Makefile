@@ -191,7 +191,7 @@ card-dir: $(OUT)/KN7APP.BIN $(OUT)/PDF.BIN $(FONT_FILES:%=$(OUT)/fonts/%)
 	@mkdir -p $(OUT)/card/PDF
 	cp $(OUT)/KN7APP.BIN $(OUT)/PDF.BIN $(FONT_FILES:%=$(OUT)/fonts/%) $(OUT)/card/PDF/
 	for f in $(TEST_PDFS); do cp "$$f" "$(OUT)/card/PDF/$$($(PYTHON) -I tools/build/cardname.py "$$f")"; done
-	printf '# The PDF viewer: the KN7000 program menu shows this name (kn7menu/README.md)\r\nNAME=PDF viewer (MuPDF)\r\nFOLDER=Tools\r\n' > $(OUT)/card/PDF/MANIFEST.TXT
+	printf '# The PDF viewer: the KN7000 program menu shows this name (kn7menu/README.md)\r\nNAME=PDF viewer (MuPDF)\r\nFOLDER=Tools\r\nDESC=Reads PDF files from the SD card\r\n' > $(OUT)/card/PDF/MANIFEST.TXT
 
 # A card and a floppy for MAME: a copy of the real KN7000's card with the program menu as its root KN7APP.BIN and the
 # PDF\ folder, and a copy of the owner's loader floppy (as Doom's mame-media).

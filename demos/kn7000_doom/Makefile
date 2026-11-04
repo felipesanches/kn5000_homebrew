@@ -117,7 +117,7 @@ card-dir: $(OUT)/KN7APP.BIN $(OUT)/DOOM.BIN
 	@mkdir -p $(OUT)/card/DOOM
 	cp $(OUT)/KN7APP.BIN $(OUT)/DOOM.BIN $(OUT)/card/DOOM/
 	cp $(WAD) $(OUT)/card/DOOM/
-	printf '# Doom: the KN7000 program menu shows this name (kn7menu/README.md)\r\nNAME=Doom (Chocolate Doom)\r\nFOLDER=Games\r\n' > $(OUT)/card/DOOM/MANIFEST.TXT
+	printf '# Doom: the KN7000 program menu shows this name (kn7menu/README.md)\r\nNAME=Doom (Chocolate Doom)\r\nFOLDER=Games\r\nDESC=id Software'\''s 1993 shooter (shareware)\r\n' > $(OUT)/card/DOOM/MANIFEST.TXT
 
 # A card and a floppy for MAME: a copy of the real KN7000's card with the program menu as its root KN7APP.BIN and the
 # DOOM\ folder, and a copy of the owner's loader floppy (as ProTracker's mame-media).
