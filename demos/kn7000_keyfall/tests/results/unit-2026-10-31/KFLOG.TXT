@@ -1,0 +1,55 @@
+       0 ms  KN7APP.BIN (Keyfall, build 3d0fe47) starts; folder "KEYFALL\"
+       0 ms  firmware search: step 0 found
+   60736 ms  firmware search: step 1 found
+   60744 ms  firmware search: step 2 found
+   61768 ms  firmware search: step 3 found
+   62774 ms  firmware search: step 4 found
+   63685 ms  firmware search: step 5 found
+   64377 ms  firmware: PROGRAM 893; open 48564A88 read 48564D70 close 48564B4F write 48564DFE raw 4847027F; cre 4C03D0B5 sta 4C03D898 dly 4C03DD5C exd 4C03D58E
+   64377 ms  firmware: ms 500C53F8 panel 5006BE4C MIDI IN 1 5001F020 OUT 1 5001F834 dial 50150A2A 50150A61
+   64377 ms  task: id 10 priority 3, stack 12288 bytes
+   64378 ms  region 502E8000-5031B000 (204 KB)
+   64378 ms  region 5031C000-5037A000 (376 KB)
+   64378 ms  region 502C8000-502E7F00 (127 KB)
+   64378 ms  region 503BC000-503FF000 (268 KB)
+   64378 ms  region 50298000-502B7400 (125 KB)
+   64378 ms  region 50123000-50148000 (148 KB)
+   64378 ms  region 50175000-50180000 (44 KB)
+   64378 ms  region 4C03DF20-4C03FFF0 (8 KB)
+   64905 ms  load: raw open -> 0 (22800 bytes, 2 clusters of 16384 bytes)
+   64911 ms  load: raw 192 of 192 bytes at 0 to 502C23E0, 6 ms
+   64911 ms  load: the header: 192 bytes
+   64911 ms  load: magic 4D474650 abi 15 table 51 size 22800 base 502E8000 bss 502ED910-502F32F8 entry 502E80E6 crc 189E9CE5 segments 0
+   64911 ms  load: the whole file, 22800 bytes, by raw reads
+   65183 ms  load: raw 22800 of 22800 bytes at 0 to 502E8000, 181 ms
+   65183 ms  load: 22800 of 22800 bytes read
+   65239 ms  load: the main image's crc 189E9CE5, the header says 189E9CE5
+   65241 ms  load: bss cleared, caches synced, 0 constructors
+   65241 ms  KEYFALL.BIN loaded: its entry 502E80E6
+   65341 ms  KEYFALL.BIN: PROGRAM 893, folder "KEYFALL\", ABI 15
+   65534 ms  songs: 3 MIDI files of 7 in the folder
+   65567 ms  load KEYFALL\SCORES.TXT: open -> -2, 1 pieces
+   65698 ms  load KEYFALL\MINUETG.MID: open -> 0, 1 pieces
+   65709 ms  read: 943 of 944 bytes at 0, 1 more wanted: taken as the end
+   65709 ms  load: piece 0: 943 of 944 bytes to 5031C000, 11 ms
+   65732 ms  song MINUETG.MID: 0 (), "Minuet in G", 2 parts, 89 notes, 25703 ms
+   86107 ms  game: MINUETG.MID, Right hand, tempo 100%, accompaniment 1, mode PLAY
+   86411 ms  play: 64 notes, keys 60-84, 60 messages on 1 channels, mode 0, speed 110
+  116086 ms  play: done at 27204 ms: 1 perfect 3 good 1 ok 59 miss 10 wrong, score 350, streak 2, frames 4883, loop max 28 ms, draw max 27 ms, messages 60 (ring full 0)
+  116168 ms  scores: saved, 26 bytes -> 26
+  122995 ms  game: MINUETG.MID, Right hand, tempo 100%, accompaniment 1, mode PLAY
+  123288 ms  play: 64 notes, keys 60-84, 60 messages on 1 channels, mode 0, speed 110
+  152961 ms  play: done at 27205 ms: 9 perfect 6 good 1 ok 48 miss 18 wrong, score 1360, streak 7, frames 4979, loop max 29 ms, draw max 28 ms, messages 60 (ring full 0)
+  153042 ms  scores: saved, 28 bytes -> 28
+  154379 ms  game: MINUETG.MID, Right hand, tempo 100%, accompaniment 1, mode PLAY
+  154675 ms  play: 64 notes, keys 60-84, 60 messages on 1 channels, mode 0, speed 110
+  184344 ms  play: done at 27203 ms: 25 perfect 12 good 6 ok 21 miss 24 wrong, score 4180, streak 12, frames 4748, loop max 31 ms, draw max 30 ms, messages 60 (ring full 0)
+  184414 ms  scores: saved, 28 bytes -> 28
+  201821 ms  load KEYFALL\ODEJOY.MID: open -> 0, 1 pieces
+  201849 ms  read: 3213 of 3214 bytes at 0, 1 more wanted: taken as the end
+  201849 ms  load: piece 0: 3213 of 3214 bytes to 5031C000, 28 ms
+  201898 ms  song ODEJOY.MID: 0 (), "Ode to Joy", 4 parts, 348 notes, 38387 ms
+  207532 ms  game: ODEJOY.MID, Right hand, tempo 100%, accompaniment 1, mode PLAY
+  207839 ms  play: 62 notes, keys 55-81, 602 messages on 3 channels, mode 0, speed 110
+  250195 ms  play: done at 39887 ms: 53 perfect 6 good 2 ok 1 miss 5 wrong, score 8270, streak 20, frames 8127, loop max 32 ms, draw max 31 ms, messages 602 (ring full 0)
+  250275 ms  scores: saved, 55 bytes -> 55
