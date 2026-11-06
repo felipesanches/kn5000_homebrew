@@ -5,8 +5,10 @@ the "lightweight PDF viewer", run by the KN7000 program loader (`KN7LOAD.CNV`, D
 program menu's folder `PDF\` on the SD card. The page is drawn as wide as the LCD and the TEMPO/PROGRAM wheel scrolls
 it; the keybed and the rest of the panel stay the instrument's.
 
-> **Status (2026-10-30): runs in MAME (program 893); not yet tried on the instrument.** The LilyPond score
-> `Bachianinha_No1_duas_vozes.pdf` and the ProTracker port's manual are on the test card
+> **Status (2026-11-06): runs in MAME (program 893) and on Felipe's KN7000.** On the unit (program 893, 2026-10-30
+> to 2026-11-01: `notes/UNIT-RUNS.md`) build 87f01d5 drew all 5 pages of the LilyPond score
+> `Bachianinha_No1_duas_vozes.pdf` and all 15 of the ProTracker port's manual, saved them to the card, and reopened
+> showed page 1 from the card in 818 and 621 ms. The builds since then have run in MAME only
 > ([What was checked](#what-was-checked)).
 
 Contents: [Using it](#using-it) · [The card](#the-card) · [How it works](#how-it-works) · [Memory](#memory) ·
